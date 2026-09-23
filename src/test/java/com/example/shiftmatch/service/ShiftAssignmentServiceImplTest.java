@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.Wish;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -229,6 +230,42 @@ class ShiftAssignmentServiceImplTest {
       assertEquals(1, assignment.unassignedEmployees().size());
       assertEquals("健太", assignment.unassignedEmployees().get(0).name());
     }
+
+    @Test
+    @DisplayName(
+        "[V-1] Given: 氏名が空文字列と空白のみの行を含む6行（有効な氏名は4名）のとき, When: assignを実行すると, Then:"
+            + " 有効な氏名を持つ4名のみで割り当てが行われ、空の行は未出勤者にも含まれず処理対象から除外される")
+    void excludesBlankNameEmployeesFromAssignment() {
+      // Given: 氏名が空の行と空白のみの行を含む6行（有効な氏名は太郎・花子・次郎・美咲の4名）
+      Employee taro = new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE);
+      Employee hanako = new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE);
+      Employee jiro = new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE);
+      Employee misaki = new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE);
+      List<Employee> employees =
+          List.of(
+              taro,
+              new Employee("", Wish.AVAILABLE, Wish.AVAILABLE),
+              hanako,
+              new Employee("   ", Wish.AVAILABLE, Wish.AVAILABLE),
+              jiro,
+              misaki);
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+
+      // 割り当てられた4名が有効な氏名の4名と一致し、空の氏名の行は含まれない
+      List<Employee> assigned = new ArrayList<>(assignment.earlyEmployees());
+      assigned.addAll(assignment.lateEmployees());
+      assertEquals(List.of(taro, hanako, jiro, misaki), assigned);
+
+      // 空の氏名の行は未出勤者一覧にも現れない（処理対象から除外されている）
+      assertTrue(assignment.unassignedEmployees().isEmpty());
+    }
   }
 
   @Nested
@@ -266,6 +303,28 @@ class ShiftAssignmentServiceImplTest {
               new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE),
               new Employee("次郎", Wish.UNAVAILABLE, Wish.UNAVAILABLE),
               new Employee("美咲", Wish.UNAVAILABLE, Wish.UNAVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-4] Given: 氏名が空の行を含むことで見かけ上は5行あるが、有効な従業員が3名以下のとき, When:"
+            + " assignを実行すると, Then: Optionalが空になる")
+    void returnsEmptyWhenBlankNamesResultInFewerThanFourValidEmployees() {
+      // Given: 見かけ上5名だが、実際には太郎・花子・次郎の3名のみ有効
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("   ", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE));
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
 
       // When

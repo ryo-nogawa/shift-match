@@ -1,6 +1,7 @@
 package com.example.shiftmatch.service;
 
 import com.example.shiftmatch.domain.AssignmentResult;
+import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.Wish;
 import java.util.ArrayList;
@@ -16,17 +17,21 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   @Override
   public Optional<AssignmentResult> assign(List<Employee> employees) {
+    // V-1では氏名が空の行をエラーにせず処理対象から除く必要があるため、割り当て計算の対象から外す
+    List<Employee> validEmployees =
+        employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
+
     AssignmentResult bestResult = null;
     int bestScore = -1;
 
-    for (int i = 0; i < employees.size(); i++) {
-      Employee empI = employees.get(i);
+    for (int i = 0; i < validEmployees.size(); i++) {
+      Employee empI = validEmployees.get(i);
       if (empI.earlyWish() == Wish.UNAVAILABLE) {
         continue;
       }
 
-      for (int j = i + 1; j < employees.size(); j++) {
-        Employee empJ = employees.get(j);
+      for (int j = i + 1; j < validEmployees.size(); j++) {
+        Employee empJ = validEmployees.get(j);
         if (empJ.earlyWish() == Wish.UNAVAILABLE) {
           continue;
         }
@@ -35,9 +40,9 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
         // H-3（1人1枠まで）を満たすため、早番に選んだ2名を遅番の候補から除外する
         List<Employee> remaining = new ArrayList<>();
-        for (int k = 0; k < employees.size(); k++) {
+        for (int k = 0; k < validEmployees.size(); k++) {
           if (k != i && k != j) {
-            remaining.add(employees.get(k));
+            remaining.add(validEmployees.get(k));
           }
         }
 
@@ -100,5 +105,41 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
     }
     return score;
+  }
+
+  @Override
+  public List<DuplicateNameError> findDuplicateNames(List<Employee> employees) {
+    // V-2で該当行を示すため、氏名と元のインデックスを同じ走査で対にして保持する
+    List<Integer> validIndexes = new ArrayList<>();
+    List<String> validNames = new ArrayList<>();
+    for (int i = 0; i < employees.size(); i++) {
+      String name = employees.get(i).name();
+      if (name != null && !name.isBlank()) {
+        validIndexes.add(i);
+        validNames.add(name);
+      }
+    }
+
+    List<DuplicateNameError> duplicates = new ArrayList<>();
+    for (int i = 0; i < validNames.size(); i++) {
+      String name = validNames.get(i);
+      if (duplicates.stream().anyMatch(d -> d.name().equals(name))) {
+        continue;
+      }
+
+      List<Integer> indices = new ArrayList<>();
+      indices.add(validIndexes.get(i));
+      for (int j = i + 1; j < validNames.size(); j++) {
+        if (name.equals(validNames.get(j))) {
+          indices.add(validIndexes.get(j));
+        }
+      }
+
+      if (indices.size() > 1) {
+        duplicates.add(new DuplicateNameError(name, indices));
+      }
+    }
+
+    return duplicates;
   }
 }
