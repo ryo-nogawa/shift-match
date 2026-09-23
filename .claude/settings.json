@@ -28,15 +28,17 @@
       "Edit(/.claude/todos/**)",
       "Write(/.claude/todos/**)"
     ],
+    "ask": [
+      "Edit(/docs/**)",
+      "Write(/docs/**)"
+    ],
     "deny": [
       "Bash(mvn *)",
       "Bash(git push --force *)",
       "Bash(git push -f *)",
       "Bash(git push --force-with-lease *)",
       "Bash(git reset --hard *)",
-      "Bash(gh pr merge *)",
-      "Edit(/docs/**)",
-      "Write(/docs/**)"
+      "Bash(gh pr merge *)"
     ]
   },
   "hooks": {
