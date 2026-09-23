@@ -7,11 +7,16 @@
 <body>
   <h1>シフト作成</h1>
 
+  <div th:if="${limitExceededError != null}">
+    <h2>エラー</h2>
+    <p th:text="${limitExceededError}"></p>
+  </div>
+
   <div th:if="${duplicateErrors != null && !duplicateErrors.isEmpty()}">
     <h2>重複エラー</h2>
     <ul>
       <li th:each="error : ${duplicateErrors}">
-        <span th:text="|氏名 '${error.name()}' が重複しています|"></span>
+        <span th:text="|${error.rowIndexes()} 行目：氏名 '${error.name()}' が重複しています|"></span>
       </li>
     </ul>
   </div>
@@ -89,6 +94,12 @@
       </tr>
     </table>
     <p th:text="|スコア: ${assignmentResult.score()}|"></p>
+    <div th:if="${assignmentResult.unassignedEmployees().size() > 0}">
+      <p>未出勤者:</p>
+      <ul>
+        <li th:each="employee : ${assignmentResult.unassignedEmployees()}" th:text="${employee.name()}"></li>
+      </ul>
+    </div>
   </div>
 
   <script th:src="@{/js/shift-form.js}"></script>

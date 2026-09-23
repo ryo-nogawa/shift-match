@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 @Controller
 public class ShiftController {
 
+  private static final int MAX_EMPLOYEE_COUNT = 20;
+
   private final ShiftAssignmentService shiftAssignmentService;
 
   /**
@@ -60,12 +62,26 @@ public class ShiftController {
    */
   @PostMapping("/shift")
   public String createShift(@ModelAttribute("shiftForm") ShiftForm shiftForm, Model model) {
+    // 上限チェック
+    int validEmployeeCount = 0;
+    for (EmployeeForm employee : shiftForm.getEmployees()) {
+      if (employee.getName() != null && !employee.getName().isBlank()) {
+        validEmployeeCount++;
+      }
+    }
+    if (validEmployeeCount > MAX_EMPLOYEE_COUNT) {
+      model.addAttribute(
+          "limitExceededError", "従業員の入力行数が上限（" + MAX_EMPLOYEE_COUNT + "名）を超えています。入力行を減らしてください。");
+      model.addAttribute("shiftForm", shiftForm);
+      return "index";
+    }
+
     // V-3: 希望値の不正チェック
     List<InvalidWishError> wishErrors = new ArrayList<>();
     for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
       EmployeeForm employee = shiftForm.getEmployees().get(i);
       // 氏名が空の行は V-3 対象外
-      if (employee.getName() == null || employee.getName().isEmpty()) {
+      if (employee.getName() == null || employee.getName().isBlank()) {
         continue;
       }
 

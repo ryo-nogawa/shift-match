@@ -99,6 +99,25 @@ class ShiftControllerTest {
       String body = result.getResponse().getContentAsString();
       // 不正エラーが表示されてはいけない
       assertEquals(200, result.getResponse().getStatus());
+      assertTrue(!body.contains("入力エラー"));
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 氏名が空白のみの行の早番・遅番希望が未選択のとき, When: POST /shift を実行すると, " + "Then: エラーにならない")
+    void shouldNotShowErrorForBlankNameRow() throws Exception {
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "   ");
+      params.add("employees[0].earlyWish", "");
+      params.add("employees[0].lateWish", "");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      // 不正エラーが表示されてはいけない
+      assertEquals(200, result.getResponse().getStatus());
+      assertTrue(!body.contains("入力エラー"));
     }
 
     @Test
@@ -123,6 +142,7 @@ class ShiftControllerTest {
 
       String body = result.getResponse().getContentAsString();
       assertTrue(body.contains("重複") || body.contains("エラー"));
+      assertTrue(body.contains("1") && body.contains("2"));
       verify(shiftAssignmentService, never()).assign(org.mockito.ArgumentMatchers.any());
     }
 
@@ -161,7 +181,7 @@ class ShiftControllerTest {
                   new com.example.shiftmatch.domain.Employee("次郎", null, null),
                   new com.example.shiftmatch.domain.Employee("美咲", null, null)),
               3,
-              java.util.List.of());
+              java.util.List.of(new com.example.shiftmatch.domain.Employee("五郎", null, null)));
 
       org.mockito.Mockito.when(
               shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
@@ -182,7 +202,28 @@ class ShiftControllerTest {
       assertTrue(body.contains("花子"));
       assertTrue(body.contains("次郎"));
       assertTrue(body.contains("美咲"));
+      assertTrue(body.contains("五郎"));
       assertTrue(body.contains("3"));
+    }
+
+    @Test
+    @DisplayName(
+        "[セキュリティー] Given: 有効な氏名を持つ行が上限（20名）を超えるとき, When: POST /shift を実行すると, "
+            + "Then: assign が呼び出されず、上限超過のエラーメッセージが表示されること")
+    void shouldRejectWhenEmployeeCountExceedsLimit() throws Exception {
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      for (int i = 0; i < 21; i++) {
+        params.add("employees[" + i + "].name", "従業員" + i);
+        params.add("employees[" + i + "].earlyWish", "DESIRED");
+        params.add("employees[" + i + "].lateWish", "AVAILABLE");
+      }
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("上限"));
+      verify(shiftAssignmentService, never()).assign(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
