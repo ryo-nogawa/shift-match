@@ -17,5 +17,4 @@ public class ShiftMatchApplication {
   public static void main(String[] args) {
     SpringApplication.run(ShiftMatchApplication.class, args);
   }
-
 }
