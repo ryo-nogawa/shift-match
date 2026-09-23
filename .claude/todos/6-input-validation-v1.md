@@ -59,7 +59,7 @@
     - 重複がないケースで空リストが返ることを検証するテストが存在する
     - `DuplicateNameError` に Javadoc が記載されている（`.agents/rules/javadoc.md`）
 
-- [ ] **T3. `findDuplicateNames` の重複ありケースを実装する**
+- [x] **T3. `findDuplicateNames` の重複ありケースを実装する**
   - 依頼事項：
     - 次の 3 パターンを検証するテストを先に書き、RED を確認してから実装する
       1. 有効な氏名のうち 1 組（2 件）が重複しているケース → `DuplicateNameError` が 1 件返り、`name` が重複した氏名、`rowIndexes` が該当する 2 つの元のインデックスと一致する
