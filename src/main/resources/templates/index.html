@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>シフト作成</title>
+</head>
+<body>
+  <h1>シフト作成</h1>
+
+  <form method="post" th:action="@{/shift}" th:object="${shiftForm}">
+    <table>
+      <thead>
+        <tr>
+          <th>氏名</th>
+          <th>早番希望</th>
+          <th>遅番希望</th>
+        </tr>
+      </thead>
+      <tbody id="employee-rows">
+        <tr th:each="employee, stat : ${shiftForm.employees}">
+          <td>
+            <input
+              type="text"
+              th:field="*{employees[__${stat.index}__].name}"
+              placeholder="氏名を入力"
+            />
+          </td>
+          <td>
+            <select th:field="*{employees[__${stat.index}__].earlyWish}">
+              <option value="">-- 未選択 --</option>
+              <option value="DESIRED">◎ 希望</option>
+              <option value="AVAILABLE">○ 可能</option>
+              <option value="UNAVAILABLE">× 不可</option>
+            </select>
+          </td>
+          <td>
+            <select th:field="*{employees[__${stat.index}__].lateWish}">
+              <option value="">-- 未選択 --</option>
+              <option value="DESIRED">◎ 希望</option>
+              <option value="AVAILABLE">○ 可能</option>
+              <option value="UNAVAILABLE">× 不可</option>
+            </select>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <button type="button" id="add-row-btn">行を追加</button>
+    <button type="submit">シフトを作成</button>
+  </form>
+
+  <script th:src="@{/js/shift-form.js}"></script>
+</body>
+</html>

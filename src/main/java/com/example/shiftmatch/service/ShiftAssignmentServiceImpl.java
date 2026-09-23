@@ -7,12 +7,14 @@ import com.example.shiftmatch.domain.Wish;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
 /**
  * シフト割り当てを行うサービス実装。
  *
  * <p>全組み合わせを総当たりで評価し、条件を満たす案の中でスコアが最大かつ入力順で最初の案を返します。
  */
+@Service
 public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   @Override
