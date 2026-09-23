@@ -204,4 +204,49 @@ class ShiftAssignmentServiceImplTest {
       assertEquals("美咲", assignment.lateEmployees().get(1).name());
     }
   }
+
+  @Nested
+  class 不成立 {
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 早番希望・遅番希望のいずれかがAVAILABLE以上な従業員が4名未満のとき, When: assignを実行すると, Then:"
+            + " Optionalが空になる")
+    void returnsEmptyWhenNotEnoughValidEmployees() {
+      // Given: 3名のみ有効（花子は両方UNAVAILABLE）
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("花子", Wish.UNAVAILABLE, Wish.UNAVAILABLE),
+              new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 早番可2名と遅番可2名が同一人物のため、組み合わせが作れないとき, When: assignを実行すると, Then: Optionalが空になる")
+    void returnsEmptyWhenNoValidCombinationDueToDependency() {
+      // Given: 太郎と花子しか早番可・遅番可だが、両方に割り当てられないため成立不可
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("次郎", Wish.UNAVAILABLE, Wish.UNAVAILABLE),
+              new Employee("美咲", Wish.UNAVAILABLE, Wish.UNAVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isEmpty());
+    }
+  }
 }
