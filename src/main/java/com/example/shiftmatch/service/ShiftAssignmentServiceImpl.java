@@ -1,6 +1,7 @@
 package com.example.shiftmatch.service;
 
 import com.example.shiftmatch.domain.AssignmentResult;
+import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.Wish;
 import java.util.ArrayList;
@@ -104,5 +105,45 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
     }
     return score;
+  }
+
+  @Override
+  public List<DuplicateNameError> findDuplicateNames(List<Employee> employees) {
+    // 氏名が空でない従業員のみを抽出
+    List<Employee> validEmployees =
+        employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
+
+    // 元のリストにおけるインデックスとマッピング
+    List<Integer> validIndexes = new ArrayList<>();
+    for (int i = 0; i < employees.size(); i++) {
+      Employee emp = employees.get(i);
+      if (emp.name() != null && !emp.name().isBlank()) {
+        validIndexes.add(i);
+      }
+    }
+
+    // 重複検出
+    List<DuplicateNameError> duplicates = new ArrayList<>();
+    for (int i = 0; i < validEmployees.size(); i++) {
+      String name = validEmployees.get(i).name();
+      List<Integer> indices = new ArrayList<>();
+      indices.add(validIndexes.get(i));
+
+      for (int j = i + 1; j < validEmployees.size(); j++) {
+        if (name.equals(validEmployees.get(j).name())) {
+          indices.add(validIndexes.get(j));
+        }
+      }
+
+      // 重複がある場合のみ追加
+      if (indices.size() > 1) {
+        // 同じ氏名がまだ登録されていない場合のみ追加
+        if (duplicates.stream().noneMatch(d -> d.name().equals(name))) {
+          duplicates.add(new DuplicateNameError(name, indices));
+        }
+      }
+    }
+
+    return duplicates;
   }
 }

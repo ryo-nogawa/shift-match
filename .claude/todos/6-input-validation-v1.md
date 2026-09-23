@@ -41,7 +41,7 @@
     - テストは、氏名が空／空白のみの行が処理対象から除外されることを検証している
     - 既存のテスト（氏名がすべて有効なケース）が引き続き成功する
 
-- [ ] **T2. `DuplicateNameError` レコードと `findDuplicateNames` の骨格（重複なしケース）を実装する**
+- [x] **T2. `DuplicateNameError` レコードと `findDuplicateNames` の骨格（重複なしケース）を実装する**
   - 依頼事項：
     - `DuplicateNameError` record を作成する。フィールドは `String name`、`List<Integer> rowIndexes` とする
     - `ShiftAssignmentService` インタフェースに `List<DuplicateNameError> findDuplicateNames(List<Employee> employees)` を宣言する（Javadoc 必須）
