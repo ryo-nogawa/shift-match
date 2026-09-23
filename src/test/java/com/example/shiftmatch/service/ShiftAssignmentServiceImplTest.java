@@ -309,5 +309,27 @@ class ShiftAssignmentServiceImplTest {
       // Then
       assertTrue(result.isEmpty());
     }
+
+    @Test
+    @DisplayName(
+        "[V-4] Given: 氏名が空の行を含むことで見かけ上は5行あるが、有効な従業員が3名以下のとき, When:"
+            + " assignを実行すると, Then: Optionalが空になる")
+    void returnsEmptyWhenBlankNamesResultInFewerThanFourValidEmployees() {
+      // Given: 見かけ上5名だが、実際には太郎・花子・次郎の3名のみ有効
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("   ", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isEmpty());
+    }
   }
 }
