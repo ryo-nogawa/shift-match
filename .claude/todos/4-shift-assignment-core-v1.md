@@ -27,7 +27,7 @@
 
 ## Todo
 
-- [ ] **T1. ドメインモデル（Wish enum・Employee record）を作成する**
+- [x] **T1. ドメインモデル（Wish enum・Employee record）を作成する**
   - 依頼事項：
     - `Wish` enum を作成する。定数は `DESIRED`（◎ 希望する）、`AVAILABLE`（○ 可能）、`UNAVAILABLE`（× 不可）の 3 つとする
     - `Employee` record を作成する。フィールドは `String name`、`Wish earlyWish`、`Wish lateWish` とする
@@ -41,7 +41,7 @@
     - `@DisplayName` が Given-When-Then パターンの日本語で書かれている
     - `Wish` に `DESIRED`／`AVAILABLE`／`UNAVAILABLE` の 3 定数が存在する
 
-- [ ] **T2. 割り当て結果モデル（AssignmentResult record）と Service の雛形、および基本の成立ケースを実装する**
+- [x] **T2. 割り当て結果モデル（AssignmentResult record）と Service の雛形、および基本の成立ケースを実装する**
   - 依頼事項：
     - `AssignmentResult` record を作成する。フィールドは `List<Employee> earlyEmployees`（早番 2 名）、`List<Employee> lateEmployees`（遅番 2 名）、`int score`（0〜4）、`List<Employee> unassignedEmployees`（未割り当て）とする（`docs/specifications.md` 7 章 出力仕様）
     - `ShiftAssignmentService` インタフェースを作成し、`Optional<AssignmentResult> assign(List<Employee> employees)` を宣言する
