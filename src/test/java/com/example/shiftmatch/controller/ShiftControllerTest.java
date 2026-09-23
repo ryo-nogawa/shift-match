@@ -145,7 +145,7 @@ class ShiftControllerTest {
 
       String body = result.getResponse().getContentAsString();
       assertTrue(body.contains("重複") || body.contains("エラー"));
-      assertTrue(body.contains("1") && body.contains("2"));
+      assertTrue(body.contains("1") && body.contains("2") && body.contains("行目"));
       verify(shiftAssignmentService, never()).assign(org.mockito.ArgumentMatchers.any());
     }
 

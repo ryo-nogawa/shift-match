@@ -62,7 +62,7 @@ public class ShiftController {
    */
   @PostMapping("/shift")
   public String createShift(@ModelAttribute("shiftForm") ShiftForm shiftForm, Model model) {
-    // 上限チェック
+    // 入力行数が上限を超える場合は、DoS 攻撃への耐性を保つため処理を中断する
     int validEmployeeCount = 0;
     for (EmployeeForm employee : shiftForm.getEmployees()) {
       if (employee.getName() != null && !employee.getName().isBlank()) {
@@ -76,33 +76,28 @@ public class ShiftController {
       return "index";
     }
 
-    // フォームを Employee に変換
     List<Employee> employees = convertToEmployees(shiftForm);
 
-    // V-2: 氏名重複チェック
     List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
 
-    // V-3: 希望値の不正チェック
+    // V-1 では氏名が空の行をエラーにせず処理対象から除く必要があるため、V-3 のチェック時も空行は対象外とする
     List<InvalidWishError> wishErrors = new ArrayList<>();
     for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
       EmployeeForm employee = shiftForm.getEmployees().get(i);
-      // 氏名が空の行は V-3 対象外
       if (employee.getName() == null || employee.getName().isBlank()) {
         continue;
       }
 
-      // 早番希望のチェック
       if (!isValidWish(employee.getEarlyWish())) {
         wishErrors.add(new InvalidWishError(i, "早番希望"));
       }
 
-      // 遅番希望のチェック
       if (!isValidWish(employee.getLateWish())) {
         wishErrors.add(new InvalidWishError(i, "遅番希望"));
       }
     }
 
-    // V-2・V-3 いずれのエラーもない場合に assign を呼び出す
+    // V-2・V-3 いずれのエラーもない場合のみ assign を呼び出し、割当案を算出する
     if (wishErrors.isEmpty() && duplicateErrors.isEmpty()) {
       var result = shiftAssignmentService.assign(employees);
       if (result.isPresent()) {

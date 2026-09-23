@@ -16,7 +16,7 @@
     <h2>重複エラー</h2>
     <ul>
       <li th:each="error : ${duplicateErrors}">
-        <span th:text="|${error.rowIndexes()} 行目：氏名 '${error.name()}' が重複しています|"></span>
+        氏名「<span th:text="${error.name()}"></span>」が重複しています（該当行：<span th:each="idx, idxStat : ${error.rowIndexes()}"><span th:text="${idx + 1}"></span><span th:if="${!idxStat.last}">, </span></span>行目）
       </li>
     </ul>
   </div>
