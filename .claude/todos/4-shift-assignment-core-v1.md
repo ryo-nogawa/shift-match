@@ -133,7 +133,7 @@
     - `@DisplayName` の先頭に `[F-3]` が付いている
     - `unassignedEmployees()` の内容を検証するテストが存在する
 
-- [ ] **T9. 全体テストの成功を確認する**
+- [x] **T9. 全体テストの成功を確認する**
   - 依頼事項：
     - `./mvnw test` を実行し、Spotless・Checkstyle を含めて全テストが成功することを確認する
     - 未整形箇所があれば `./mvnw spotless:apply` を実行してから再確認する
