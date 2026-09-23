@@ -45,7 +45,7 @@
 
 ## Todo
 
-- [ ] **T1. [F-1] 入力フォームの初期表示（GET `/`）を実装する**
+- [x] **T1. [F-1] 入力フォームの初期表示（GET `/`）を実装する**
   - 依頼事項：
     - `EmployeeForm`（`String name`, `String earlyWish`, `String lateWish`、getter/setter、no-args コンストラクタ、Javadoc）を作成する
     - `ShiftForm`（`List<EmployeeForm> employees`、getter/setter、Javadoc）を作成する
