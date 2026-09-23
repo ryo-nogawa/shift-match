@@ -65,8 +65,9 @@ git switch -c <prefix>/<issue番号>-<概要>   # 例：feature/12-input-validat
 ./mvnw test
 ```
 
-- `./mvnw test` は `validate` フェーズにバインドされた Checkstyle（`maven-checkstyle-plugin`）を自動的に含みます。設定は [config/checkstyle/checkstyle.xml](../../config/checkstyle/checkstyle.xml) を参照してください
-- テストが 1 件でも失敗した場合、または Checkstyle の違反が 1 件でもある場合は手順 3 に戻ります
+- `./mvnw test` は `validate` フェーズにバインドされた Spotless（`spotless-maven-plugin`／`spotless:check`）と Checkstyle（`maven-checkstyle-plugin`）を自動的に含みます。設定はそれぞれ [pom.xml](../../pom.xml) の `spotless-maven-plugin` 設定、[config/checkstyle/checkstyle.xml](../../config/checkstyle/checkstyle.xml) を参照してください
+- Spotless（google-java-format）による整形違反がある場合は、`./mvnw spotless:apply` で自動整形してからコミットします。手動で整形し直す必要はありません
+- テストが 1 件でも失敗した場合、Spotless の整形違反がある場合、または Checkstyle の違反が 1 件でもある場合は手順 3 に戻ります
 - Checkstyle の詳細は `target/checkstyle-result.xml` で確認できます
 - Maven はシステムの `mvn` ではなく、必ず Maven Wrapper（`./mvnw`）を使用します
 
