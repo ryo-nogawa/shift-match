@@ -30,7 +30,7 @@ class ShiftControllerTest {
   @Nested
   class GetIndexTest {
     @Test
-    @DisplayName("[F-1] GET / で初期フォームを表示する")
+    @DisplayName("[F-1] Given: 初期状態のとき, When: GET / を実行すると, Then: 4行の空フォームが表示されること")
     void shouldDisplayInitialForm() throws Exception {
       MvcResult result =
           mockMvc
@@ -170,7 +170,7 @@ class ShiftControllerTest {
     }
 
     @Test
-    @DisplayName("[F-4] 成立時の結果を表形式で表示する")
+    @DisplayName("[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, Then: 結果が表形式で表示されること")
     void shouldDisplayResultInTableFormatWhenAssignmentSucceeds() throws Exception {
       com.example.shiftmatch.domain.AssignmentResult assignmentResult =
           new com.example.shiftmatch.domain.AssignmentResult(
@@ -227,7 +227,7 @@ class ShiftControllerTest {
     }
 
     @Test
-    @DisplayName("[F-5] 不成立時のメッセージを表示する")
+    @DisplayName("[F-5] Given: 条件を満たす組み合わせがないとき, When: POST /shift を実行すると, Then: 不成立メッセージが表示されること")
     void shouldDisplayUnassignableMessageWhenNoValidCombinationExists() throws Exception {
       org.mockito.Mockito.when(
               shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
