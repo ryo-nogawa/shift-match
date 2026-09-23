@@ -29,6 +29,14 @@
   - **F-2（行追加）の JavaScript**：`src/main/resources/static/js/shift-form.js` に実装する。追加行の `name` 属性インデックスは、追加時点の行数（0 始まり）をそのまま使う（削除機能がないためインデックスは常に連番で欠番が出ない）
   - **テンプレート**：`src/main/resources/templates/index.html` に 1 画面で実装する（`docs/specifications.md` 8 章）
   - **Controller のテストは `@WebMvcTest(ShiftController.class)` ＋ `MockMvc` を使う**。`ShiftAssignmentService` は `org.springframework.test.context.bean.override.mockito.MockitoBean`（`@MockitoBean`、Spring Boot 4.1.1 系の現行アノテーション。**`@MockBean` は使わない**）でモック化する
+  - **重要：pom.xml は変更しない**。`spring-boot-starter-webmvc-test`・`spring-boot-starter-thymeleaf-test`・`spring-boot-starter-validation-test` は Spring Boot 4 系の正式なテスト用スターターであり、Maven Central に存在し、ローカルリポジトリにも解決済み。`spring-boot-starter-test`（Spring Boot 3 系までの単一スターター）は本プロジェクトでは使わない
+  - **Spring Boot 4 系でのパッケージ移動に注意**：`@WebMvcTest` は Spring Boot 3 系までの `org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest` ではなく、**`org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest`** に移動している（`spring-boot-webmvc-test` アーティファクトに含まれる）。必要であれば `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc` も同じパッケージ。`MockMvc` 本体（`org.springframework.test.web.servlet.MockMvc`）と `@MockitoBean`（`org.springframework.test.context.bean.override.mockito.MockitoBean`）は `spring-test` にあり、パッケージは変更なし。テストクラスの import は次を使う：
+    ```java
+    import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+    import org.springframework.test.web.servlet.MockMvc;
+    import org.springframework.test.context.bean.override.mockito.MockitoBean;
+    import org.springframework.beans.factory.annotation.Autowired;
+    ```
   - **MockMvc のレスポンス本文の検証は Hamcrest matcher（`content().string(containsString(...))`）を使わず**、`mvcResult.getResponse().getContentAsString()` で文字列を取得し、`org.junit.jupiter.api.Assertions.assertTrue(body.contains("..."))` で検証する（`.agents/rules/test.md` の「AssertJ などのアサーション用ライブラリは追加導入しない」を Hamcrest にも適用するため）
   - **不成立メッセージ（F-5・T-3 決定済み）**：原因分析を行わず、「条件を満たす組み合わせが見つかりませんでした。」という事実のみのメッセージを固定文言で表示する
   - **結果表示（F-4・T-2 決定済み）**：早番・遅番の氏名、スコア、未出勤者一覧を表形式（HTML `<table>`）で表示する。時間軸のバー表示は実装しない
