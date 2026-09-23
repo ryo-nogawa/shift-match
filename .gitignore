@@ -1,0 +1,64 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### macOS ###
+.DS_Store
+.AppleDouble
+.LSOverride
+
+### Logs ###
+*.log
+logs/
+
+### 環境変数・機密情報 ###
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+### ローカル専用設定（DBパスワード・APIキーなど） ###
+src/main/resources/application-local.properties
+src/main/resources/application-local.yml
+src/main/resources/application-secret.properties
+
+### ローカルDBファイル（H2など） ###
+*.db
+*.mv.db
+*.trace.db
+data/
+
+### Claude Code ###
+.claude/settings.local.json
