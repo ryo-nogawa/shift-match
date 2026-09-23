@@ -127,5 +127,52 @@ class ShiftAssignmentServiceImplTest {
       boolean hasJiro = assignment.lateEmployees().stream().anyMatch(e -> "次郎".equals(e.name()));
       assertTrue(!hasJiro, "遅番×の次郎が遅番に割り当てられています");
     }
+
+    @Test
+    @DisplayName("[F-3] Given: スコア計算できる従業員構成のとき, When: assignを実行すると, Then: スコアが期待値と一致する")
+    void calculatesScoreCorrectly() {
+      // Given: 太郎・花子が◎、次郎・美咲が○
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.DESIRED, Wish.DESIRED),
+              new Employee("花子", Wish.DESIRED, Wish.AVAILABLE),
+              new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+      // スコア: 太郎（早番◎）+ 花子（遅番◎）= 2
+      assertEquals(2, assignment.score());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 複数の組み合わせが存在し、スコアが異なるとき, When: assignを実行すると, Then: スコアが最大の組み合わせが採用される")
+    void adoptsMaximumScoreCombination() {
+      // Given: 5名で、特定の組み合わせだけスコアが高くなるよう設計
+      // 太郎と花子が早番と遅番で◎、他は○のみ
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.DESIRED, Wish.AVAILABLE),
+              new Employee("花子", Wish.AVAILABLE, Wish.DESIRED),
+              new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("健太", Wish.AVAILABLE, Wish.AVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+      // スコアが2以上（太郎の早番◎と花子の遅番◎）であることを確認
+      assertTrue(assignment.score() >= 2, "スコアが最大化されていません: " + assignment.score());
+    }
   }
 }

@@ -16,7 +16,10 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   @Override
   public Optional<AssignmentResult> assign(List<Employee> employees) {
-    // 全組み合わせを列挙し、最初に見つかった案を返す
+    AssignmentResult bestResult = null;
+    int bestScore = -1;
+
+    // 全組み合わせを列挙し、最大スコアの案を探す
     for (int i = 0; i < employees.size(); i++) {
       Employee empI = employees.get(i);
       // 早番×は除外
@@ -60,6 +63,9 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
             // 遅番の組 (k, l)
             List<Employee> lateEmployees = List.of(empK, empL);
 
+            // スコアを計算
+            int score = calculateScore(earlyEmployees, lateEmployees);
+
             // 未割り当て従業員を計算
             List<Employee> unassignedEmployees = new ArrayList<>();
             for (Employee emp : remaining) {
@@ -68,14 +74,41 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
               }
             }
 
-            // 結果を返す（T2は最初の組み合わせを返すだけ）
-            return Optional.of(
-                new AssignmentResult(earlyEmployees, lateEmployees, 0, unassignedEmployees));
+            // スコアが最大値より大きい場合に更新（同点では更新しない）
+            if (score > bestScore) {
+              bestScore = score;
+              bestResult =
+                  new AssignmentResult(earlyEmployees, lateEmployees, score, unassignedEmployees);
+            }
           }
         }
       }
     }
 
-    return Optional.empty();
+    return bestResult != null ? Optional.of(bestResult) : Optional.empty();
+  }
+
+  /**
+   * 割り当てのスコアを計算する。
+   *
+   * <p>スコア = 割り当てられた4名のうち、その枠を◎と申告していた人数（0〜4）
+   *
+   * @param earlyEmployees 早番に割り当てられた従業員
+   * @param lateEmployees 遅番に割り当てられた従業員
+   * @return スコア（0〜4）
+   */
+  private int calculateScore(List<Employee> earlyEmployees, List<Employee> lateEmployees) {
+    int score = 0;
+    for (Employee emp : earlyEmployees) {
+      if (emp.earlyWish() == Wish.DESIRED) {
+        score++;
+      }
+    }
+    for (Employee emp : lateEmployees) {
+      if (emp.lateWish() == Wish.DESIRED) {
+        score++;
+      }
+    }
+    return score;
   }
 }
