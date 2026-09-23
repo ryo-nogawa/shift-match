@@ -77,5 +77,55 @@ class ShiftAssignmentServiceImplTest {
         }
       }
     }
+
+    @Test
+    @DisplayName("[H-4] Given: 早番希望が×の従業員を含む5名がいるとき, When: assignを実行すると, Then: その従業員が早番の案に含まれない")
+    void excludesUnavailableEmployeeFromEarlyShift() {
+      // Given: 花子の早番が×
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("花子", Wish.UNAVAILABLE, Wish.AVAILABLE),
+              new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("健太", Wish.AVAILABLE, Wish.AVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+
+      // 花子が早番に含まれていないことを確認
+      boolean hasHanako = assignment.earlyEmployees().stream().anyMatch(e -> "花子".equals(e.name()));
+      assertTrue(!hasHanako, "早番×の花子が早番に割り当てられています");
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 遅番希望が×の従業員を含む5名がいるとき, When: assignを実行すると, Then: その従業員が遅番の案に含まれない")
+    void excludesUnavailableEmployeeFromLateShift() {
+      // Given: 次郎の遅番が×
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("次郎", Wish.AVAILABLE, Wish.UNAVAILABLE),
+              new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("健太", Wish.AVAILABLE, Wish.AVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+
+      // 次郎が遅番に含まれていないことを確認
+      boolean hasJiro = assignment.lateEmployees().stream().anyMatch(e -> "次郎".equals(e.name()));
+      assertTrue(!hasJiro, "遅番×の次郎が遅番に割り当てられています");
+    }
   }
 }
