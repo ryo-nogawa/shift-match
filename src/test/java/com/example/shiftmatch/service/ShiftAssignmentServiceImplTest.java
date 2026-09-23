@@ -203,6 +203,32 @@ class ShiftAssignmentServiceImplTest {
       assertEquals("次郎", assignment.lateEmployees().get(0).name());
       assertEquals("美咲", assignment.lateEmployees().get(1).name());
     }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 5名の従業員がいるとき, When: assignを実行すると, Then:"
+            + " unassignedEmployeesに割り当てられなかった従業員が含まれる")
+    void includesUnassignedEmployeesInResult() {
+      // Given: 5名
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("健太", Wish.AVAILABLE, Wish.AVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+      // 早番2名 + 遅番2名 = 4名なので、健太が未割り当て
+      assertEquals(1, assignment.unassignedEmployees().size());
+      assertEquals("健太", assignment.unassignedEmployees().get(0).name());
+    }
   }
 
   @Nested
