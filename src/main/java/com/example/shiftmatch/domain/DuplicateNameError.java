@@ -11,4 +11,15 @@ import java.util.List;
  * @param name 重複した従業員名
  * @param rowIndexes 元のリストにおける該当行のインデックス（昇順）
  */
-public record DuplicateNameError(String name, List<Integer> rowIndexes) {}
+public record DuplicateNameError(String name, List<Integer> rowIndexes) {
+
+  /**
+   * {@code rowIndexes} を不変なリストとして保持する。
+   *
+   * <p>生成後に呼び出し側がリストを変更すると検出時の行情報と食い違うため、
+   * 生成経路によらず不変なリストにする。
+   */
+  public DuplicateNameError {
+    rowIndexes = List.copyOf(rowIndexes);
+  }
+}

@@ -17,7 +17,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   @Override
   public Optional<AssignmentResult> assign(List<Employee> employees) {
-    // V-1: 氏名が空（null または isBlank()）の従業員を除外
+    // V-1では氏名が空の行をエラーにせず処理対象から除く必要があるため、割り当て計算の対象から外す
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
@@ -109,31 +109,33 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   @Override
   public List<DuplicateNameError> findDuplicateNames(List<Employee> employees) {
-    List<Employee> validEmployees =
-        employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
-
-    // V-2の「該当行を示す」ため、除外後も画面上の行位置に対応する元のインデックスを保持する
+    // V-2で該当行を示すため、氏名と元のインデックスを同じ走査で対にして保持する
     List<Integer> validIndexes = new ArrayList<>();
+    List<String> validNames = new ArrayList<>();
     for (int i = 0; i < employees.size(); i++) {
-      Employee emp = employees.get(i);
-      if (emp.name() != null && !emp.name().isBlank()) {
+      String name = employees.get(i).name();
+      if (name != null && !name.isBlank()) {
         validIndexes.add(i);
+        validNames.add(name);
       }
     }
 
     List<DuplicateNameError> duplicates = new ArrayList<>();
-    for (int i = 0; i < validEmployees.size(); i++) {
-      String name = validEmployees.get(i).name();
+    for (int i = 0; i < validNames.size(); i++) {
+      String name = validNames.get(i);
+      if (duplicates.stream().anyMatch(d -> d.name().equals(name))) {
+        continue;
+      }
+
       List<Integer> indices = new ArrayList<>();
       indices.add(validIndexes.get(i));
-
-      for (int j = i + 1; j < validEmployees.size(); j++) {
-        if (name.equals(validEmployees.get(j).name())) {
+      for (int j = i + 1; j < validNames.size(); j++) {
+        if (name.equals(validNames.get(j))) {
           indices.add(validIndexes.get(j));
         }
       }
 
-      if (indices.size() > 1 && duplicates.stream().noneMatch(d -> d.name().equals(name))) {
+      if (indices.size() > 1) {
         duplicates.add(new DuplicateNameError(name, indices));
       }
     }
