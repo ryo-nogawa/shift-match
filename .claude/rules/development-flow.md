@@ -59,13 +59,16 @@ git switch -c <prefix>/<issue番号>-<概要>   # 例：feature/12-input-validat
   4. 【未完了】の報告を受けたら、`create-todo` スキルを再作成モードで実行して Todo リストを作り直し、2 に戻ります。作り直しは最大 2 回（v3 まで）で、それでも未完了ならユーザーへ確認します
   5. コミットは `implementer` が Todo 1 件ごとに行います（Todo ファイルも Git 管理対象としてコミットします）
 
-### 4. 全テストを実行する
+### 4. 全テストと静的解析を実行する
 
 ```bash
 ./mvnw test
 ```
 
-- 1 件でも失敗した場合は手順 3 に戻ります
+- `./mvnw test` は `validate` フェーズにバインドされた Spotless（`spotless-maven-plugin`／`spotless:check`）と Checkstyle（`maven-checkstyle-plugin`）を自動的に含みます。設定はそれぞれ [pom.xml](../../pom.xml) の `spotless-maven-plugin` 設定、[config/checkstyle/checkstyle.xml](../../config/checkstyle/checkstyle.xml) を参照してください
+- Spotless（google-java-format）による整形違反がある場合は、`./mvnw spotless:apply` で自動整形してからコミットします。手動で整形し直す必要はありません
+- テストが 1 件でも失敗した場合、Spotless の整形違反がある場合、または Checkstyle の違反が 1 件でもある場合は手順 3 に戻ります
+- Checkstyle の詳細は `target/checkstyle-result.xml` で確認できます
 - Maven はシステムの `mvn` ではなく、必ず Maven Wrapper（`./mvnw`）を使用します
 
 ### 5. Codex にコードレビューを依頼する
@@ -88,7 +91,7 @@ codex exec --sandbox workspace-write '$code-review main'
 - 指摘内容を確認し、対応が必要なものを修正します
   - 振る舞いの変更を伴う修正は、手順 3 の TDD（Red から）でやり直します
   - 対応しない指摘は、その理由を記録しておき、最終報告に含めます
-- 修正後は**手順 4（全テスト）から**やり直し、再度 Codex レビューを受けます
+- 修正後は**手順 4（全テストと静的解析）から**やり直し、再度 Codex レビューを受けます
 - 対応が必要な指摘がなくなるまで繰り返します。ただし、Codex レビューは **最大 3 ラウンド** までとし、3 ラウンド目でも対応が必要な指摘が残る場合はループを止め、残った指摘と各ラウンドの対応内容をユーザーへ報告して判断を仰ぎます
 
 ### 7. ユーザーへ報告する
@@ -103,5 +106,5 @@ codex exec --sandbox workspace-write '$code-review main'
 - ユーザーへは次の内容を報告します
   - Issue と PR の URL
   - 実装内容の要約（対応した仕様 ID を含む）
-  - 実行したコマンドとその結果（成功・失敗、テスト件数）
+  - 実行したコマンドとその結果（成功・失敗、テスト件数、Checkstyle の違反件数）
   - Codex レビューの指摘と対応状況（対応しなかった指摘はその理由）

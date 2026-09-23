@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<suppressions>
+
+  <!--
+    テストコードはJavadocを必須としない（.agents/rules/javadoc.md, .agents/rules/test.md）。
+    @DisplayNameでGiven-When-Thenパターンによりテスト内容を明記するため、Javadocでの説明は不要とする。
+  -->
+  <suppress checks="(MissingJavadocType|MissingJavadocMethod|JavadocMethod|SummaryJavadoc|
+                     JavadocParagraph|NonEmptyAtclauseDescription|AtclauseOrder|
+                     RequireEmptyLineBeforeBlockTagGroup|JavadocTagContinuationIndentation|
+                     InvalidJavadocPosition|SingleLineJavadoc)"
+            files="[\\/]src[\\/]test[\\/]"/>
+
+  <!--
+    @Nestedによるテストのグルーピング用クラス名（正常系・異常系など）に日本語の命名を許可する
+    （.agents/rules/test.md）。
+  -->
+  <suppress checks="TypeName" files="[\\/]src[\\/]test[\\/]"/>
+
+</suppressions>

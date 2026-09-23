@@ -67,6 +67,15 @@ Maven はシステムにインストールされたものではなく、必ず M
 
 # ビルド（テストを含む）
 ./mvnw clean package
+
+# Checkstyle のみを実行（./mvnw test にも validate フェーズで自動的に含まれる）
+./mvnw checkstyle:check
+
+# Spotless（google-java-format）でコードを自動整形（./mvnw test の前に実行する）
+./mvnw spotless:apply
+
+# Spotless の整形チェックのみを実行（./mvnw test にも validate フェーズで自動的に含まれる）
+./mvnw spotless:check
 ```
 
 ## 信頼できる情報源
