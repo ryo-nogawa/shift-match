@@ -29,6 +29,8 @@
 	<properties>
 		<java.version>25</java.version>
 		<checkstyle.version>14.1.0</checkstyle.version>
+		<spotless.version>3.10.2</spotless.version>
+		<google-java-format.version>1.36.1</google-java-format.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -111,6 +113,39 @@
 								</path>
 							</annotationProcessorPaths>
 						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!--
+				GOOGLE スタイルの google-java-format で自動整形します。
+				config/checkstyle/checkstyle.xml は google_checks.xml ベース（2スペースインデント・100桁）のため、
+				デフォルト設定のままでも Checkstyle の指摘と乖離しません。
+				- reorderImports: true にして CustomImportOrder（static優先・グループ間空行）と一致させる
+				- formatJavadoc: false のままにして、SummaryJavadoc（句点「。」）など独自の Javadoc 規約と衝突させない
+				checkstyle と同じ validate フェーズにバインドし、整形前に Checkstyle 違反として二重に出ないよう先に実行する。
+			-->
+			<plugin>
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
+				<version>${spotless.version}</version>
+				<configuration>
+					<java>
+						<googleJavaFormat>
+							<version>${google-java-format.version}</version>
+							<style>GOOGLE</style>
+							<reflowLongStrings>true</reflowLongStrings>
+							<formatJavadoc>false</formatJavadoc>
+							<reorderImports>true</reorderImports>
+						</googleJavaFormat>
+					</java>
+				</configuration>
+				<executions>
+					<execution>
+						<id>spotless-validate</id>
+						<phase>validate</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
 					</execution>
 				</executions>
 			</plugin>
