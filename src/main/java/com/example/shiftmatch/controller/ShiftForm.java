@@ -1,5 +1,6 @@
 package com.example.shiftmatch.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -8,7 +9,7 @@ import java.util.List;
 public class ShiftForm {
 
   /** 従業員の入力データ一覧。 */
-  private List<EmployeeForm> employees;
+  private List<EmployeeForm> employees = new ArrayList<>();
 
   /** デフォルトコンストラクタ。 */
   public ShiftForm() {}

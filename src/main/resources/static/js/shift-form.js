@@ -6,13 +6,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const employeeRows = document.getElementById("employee-rows");
 
   addRowBtn.addEventListener("click", function () {
-    // 現在の行数を取得
     const currentRowCount = employeeRows.querySelectorAll("tr").length;
-
-    // 新規行のHTML要素を作成
     const newRow = document.createElement("tr");
 
-    // 氏名入力欄
     const nameCell = document.createElement("td");
     const nameInput = document.createElement("input");
     nameInput.type = "text";
@@ -20,7 +16,6 @@ document.addEventListener("DOMContentLoaded", function () {
     nameInput.placeholder = "氏名を入力";
     nameCell.appendChild(nameInput);
 
-    // 早番希望セレクト
     const earlyCell = document.createElement("td");
     const earlySelect = document.createElement("select");
     earlySelect.name = "employees[" + currentRowCount + "].earlyWish";
@@ -48,7 +43,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     earlyCell.appendChild(earlySelect);
 
-    // 遅番希望セレクト
     const lateCell = document.createElement("td");
     const lateSelect = document.createElement("select");
     lateSelect.name = "employees[" + currentRowCount + "].lateWish";
@@ -76,12 +70,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     lateCell.appendChild(lateSelect);
 
-    // 新規行に各セルを追加
     newRow.appendChild(nameCell);
     newRow.appendChild(earlyCell);
     newRow.appendChild(lateCell);
 
-    // テーブルに新規行を追加
     employeeRows.appendChild(newRow);
   });
 });

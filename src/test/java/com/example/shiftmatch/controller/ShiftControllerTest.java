@@ -249,5 +249,26 @@ class ShiftControllerTest {
       String body = result.getResponse().getContentAsString();
       assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"));
     }
+
+    @Test
+    @DisplayName(
+        "[V-4] Given: 従業員パラメータが一切送られないとき, When: POST /shift を実行すると, "
+            + "Then: 例外を投げずにステータス200で不成立と扱われること")
+    void shouldHandleEmptyEmployeeListWithoutException() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.empty());
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      assertEquals(200, result.getResponse().getStatus());
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"));
+    }
   }
 }
