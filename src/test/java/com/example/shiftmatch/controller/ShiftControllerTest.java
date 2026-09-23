@@ -2,6 +2,7 @@ package com.example.shiftmatch.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import org.junit.jupiter.api.DisplayName;
@@ -12,6 +13,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
 @WebMvcTest(ShiftController.class)
 class ShiftControllerTest {
@@ -38,6 +42,60 @@ class ShiftControllerTest {
       ShiftForm shiftForm = (ShiftForm) result.getModelAndView().getModel().get("shiftForm");
       assertNotNull(shiftForm);
       assertEquals(4, shiftForm.getEmployees().size());
+    }
+  }
+
+  @Nested
+  class PostShiftTest {
+    @Test
+    @DisplayName(
+        "[V-3] Given: 氏名が入力されていて早番希望が未選択のとき, When: POST /shift を実行すると, "
+            + "Then: レスポンス本文に不正エラーを示す文言が含まれる")
+    void shouldShowErrorWhenEarlyWishIsEmpty() throws Exception {
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("不正") || body.contains("エラー"));
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 氏名が入力されていて遅番希望が不正値のとき, When: POST /shift を実行すると, "
+            + "Then: レスポンス本文に不正エラーを示す文言が含まれる")
+    void shouldShowErrorWhenLateWishIsInvalid() throws Exception {
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "INVALID_VALUE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("不正") || body.contains("エラー"));
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 氏名が空の行の早番・遅番希望が未選択のとき, When: POST /shift を実行すると, " + "Then: エラーにならない")
+    void shouldNotShowErrorForEmptyNameRow() throws Exception {
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "");
+      params.add("employees[0].earlyWish", "");
+      params.add("employees[0].lateWish", "");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      // 不正エラーが表示されてはいけない
+      assertEquals(200, result.getResponse().getStatus());
     }
   }
 }

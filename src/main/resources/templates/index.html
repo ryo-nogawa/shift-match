@@ -7,6 +7,15 @@
 <body>
   <h1>シフト作成</h1>
 
+  <div th:if="${wishErrors != null && !wishErrors.isEmpty()}">
+    <h2>入力エラー</h2>
+    <ul>
+      <li th:each="error : ${wishErrors}">
+        <span th:text="|${error.getRowIndex() + 1}行目 ${error.getWishLabel()}: 不正な値です|"></span>
+      </li>
+    </ul>
+  </div>
+
   <form method="post" th:action="@{/shift}" th:object="${shiftForm}">
     <table>
       <thead>

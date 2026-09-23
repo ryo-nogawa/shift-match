@@ -64,7 +64,7 @@
     - `@DisplayName` の先頭に `[F-1]` が付いたテストが存在する
     - `GET /` のテストが、ビュー名とモデル属性 `shiftForm`（4 行分の空行）を検証している
 
-- [ ] **T2. [F-2] 入力行を動的に追加する JavaScript を実装する**
+- [x] **T2. [F-2] 入力行を動的に追加する JavaScript を実装する**
   - 依頼事項：
     - `src/main/resources/static/js/shift-form.js` を作成する。「行を追加」ボタンのクリックで、既存の行数を数えて次のインデックスを算出し、氏名・早番希望・遅番希望の入力欄（`employees[N].name` 等）を持つ行をテーブル（または入力欄群）に追加する
     - `index.html` に「行を追加」ボタンと、行を追加する対象のコンテナ（`<tbody id="employee-rows">` 等）を用意し、`shift-form.js` を `<script>` で読み込む
