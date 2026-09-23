@@ -98,7 +98,7 @@
     - 上記 3 パターンがそれぞれテストされている
     - `InvalidWishError` に Javadoc が記載されている
 
-- [ ] **T4. [V-2] 氏名重複チェックの結果を画面に反映する**
+- [x] **T4. [V-2] 氏名重複チェックの結果を画面に反映する**
   - 依頼事項：
     - `ShiftControllerTest` に、`ShiftAssignmentService#findDuplicateNames` が空でないリストを返すよう `@MockitoBean` でスタブした場合、`POST /shift` のレスポンス本文に重複エラーを示す文言（該当行番号・氏名）が含まれ、かつ `ShiftAssignmentService#assign` が呼び出されていないこと（`Mockito.verify(service, Mockito.never()).assign(...)`）を検証するテストを先に書き、RED を確認する
     - `ShiftController#createShift` で、V-3 のチェック後（V-3 エラーの有無に関わらず）に `shiftAssignmentService.findDuplicateNames(employees)` を呼び出す。`employees` は画面から送信された全行を `Employee` に変換したリスト（氏名が空の行を含む。前提の設計方針を参照）とする。重複エラーまたは V-3 エラーのいずれかがあれば、`Model` に `"duplicateErrors"`（重複エラーのリスト）と `"wishErrors"` を追加し、`shiftForm` を戻してビュー名 `"index"` を返す（`assign` は呼び出さない）

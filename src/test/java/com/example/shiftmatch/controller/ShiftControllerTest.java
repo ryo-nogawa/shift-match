@@ -125,5 +125,28 @@ class ShiftControllerTest {
       assertTrue(body.contains("重複") || body.contains("エラー"));
       verify(shiftAssignmentService, never()).assign(org.mockito.ArgumentMatchers.any());
     }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: V-2・V-3 いずれのエラーもないとき, When: POST /shift を実行すると, "
+            + "Then: ShiftAssignmentService#assign が 1 回呼び出されること")
+    void shouldCallAssignWhenNoErrorsExist() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.empty());
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      assertEquals(200, result.getResponse().getStatus());
+      verify(shiftAssignmentService).assign(org.mockito.ArgumentMatchers.any());
+    }
   }
 }

@@ -86,6 +86,16 @@ public class ShiftController {
     // V-2: 氏名重複チェック
     List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
 
+    // V-2・V-3 いずれのエラーもない場合に assign を呼び出す
+    if (wishErrors.isEmpty() && duplicateErrors.isEmpty()) {
+      var result = shiftAssignmentService.assign(employees);
+      if (result.isPresent()) {
+        model.addAttribute("assignmentResult", result.get());
+      } else {
+        model.addAttribute("unassignable", true);
+      }
+    }
+
     model.addAttribute("wishErrors", wishErrors);
     model.addAttribute("duplicateErrors", duplicateErrors);
     model.addAttribute("shiftForm", shiftForm);
