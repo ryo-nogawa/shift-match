@@ -174,5 +174,34 @@ class ShiftAssignmentServiceImplTest {
       // スコアが2以上（太郎の早番◎と花子の遅番◎）であることを確認
       assertTrue(assignment.score() >= 2, "スコアが最大化されていません: " + assignment.score());
     }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: スコアが同点になる複数の組み合わせが存在するとき, When: assignを実行すると, Then:"
+            + " 入力順インデックスの辞書順で最初の組み合わせが採用される")
+    void selectsFirstLexicographicCombinationOnTie() {
+      // Given: 4名全員◎なので、すべての組み合わせがスコア4で同点
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.DESIRED, Wish.DESIRED),
+              new Employee("花子", Wish.DESIRED, Wish.DESIRED),
+              new Employee("次郎", Wish.DESIRED, Wish.DESIRED),
+              new Employee("美咲", Wish.DESIRED, Wish.DESIRED));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+      // スコアはすべて4で同点
+      assertEquals(4, assignment.score());
+      // 最初の組み合わせ：早番(0,1)、遅番(2,3)が採用される
+      assertEquals("太郎", assignment.earlyEmployees().get(0).name());
+      assertEquals("花子", assignment.earlyEmployees().get(1).name());
+      assertEquals("次郎", assignment.lateEmployees().get(0).name());
+      assertEquals("美咲", assignment.lateEmployees().get(1).name());
+    }
   }
 }
