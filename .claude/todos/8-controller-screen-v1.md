@@ -77,7 +77,7 @@
     - `index.html` に「行を追加」ボタンと `shift-form.js` の読み込みが存在する
     - `shift-form.js` が、追加行の `name` 属性に欠番のないインデックスを付与するロジックになっている
 
-- [ ] **T3. [V-3] 早番・遅番希望の不正値チェックを実装する**
+- [x] **T3. [V-3] 早番・遅番希望の不正値チェックを実装する**
   - 依頼事項：
     - `InvalidWishError`（`int rowIndex`, `String wishLabel`。Javadoc 必須）を `domain` パッケージに作成する
     - `ShiftControllerTest` に、`POST /shift` で次のケースを検証するテストを先に書き、RED を確認してから実装する

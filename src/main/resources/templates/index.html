@@ -7,6 +7,15 @@
 <body>
   <h1>シフト作成</h1>
 
+  <div th:if="${duplicateErrors != null && !duplicateErrors.isEmpty()}">
+    <h2>重複エラー</h2>
+    <ul>
+      <li th:each="error : ${duplicateErrors}">
+        <span th:text="|氏名 '${error.name()}' が重複しています|"></span>
+      </li>
+    </ul>
+  </div>
+
   <div th:if="${wishErrors != null && !wishErrors.isEmpty()}">
     <h2>入力エラー</h2>
     <ul>

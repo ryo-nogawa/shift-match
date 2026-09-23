@@ -3,7 +3,10 @@ package com.example.shiftmatch.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
+import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -96,6 +99,31 @@ class ShiftControllerTest {
       String body = result.getResponse().getContentAsString();
       // 不正エラーが表示されてはいけない
       assertEquals(200, result.getResponse().getStatus());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-2] Given: 氏名が重複しているとき, When: POST /shift を実行すると, "
+            + "Then: レスポンス本文に重複エラーを示す文言が含まれ、assign が呼び出されないこと")
+    void shouldShowErrorAndNotCallAssignWhenNamesAreDuplicated() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of(new DuplicateNameError("太郎", java.util.List.of(0, 1))));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "太郎");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("重複") || body.contains("エラー"));
+      verify(shiftAssignmentService, never()).assign(org.mockito.ArgumentMatchers.any());
     }
   }
 }
