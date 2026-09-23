@@ -11,4 +11,17 @@ public record AssignmentResult(
     List<Employee> earlyEmployees,
     List<Employee> lateEmployees,
     int score,
-    List<Employee> unassignedEmployees) {}
+    List<Employee> unassignedEmployees) {
+
+  /**
+   * 各リストを不変なリストとして保持する。
+   *
+   * <p>生成後に呼び出し側がリストを変更すると早番・遅番・スコアと未出勤者の整合性が崩れるため、
+   * 生成経路によらず不変なリストにする。
+   */
+  public AssignmentResult {
+    earlyEmployees = List.copyOf(earlyEmployees);
+    lateEmployees = List.copyOf(lateEmployees);
+    unassignedEmployees = List.copyOf(unassignedEmployees);
+  }
+}
