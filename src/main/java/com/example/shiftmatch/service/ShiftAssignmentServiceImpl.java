@@ -16,17 +16,21 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   @Override
   public Optional<AssignmentResult> assign(List<Employee> employees) {
+    // V-1: 氏名が空（null または isBlank()）の従業員を除外
+    List<Employee> validEmployees =
+        employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
+
     AssignmentResult bestResult = null;
     int bestScore = -1;
 
-    for (int i = 0; i < employees.size(); i++) {
-      Employee empI = employees.get(i);
+    for (int i = 0; i < validEmployees.size(); i++) {
+      Employee empI = validEmployees.get(i);
       if (empI.earlyWish() == Wish.UNAVAILABLE) {
         continue;
       }
 
-      for (int j = i + 1; j < employees.size(); j++) {
-        Employee empJ = employees.get(j);
+      for (int j = i + 1; j < validEmployees.size(); j++) {
+        Employee empJ = validEmployees.get(j);
         if (empJ.earlyWish() == Wish.UNAVAILABLE) {
           continue;
         }
@@ -35,9 +39,9 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
         // H-3（1人1枠まで）を満たすため、早番に選んだ2名を遅番の候補から除外する
         List<Employee> remaining = new ArrayList<>();
-        for (int k = 0; k < employees.size(); k++) {
+        for (int k = 0; k < validEmployees.size(); k++) {
           if (k != i && k != j) {
-            remaining.add(employees.get(k));
+            remaining.add(validEmployees.get(k));
           }
         }
 

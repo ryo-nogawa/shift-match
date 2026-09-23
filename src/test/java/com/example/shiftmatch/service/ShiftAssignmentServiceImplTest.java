@@ -229,6 +229,41 @@ class ShiftAssignmentServiceImplTest {
       assertEquals(1, assignment.unassignedEmployees().size());
       assertEquals("健太", assignment.unassignedEmployees().get(0).name());
     }
+
+    @Test
+    @DisplayName(
+        "[V-1] Given: 氏名が空文字列と空白のみの行を含む5名のとき, When: assignを実行すると, Then:"
+            + " 有効な氏名を持つ4名で通常通り割り当てが行われ、空の行は処理対象から除外される")
+    void excludesBlankNameEmployeesFromAssignment() {
+      // Given: 氏名が空の行と空白のみの行を含む5名
+      List<Employee> employees =
+          List.of(
+              new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("   ", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE));
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      // When
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Then
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+
+      // 早番と遅番に含まれる従業員の氏名が空でないことを確認
+      for (Employee emp : assignment.earlyEmployees()) {
+        assertTrue(!emp.name().isBlank(), "早番に空の氏名の従業員が含まれています");
+      }
+      for (Employee emp : assignment.lateEmployees()) {
+        assertTrue(!emp.name().isBlank(), "遅番に空の氏名の従業員が含まれています");
+      }
+
+      // スコアが計算されていることを確認（ここでは最小値0以上）
+      assertTrue(assignment.score() >= 0, "スコアが計算されていません");
+    }
   }
 
   @Nested
