@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.Wish;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -232,18 +233,22 @@ class ShiftAssignmentServiceImplTest {
 
     @Test
     @DisplayName(
-        "[V-1] Given: 氏名が空文字列と空白のみの行を含む5名のとき, When: assignを実行すると, Then:"
-            + " 有効な氏名を持つ4名で通常通り割り当てが行われ、空の行は処理対象から除外される")
+        "[V-1] Given: 氏名が空文字列と空白のみの行を含む6行（有効な氏名は4名）のとき, When: assignを実行すると, Then:"
+            + " 有効な氏名を持つ4名のみで割り当てが行われ、空の行は未出勤者にも含まれず処理対象から除外される")
     void excludesBlankNameEmployeesFromAssignment() {
-      // Given: 氏名が空の行と空白のみの行を含む5名
+      // Given: 氏名が空の行と空白のみの行を含む6行（有効な氏名は太郎・花子・次郎・美咲の4名）
+      Employee taro = new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE);
+      Employee hanako = new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE);
+      Employee jiro = new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE);
+      Employee misaki = new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE);
       List<Employee> employees =
           List.of(
-              new Employee("太郎", Wish.AVAILABLE, Wish.AVAILABLE),
+              taro,
               new Employee("", Wish.AVAILABLE, Wish.AVAILABLE),
-              new Employee("花子", Wish.AVAILABLE, Wish.AVAILABLE),
+              hanako,
               new Employee("   ", Wish.AVAILABLE, Wish.AVAILABLE),
-              new Employee("次郎", Wish.AVAILABLE, Wish.AVAILABLE),
-              new Employee("美咲", Wish.AVAILABLE, Wish.AVAILABLE));
+              jiro,
+              misaki);
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
 
       // When
@@ -253,16 +258,13 @@ class ShiftAssignmentServiceImplTest {
       assertTrue(result.isPresent());
       AssignmentResult assignment = result.get();
 
-      // 早番と遅番に含まれる従業員の氏名が空でないことを確認
-      for (Employee emp : assignment.earlyEmployees()) {
-        assertTrue(!emp.name().isBlank(), "早番に空の氏名の従業員が含まれています");
-      }
-      for (Employee emp : assignment.lateEmployees()) {
-        assertTrue(!emp.name().isBlank(), "遅番に空の氏名の従業員が含まれています");
-      }
+      // 割り当てられた4名が有効な氏名の4名と一致し、空の氏名の行は含まれない
+      List<Employee> assigned = new ArrayList<>(assignment.earlyEmployees());
+      assigned.addAll(assignment.lateEmployees());
+      assertEquals(List.of(taro, hanako, jiro, misaki), assigned);
 
-      // スコアが計算されていることを確認（ここでは最小値0以上）
-      assertTrue(assignment.score() >= 0, "スコアが計算されていません");
+      // 空の氏名の行は未出勤者一覧にも現れない（処理対象から除外されている）
+      assertTrue(assignment.unassignedEmployees().isEmpty());
     }
   }
 

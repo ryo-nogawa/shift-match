@@ -109,11 +109,10 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   @Override
   public List<DuplicateNameError> findDuplicateNames(List<Employee> employees) {
-    // 氏名が空でない従業員のみを抽出
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
-    // 元のリストにおけるインデックスとマッピング
+    // V-2の「該当行を示す」ため、除外後も画面上の行位置に対応する元のインデックスを保持する
     List<Integer> validIndexes = new ArrayList<>();
     for (int i = 0; i < employees.size(); i++) {
       Employee emp = employees.get(i);
@@ -122,7 +121,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
     }
 
-    // 重複検出
     List<DuplicateNameError> duplicates = new ArrayList<>();
     for (int i = 0; i < validEmployees.size(); i++) {
       String name = validEmployees.get(i).name();
@@ -135,12 +133,8 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
         }
       }
 
-      // 重複がある場合のみ追加
-      if (indices.size() > 1) {
-        // 同じ氏名がまだ登録されていない場合のみ追加
-        if (duplicates.stream().noneMatch(d -> d.name().equals(name))) {
-          duplicates.add(new DuplicateNameError(name, indices));
-        }
+      if (indices.size() > 1 && duplicates.stream().noneMatch(d -> d.name().equals(name))) {
+        duplicates.add(new DuplicateNameError(name, indices));
       }
     }
 

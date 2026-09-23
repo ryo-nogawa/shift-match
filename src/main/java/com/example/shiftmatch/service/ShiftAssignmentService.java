@@ -24,7 +24,7 @@ public interface ShiftAssignmentService {
   /**
    * 従業員一覧の中から重複する氏名を検出する。
    *
-   * <p>氏名が{@code null}またはが{@code isBlank()}である従業員は除外してから重複判定を行う。
+   * <p>氏名が{@code null}または{@code isBlank()}である従業員は除外してから重複判定を行う。
    * 重複がない場合は空リストを返す。同じ氏名が3件以上ある場合も1つの{@link DuplicateNameError}にまとめられる。
    *
    * @param employees 従業員一覧
