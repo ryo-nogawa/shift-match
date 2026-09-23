@@ -148,5 +148,62 @@ class ShiftControllerTest {
       assertEquals(200, result.getResponse().getStatus());
       verify(shiftAssignmentService).assign(org.mockito.ArgumentMatchers.any());
     }
+
+    @Test
+    @DisplayName("[F-4] 成立時の結果を表形式で表示する")
+    void shouldDisplayResultInTableFormatWhenAssignmentSucceeds() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
+              3,
+              java.util.List.of());
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("太郎"));
+      assertTrue(body.contains("花子"));
+      assertTrue(body.contains("次郎"));
+      assertTrue(body.contains("美咲"));
+      assertTrue(body.contains("3"));
+    }
+
+    @Test
+    @DisplayName("[F-5] 不成立時のメッセージを表示する")
+    void shouldDisplayUnassignableMessageWhenNoValidCombinationExists() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.empty());
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"));
+    }
   }
 }

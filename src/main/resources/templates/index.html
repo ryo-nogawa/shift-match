@@ -67,6 +67,30 @@
     <button type="submit">シフトを作成</button>
   </form>
 
+  <div th:if="${unassignable != null && unassignable}">
+    <h2>割当結果</h2>
+    <p>条件を満たす組み合わせが見つかりませんでした。</p>
+  </div>
+
+  <div th:if="${assignmentResult != null}">
+    <h2>割当結果</h2>
+    <table border="1">
+      <tr>
+        <th>枠</th>
+        <th>氏名</th>
+      </tr>
+      <tr th:each="employee : ${assignmentResult.earlyEmployees()}">
+        <td>早番</td>
+        <td th:text="${employee.name()}"></td>
+      </tr>
+      <tr th:each="employee : ${assignmentResult.lateEmployees()}">
+        <td>遅番</td>
+        <td th:text="${employee.name()}"></td>
+      </tr>
+    </table>
+    <p th:text="|スコア: ${assignmentResult.score()}|"></p>
+  </div>
+
   <script th:src="@{/js/shift-form.js}"></script>
 </body>
 </html>

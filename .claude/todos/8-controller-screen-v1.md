@@ -113,7 +113,7 @@
     - `@DisplayName` の先頭に `[V-2]` が付いたテストが存在する
     - 重複エラー時に `assign` が呼び出されないことを `Mockito.verify` で検証している
 
-- [ ] **T5. [F-3] シフト算出（`assign` の呼び出し）を実装する**
+- [x] **T5. [F-3] シフト算出（`assign` の呼び出し）を実装する**
   - 依頼事項：
     - `ShiftControllerTest` に、V-2・V-3 いずれのエラーもない入力で `POST /shift` を呼んだとき、`ShiftAssignmentService#assign` が 1 回呼び出されることを検証するテストを先に書き、RED を確認する（`@MockitoBean` でスタブした `assign` の戻り値は任意でよい）
     - `ShiftController#createShift` で、V-2・V-3 のいずれのエラーもない場合に `shiftAssignmentService.assign(employees)` を呼び出す。戻り値が `Optional<AssignmentResult>` として存在する場合は `Model` に `"assignmentResult"` を追加し、空の場合は `Model` に `"unassignable"`（`true`）を追加する。いずれの場合もビュー名 `"index"` を返す
