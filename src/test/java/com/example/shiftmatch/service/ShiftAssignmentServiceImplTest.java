@@ -146,7 +146,7 @@ class ShiftAssignmentServiceImplTest {
       // Then
       assertTrue(result.isPresent());
       AssignmentResult assignment = result.get();
-      // スコア: 太郎（早番◎）+ 花子（遅番◎）= 2
+      // スコア: 太郎（早番◎）+ 花子（早番◎）= 2
       assertEquals(2, assignment.score());
     }
 

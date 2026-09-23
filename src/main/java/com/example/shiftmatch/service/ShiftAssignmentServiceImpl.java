@@ -19,25 +19,21 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     AssignmentResult bestResult = null;
     int bestScore = -1;
 
-    // 全組み合わせを列挙し、最大スコアの案を探す
     for (int i = 0; i < employees.size(); i++) {
       Employee empI = employees.get(i);
-      // 早番×は除外
       if (empI.earlyWish() == Wish.UNAVAILABLE) {
         continue;
       }
 
       for (int j = i + 1; j < employees.size(); j++) {
         Employee empJ = employees.get(j);
-        // 早番×は除外
         if (empJ.earlyWish() == Wish.UNAVAILABLE) {
           continue;
         }
 
-        // 早番の組 (i, j)
         List<Employee> earlyEmployees = List.of(empI, empJ);
 
-        // 残りの従業員を取得
+        // H-3（1人1枠まで）を満たすため、早番に選んだ2名を遅番の候補から除外する
         List<Employee> remaining = new ArrayList<>();
         for (int k = 0; k < employees.size(); k++) {
           if (k != i && k != j) {
@@ -45,28 +41,21 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
           }
         }
 
-        // 残りの従業員から遅番2名を選ぶ
         for (int k = 0; k < remaining.size(); k++) {
           Employee empK = remaining.get(k);
-          // 遅番×は除外
           if (empK.lateWish() == Wish.UNAVAILABLE) {
             continue;
           }
 
           for (int l = k + 1; l < remaining.size(); l++) {
             Employee empL = remaining.get(l);
-            // 遅番×は除外
             if (empL.lateWish() == Wish.UNAVAILABLE) {
               continue;
             }
 
-            // 遅番の組 (k, l)
             List<Employee> lateEmployees = List.of(empK, empL);
-
-            // スコアを計算
             int score = calculateScore(earlyEmployees, lateEmployees);
 
-            // 未割り当て従業員を計算
             List<Employee> unassignedEmployees = new ArrayList<>();
             for (Employee emp : remaining) {
               if (!lateEmployees.contains(emp)) {
@@ -74,7 +63,8 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
               }
             }
 
-            // スコアが最大値より大きい場合に更新（同点では更新しない）
+            // 仕様5.3節：スコアが同点の場合は列挙順で最初に到達した案を採用するため、
+            // `>` で比較し同点では更新しない
             if (score > bestScore) {
               bestScore = score;
               bestResult =
