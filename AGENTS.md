@@ -67,6 +67,9 @@ Maven はシステムにインストールされたものではなく、必ず M
 
 # ビルド（テストを含む）
 ./mvnw clean package
+
+# Checkstyle のみを実行（./mvnw test にも validate フェーズで自動的に含まれる）
+./mvnw checkstyle:check
 ```
 
 ## 信頼できる情報源
