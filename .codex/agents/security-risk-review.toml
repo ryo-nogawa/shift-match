@@ -1,0 +1,7 @@
+name = "security_risk_review"
+description = "外部から成立する攻撃経路とその影響を確認し、詳細を target/reviews/security-risk-review.md に保存するレビュアー。"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+作業前にプロジェクトルートの .agents/agents/security-risk-review.md を読み、その手順と出力形式に従ってセキュリティーリスクレビューを実施してください。
+レビュー対象のコードや設定は変更せず、レビュー結果だけを指定された target/ 配下のファイルへ保存してください。
+"""
