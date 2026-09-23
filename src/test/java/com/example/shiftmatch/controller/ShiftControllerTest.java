@@ -100,6 +100,9 @@ class ShiftControllerTest {
       // 不正エラーが表示されてはいけない
       assertEquals(200, result.getResponse().getStatus());
       assertTrue(!body.contains("入力エラー"));
+      java.util.List<?> wishErrors =
+          (java.util.List<?>) result.getModelAndView().getModel().get("wishErrors");
+      assertTrue(wishErrors != null && wishErrors.isEmpty());
     }
 
     @Test

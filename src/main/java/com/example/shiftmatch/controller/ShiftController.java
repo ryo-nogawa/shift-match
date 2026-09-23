@@ -76,6 +76,12 @@ public class ShiftController {
       return "index";
     }
 
+    // フォームを Employee に変換
+    List<Employee> employees = convertToEmployees(shiftForm);
+
+    // V-2: 氏名重複チェック
+    List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
+
     // V-3: 希望値の不正チェック
     List<InvalidWishError> wishErrors = new ArrayList<>();
     for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
@@ -95,12 +101,6 @@ public class ShiftController {
         wishErrors.add(new InvalidWishError(i, "遅番希望"));
       }
     }
-
-    // フォームを Employee に変換
-    List<Employee> employees = convertToEmployees(shiftForm);
-
-    // V-2: 氏名重複チェック
-    List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
 
     // V-2・V-3 いずれのエラーもない場合に assign を呼び出す
     if (wishErrors.isEmpty() && duplicateErrors.isEmpty()) {
