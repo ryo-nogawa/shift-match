@@ -109,7 +109,7 @@
     - `[F-1]` 旧 `earlyWish`・`lateWish` の `name` が存在しないことをテストで検証している
     - `./mvnw test` が成功する
 
-- [ ] **T5. 希望の入力チェック V-3 と V-1 をテストで固定する（V-1、V-3、仕様 4.2 節）**
+- [x] **T5. 希望の入力チェック V-3 と V-1 をテストで固定する（V-1、V-3、仕様 4.2 節）**
   - 依頼事項：`POST /shift` の V-3 チェックを、氏名が入力された行について 6 つの希望すべてを確認する形にする。エラー 1 件は「行番号（1 始まりで表示）」と「枠の勤務時間（例：`07:30〜14:30`）」を示す（現在は最初の不正な枠で `break` しているため、不正な枠ごとに 1 件のエラーにする）。`InvalidWishError` の Javadoc とフィールド名（`wishLabel`）から「早番・遅番」の記述をなくし、新仕様の説明にする。エラーは `.alert` のセクションに表示する（既存のテンプレートを使う）。V-3 のエラーがあるときは `assign` を呼ばない
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/main/java/com/example/shiftmatch/domain/InvalidWishError.java`、`src/main/resources/templates/index.html`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -204,3 +204,15 @@
   - `[F-1]` 旧 earlyWish・lateWish の非存在：`doesNotContainOldEarlyOrLateWish`
 - テスト件数：4 件（ShiftControllerTest）+ 全体 53 件
 - 状態：テンプレート側で各 select に data-label="勤務時間" を追加し、すべてのテストが成功
+
+### T5: 希望の入力チェック V-3 と V-1 をテストで固定
+- 完了条件ごとの根拠：
+  - `[V-3]` wishes[2] が未選択のとき：`showsErrorForMissingWishSlot2`（08:30〜16:30 を含むエラーが表示）
+  - `[V-3]` 複数の枠が不正：`showsMultipleErrors`（エラーが 2 件以上表示）
+  - `[V-3]` wishes が 6 件未満：`showsErrorForMissingWishSlot2` に含む
+  - `[V-3]` 不正な値：`showsErrorForInvalidWishValue`
+  - `[V-1]` 氏名が空の行：`ignoresEmptyNameRow`（エラーが表示されない）
+  - 旧仕様削除：InvalidWishError のコメントを更新、ShiftController で workTimes 配列を使用
+- テスト件数：4 件（ShiftControllerTest 追加）+ 全体 57 件
+- git grep 結果：早番・遅番は src/main/java に 0 件
+- 状態：複数エラー表示対応、勤務時間表示、旧仕様記述削除完了

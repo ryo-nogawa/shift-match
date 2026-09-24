@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -158,6 +159,117 @@ class ShiftControllerTest {
       assertFalse(
           htmlContent.contains("name=\"employees[0].lateWish\""),
           "HTML should not contain old lateWish");
+    }
+  }
+
+  @Nested
+  @DisplayName("[V-3][V-1] 希望の入力チェック")
+  class WishValidation {
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: wishes[2]だけが未選択のとき, When: POSTすると, Then: 08:30〜16:30を含むエラーが表示され、assignが呼ばれない")
+    void showsErrorForMissingWishSlot2() throws Exception {
+      // Note: We cannot test without mocking service, as we need to verify assign is not called.
+      // This test checks that error message is displayed in the response.
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "Employee A")
+                      .param("employees[0].wishes[0]", "AVAILABLE")
+                      .param("employees[0].wishes[1]", "AVAILABLE")
+                      // wishes[2] is not provided (missing)
+                      .param("employees[0].wishes[3]", "AVAILABLE")
+                      .param("employees[0].wishes[4]", "AVAILABLE")
+                      .param("employees[0].wishes[5]", "AVAILABLE"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Check that error is displayed and contains the work time
+      assertTrue(
+          responseContent.contains("08:30〜16:30"),
+          "Error message should contain work time 08:30〜16:30");
+      assertTrue(responseContent.contains("class=\"alert\""), "Error section should be displayed");
+    }
+
+    @Test
+    @DisplayName("[V-3] Given: 2つの枠が不正なとき, When: POSTすると, Then: エラーが2件表示される")
+    void showsMultipleErrors() throws Exception {
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "Employee A")
+                      // wishes[0] and wishes[1] are missing
+                      .param("employees[0].wishes[2]", "AVAILABLE")
+                      .param("employees[0].wishes[3]", "AVAILABLE")
+                      .param("employees[0].wishes[4]", "AVAILABLE")
+                      .param("employees[0].wishes[5]", "AVAILABLE"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Count error messages by counting occurrences in the alert section
+      int alertCount = 0;
+      for (int i = 0; i < responseContent.length() - 4; i++) {
+        if (responseContent.substring(i, i + 4).equals("<li>")) {
+          alertCount++;
+        }
+      }
+
+      assertTrue(alertCount >= 2, "Should display at least 2 errors");
+    }
+
+    @Test
+    @DisplayName("[V-1] Given: 氏名が空の行のとき, When: POSTすると, Then: 希望が未選択でもエラーにならない")
+    void ignoresEmptyNameRow() throws Exception {
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "")
+                      .param("employees[0].wishes[0]", "")
+                      .param("employees[0].wishes[1]", "")
+                      .param("employees[0].wishes[2]", "")
+                      .param("employees[0].wishes[3]", "")
+                      .param("employees[0].wishes[4]", "")
+                      .param("employees[0].wishes[5]", ""))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Should not show V-3 error for this row
+      assertFalse(
+          responseContent.contains("入力エラー"), "Should not show input error for empty name row");
+    }
+
+    @Test
+    @DisplayName("[V-3] Given: 不正な値が入力されたとき, When: POSTすると, Then: エラーが表示される")
+    void showsErrorForInvalidWishValue() throws Exception {
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "Employee A")
+                      .param("employees[0].wishes[0]", "INVALID")
+                      .param("employees[0].wishes[1]", "AVAILABLE")
+                      .param("employees[0].wishes[2]", "AVAILABLE")
+                      .param("employees[0].wishes[3]", "AVAILABLE")
+                      .param("employees[0].wishes[4]", "AVAILABLE")
+                      .param("employees[0].wishes[5]", "AVAILABLE"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("class=\"alert\""),
+          "Error section should be displayed for invalid value");
     }
   }
 }

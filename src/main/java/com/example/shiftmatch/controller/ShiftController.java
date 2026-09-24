@@ -95,12 +95,14 @@ public class ShiftController {
 
       // 6 つの枠ごとの希望をチェック
       List<String> wishes = employee.getWishes();
+      String[] workTimes = {
+        "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
+      };
       for (int j = 0; j < 6; j++) {
         String wish = (wishes != null && j < wishes.size()) ? wishes.get(j) : null;
         if (!isValidWish(wish)) {
-          // エラーメッセージには枠の勤務時間を表示（T4 で詳細化する）
-          wishErrors.add(new InvalidWishError(i, "枠" + (j + 1)));
-          break;
+          // エラーメッセージには枠の勤務時間を表示
+          wishErrors.add(new InvalidWishError(i, workTimes[j]));
         }
       }
     }
