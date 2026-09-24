@@ -87,11 +87,13 @@
       <tr>
         <th>枠</th>
         <th>氏名</th>
+        <th>勤務時間</th>
         <th>休憩</th>
       </tr>
       <tr th:each="breakTime, stat : ${assignmentResult.breakTimes()}">
         <td th:text="${stat.index < 2 ? '早番' : '遅番'}"></td>
         <td th:text="${breakTime.employee().name()}"></td>
+        <td th:text="${stat.index < 2 ? '8:00〜17:00' : '12:00〜21:00'}"></td>
         <td>
           <span th:text="${#temporals.format(breakTime.start(), 'HH:mm')}"></span>〜<span
             th:text="${#temporals.format(breakTime.end(), 'HH:mm')}"

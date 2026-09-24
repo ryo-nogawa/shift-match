@@ -14,6 +14,7 @@
 
 Issue と PR の作成は自分で `gh` を実行せず、Codex をヘッドレスモード（`codex exec`）で起動して依頼します。Codex には `.agents/skills/` のスキルを使わせます。
 
+- モデルは `-m gpt-5.6-terra`、推論の強さは `-c model_reasoning_effort="medium"` で指定します（定型作業のため、中程度のモデルで十分です）。Issue・PR のどちらにも同じ指定を使います
 - `gh` が GitHub と通信できるように、`workspace-write` サンドボックスでネットワークを許可して起動します（`codex exec` は既定だと読み取り専用で、ネットワークも使えません）
 - テンプレートの選択と本文の作成はスキル側の定義に従います。このファイルにテンプレートの中身を重ねて書かないでください
 - Codex の最終出力から Issue・PR の URL と番号を確認し、以降の手順で使います
@@ -23,7 +24,8 @@ Issue と PR の作成は自分で `gh` を実行せず、Codex をヘッドレ�
 `create-issue` スキル（`.agents/skills/create-issue/SKILL.md`）を使います。
 
 ```bash
-codex exec -s workspace-write -c sandbox_workspace_write.network_access=true \
+codex exec -m gpt-5.6-terra -c model_reasoning_effort="medium" \
+  -s workspace-write -c sandbox_workspace_write.network_access=true \
   '$create-issue 次の内容で機能追加の Issue を起票してください：<依頼内容・対応する仕様 ID>'
 ```
 
@@ -32,7 +34,8 @@ codex exec -s workspace-write -c sandbox_workspace_write.network_access=true \
 作業ブランチに最初のコミットを push した後（手順 2 の後）、`create-pr` スキル（`.agents/skills/create-pr/SKILL.md`）を使って **Draft** で作成します。
 
 ```bash
-codex exec -s workspace-write -c sandbox_workspace_write.network_access=true \
+codex exec -m gpt-5.6-terra -c model_reasoning_effort="medium" \
+  -s workspace-write -c sandbox_workspace_write.network_access=true \
   '$create-pr main を比較先として Draft PR を起票してください（gh pr create --draft）。対応する Issue は #<Issue番号> です。'
 ```
 
@@ -76,8 +79,11 @@ git switch -c <prefix>/<issue番号>-<概要>   # 例：feature/12-input-validat
 `.codex/skills/code-review/SKILL.md` のレビュースキル（`code-review`）を使い、main との差分を Codex にレビューさせます。
 
 ```bash
-codex exec --sandbox workspace-write '$code-review main'
+codex exec -m gpt-5.6-sol -c model_reasoning_effort="high" \
+  --sandbox workspace-write '$code-review main'
 ```
+
+- レビューは見落としがそのまま品質・セキュリティーのリスクになるため、複雑な作業向けの高機能モデル（`gpt-5.6-sol`）と推論 `high` を指定します
 
 - `codex exec` の既定の sandbox は read-only で、`target/reviews/` へレポートを保存できないため、`--sandbox workspace-write` を必ず付けます
 

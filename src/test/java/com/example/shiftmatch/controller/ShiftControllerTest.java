@@ -337,6 +337,171 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: 割当結果の表ヘッダが「枠」・「氏名」・「勤務時間」・「休憩」の順で出力されること")
+    void shouldDisplayWorkHoursHeaderInResultTable() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "太郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "花子",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "次郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "美咲",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              4,
+              java.util.List.of());
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+      params.add("employees[2].name", "次郎");
+      params.add("employees[2].earlyWish", "DESIRED");
+      params.add("employees[2].lateWish", "AVAILABLE");
+      params.add("employees[3].name", "美咲");
+      params.add("employees[3].earlyWish", "AVAILABLE");
+      params.add("employees[3].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+
+      int resultSectionStart = body.indexOf("割当結果");
+      String resultSection = body.substring(resultSectionStart);
+
+      Pattern headerRowPattern = Pattern.compile("<tr>.*?</tr>", Pattern.DOTALL);
+      Matcher headerRowMatcher = headerRowPattern.matcher(resultSection);
+      headerRowMatcher.find();
+
+      String headerRow = headerRowMatcher.group();
+
+      int framePos = headerRow.indexOf("枠");
+      int namePos = headerRow.indexOf("氏名");
+      int workHoursPos = headerRow.indexOf("勤務時間");
+      int breakPos = headerRow.indexOf("休憩");
+
+      assertTrue(
+          framePos > -1 && namePos > -1 && workHoursPos > -1 && breakPos > -1, "全てのヘッダが含まれていること");
+      assertTrue(
+          framePos < namePos && namePos < workHoursPos && workHoursPos < breakPos,
+          "ヘッダが「枠」・「氏名」・「勤務時間」・「休憩」の順で出力されていること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: 早番の行に8:00〜17:00、遅番の行に12:00〜21:00が表示されること")
+    void shouldDisplayWorkHoursForEachShift() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "太郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "花子",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "次郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "美咲",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              4,
+              java.util.List.of());
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+      params.add("employees[2].name", "次郎");
+      params.add("employees[2].earlyWish", "DESIRED");
+      params.add("employees[2].lateWish", "AVAILABLE");
+      params.add("employees[3].name", "美咲");
+      params.add("employees[3].earlyWish", "AVAILABLE");
+      params.add("employees[3].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+
+      int resultSectionStart = body.indexOf("割当結果");
+      String resultSection = body.substring(resultSectionStart);
+
+      Pattern tableRowPattern = Pattern.compile("<tr>.*?</tr>", Pattern.DOTALL);
+      Matcher tableRowMatcher = tableRowPattern.matcher(resultSection);
+      List<String> rows = new ArrayList<>();
+      while (tableRowMatcher.find()) {
+        rows.add(tableRowMatcher.group());
+      }
+
+      List<String> dataRows = rows.subList(1, rows.size());
+      assertEquals(4, dataRows.size(), "結果表のデータ行は4行であること");
+
+      assertTrue(
+          dataRows.get(0).contains("早番")
+              && dataRows.get(0).contains("太郎")
+              && dataRows.get(0).contains("8:00〜17:00"),
+          "行0（早番・太郎・8:00〜17:00）が同一行内に含まれていること");
+
+      assertTrue(
+          dataRows.get(1).contains("早番")
+              && dataRows.get(1).contains("花子")
+              && dataRows.get(1).contains("8:00〜17:00"),
+          "行1（早番・花子・8:00〜17:00）が同一行内に含まれていること");
+
+      assertTrue(
+          dataRows.get(2).contains("遅番")
+              && dataRows.get(2).contains("次郎")
+              && dataRows.get(2).contains("12:00〜21:00"),
+          "行2（遅番・次郎・12:00〜21:00）が同一行内に含まれていること");
+
+      assertTrue(
+          dataRows.get(3).contains("遅番")
+              && dataRows.get(3).contains("美咲")
+              && dataRows.get(3).contains("12:00〜21:00"),
+          "行3（遅番・美咲・12:00〜21:00）が同一行内に含まれていること");
+    }
+
+    @Test
+    @DisplayName(
         "[セキュリティー] Given: 有効な氏名を持つ行が上限（20名）を超えるとき, When: POST /shift を実行すると, "
             + "Then: assign が呼び出されず、上限超過のエラーメッセージが表示されること")
     void shouldRejectWhenEmployeeCountExceedsLimit() throws Exception {
