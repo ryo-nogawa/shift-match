@@ -11,7 +11,7 @@
     <header class="hero">
       <p class="eyebrow">Shift Match</p>
       <h1>シフト作成</h1>
-      <p class="lead">従業員の希望を入力すると、早番 2 名・遅番 2 名の最適な割り当て案を提案します。</p>
+      <p class="lead">従業員の希望を入力すると、6 つの勤務枠（8 名）の最適な割り当て案を提案します。</p>
     </header>
 
     <section class="alert" role="alert" th:if="${limitExceededError != null}">
@@ -47,8 +47,12 @@
         <thead>
           <tr>
             <th>氏名</th>
-            <th>早番希望<small>8:00〜17:00</small></th>
-            <th>遅番希望<small>12:00〜21:00</small></th>
+            <th>枠1<small>07:30〜14:30</small></th>
+            <th>枠2<small>08:00〜15:30</small></th>
+            <th>枠3<small>08:30〜16:30</small></th>
+            <th>枠4<small>09:00〜16:30</small></th>
+            <th>枠5<small>09:00〜18:00</small></th>
+            <th>枠6<small>09:00〜18:30</small></th>
             <th></th>
           </tr>
         </thead>
@@ -61,16 +65,8 @@
                 placeholder="氏名を入力"
               />
             </td>
-            <td data-label="早番希望">
-              <select th:field="*{employees[__${stat.index}__].earlyWish}" data-value="">
-                <option value="">-- 未選択 --</option>
-                <option value="DESIRED">◎ 希望</option>
-                <option value="AVAILABLE">○ 可能</option>
-                <option value="UNAVAILABLE">× 不可</option>
-              </select>
-            </td>
-            <td data-label="遅番希望">
-              <select th:field="*{employees[__${stat.index}__].lateWish}" data-value="">
+            <td th:each="j : ${#numbers.sequence(0, 5)}" data-label="枠希望">
+              <select th:field="*{employees[__${stat.index}__].wishes[__${j}__]}" data-value="">
                 <option value="">-- 未選択 --</option>
                 <option value="DESIRED">◎ 希望</option>
                 <option value="AVAILABLE">○ 可能</option>
@@ -106,7 +102,7 @@
       </div>
       <div class="score">
         <span class="score-num"
-          ><span th:text="${assignmentResult.score()}">0</span><small> / 4</small></span
+          ><span th:text="${assignmentResult.score()}">0</span><small> / 8</small></span
         >
         <span class="score-label">スコア（◎ が反映された人数）</span>
       </div>
