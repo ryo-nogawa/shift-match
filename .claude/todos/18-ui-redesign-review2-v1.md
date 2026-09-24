@@ -42,7 +42,7 @@
     - スコア・未出勤者の 2 テストで、一時的に要素の外へ値を移すと失敗することを確認した（実行ログに記録する）
     - `@DisplayName` の文言が変更されていない（`git diff` で `@DisplayName` の行に差分がない）
 
-- [ ] **T4. 全テストと静的解析が成功することを確認する**
+- [x] **T4. 全テストと静的解析が成功することを確認する**
   - 依頼事項：`./mvnw spotless:apply` を実行してから `./mvnw test` を実行する。失敗があれば原因を修正する（テストの期待値を仕様と異なる値へ書き換えない）。`git status` で未コミットの差分がないことを確認する
   - 対象ファイル：（変更なし。確認のみ）
   - 完了条件：
@@ -55,3 +55,4 @@
 - T1 完了：削除したコメント「現在の value に設定」「data-value を更新」「ヘルパーメソッド」「要素の範囲を特定」を grep で確認（0件）。残したコメント「結果表にも同じ氏名が出るため、タイムラインの範囲に限定して抽出する」は「なぜ」を説明。node --check 成功、./mvnw test -Dtest=ShiftControllerTest 成功（41件）
 - T2 完了：6 つのタイムライン関連テスト（shouldDisplayTimelineWithCorrectRows, shouldDisplayTimelineWorkBarsWithCorrectStyles, shouldDisplayTimelineBreakBarsWithCorrectStyles, shouldDisplayTimelineAxisWithCorrectScales, shouldDisplayTimelineLegend, shouldNotDisplayEarlyLateTextInResultTable）で createValidParamsSingleEmployee() を createValidParams() に置き換え、3 名分の重複パラメータ追加コード（各テスト 9 行 x 6 テスト）を削除。./mvnw test -Dtest=ShiftControllerTest 成功（41件、前回と同数）
 - T3 完了：extractSection ヘルパーメソッドを追加し、対象要素の範囲に限定する検証を実装。shouldDisplayScoreInScoreNum（スコア）、shouldDisplayUnassignedEmployeeAsChip（未出勤者）、shouldDisplayPillEarlyAndLateTwice（結果表の pill）、shouldDisplayTimelineWorkBarsWithCorrectStyles・shouldDisplayTimelineBreakBarsWithCorrectStyles・shouldDisplayTimelineAxisWithCorrectScales・shouldDisplayTimelineLegend（タイムライン関連）を修正。検出力確認：index.html でスコア数値を一時的に別の場所に移してテストが失敗することを確認後、元に戻す（コミットに含めない）。./mvnw test -Dtest=ShiftControllerTest 成功（41件、前回と同数）
+- T4 完了：./mvnw spotless:apply 実行（違反なし）、./mvnw test 実行成功（68件、Failures 0、Errors 0、Skipped 0、Spotless 違反なし、Checkstyle 違反 0 件）。git diff --check main 成功。Java 本体・pom.xml に差分なし、index.html・CSS は F-4 による変更のみ（この Todo では変更なし）。
