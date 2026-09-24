@@ -53,7 +53,7 @@
   - 完了条件：
     - RED を確認してから実装した
     - `./mvnw test -Dtest=AssignmentResultTest` が成功する
-- [ ] **T3. [T-1, F-4] 結果の表に休憩列を表示する**
+- [x] **T3. [T-1, F-4] 結果の表に休憩列を表示する**
   - 依頼事項：
     - `ShiftControllerTest` の F-4 の結果表示テストの近くに、`[T-1]` `[F-4]` のテストを先に追加する。`AssignmentResult`（早番 2 名・遅番 2 名）を返すようモックし、POST `/shift` のレスポンス本文（`getContentAsString()` ＋ `assertTrue(body.contains(...))`）に `13:00〜14:00`、`14:00〜15:00`、`15:00〜16:00`、`16:00〜17:00` が含まれることを検証する（RED 確認）
     - `index.html` の結果表を「枠｜氏名｜休憩」の 3 列にし、`assignmentResult.breakTimes()` の各要素（`employee().name()`、`start`、`end`）を早番 → 遅番の順で表示する。時刻の書式は `HH:mm`（`th:text` と `#temporals.format` またはタイムゾーン非依存の `LocalTime#toString`／`String.format` を使い、実行環境のロケールに依存しないこと）
