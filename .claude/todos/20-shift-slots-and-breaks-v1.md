@@ -34,7 +34,7 @@
     - 全枠の人数の合計が 8 であることをテストで検証している
     - `./mvnw test -Dtest=ShiftSlotTest` が成功する
 
-- [ ] **T2. 休憩時刻を割り当てる `BreakScheduler` を追加する（C-6、仕様 2 章「休憩の割り当て」）**
+- [x] **T2. 休憩時刻を割り当てる `BreakScheduler` を追加する（C-6、仕様 2 章「休憩の割り当て」）**
   - 依頼事項：`src/main/java/com/example/shiftmatch/domain/BreakScheduler.java` を作成する。枠 1 → 6 の順・同枠内は入力順に展開した 8 名分の枠のリスト（`List<ShiftSlot>`）を受け取り、各人の休憩の開始・終了時刻（`LocalTime` の組）を同じ順序で返す。規則は仕様書 2 章のとおり：12:00 から、1 人ずつ「休憩を開始できる最も早い時刻」（15 分刻み）を選ぶ。同時に休憩できるのは 2 名まで。休憩は自分の勤務時間内に収める。休憩の長さは `ShiftSlot` から得る。時刻をハードコードした固定表を返してはいけない（アルゴリズムで求める）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/BreakScheduler.java`、`src/test/java/com/example/shiftmatch/domain/BreakSchedulerTest.java`
   - 完了条件：
