@@ -8,6 +8,7 @@ import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.domain.Wish;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -76,7 +77,7 @@ class ShiftAssignmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("[H-3] Given: 枠1で×の従業員を含む12人がいるとき, When: assignを実行すると, Then: その従業員が枠1に割り当てられない")
+    @DisplayName("[H-3] Given: 枠1で×の従業員を含むとき, When: assignを実行すると, Then: その従業員が枠1に割り当てられない")
     void excludesUnavailableEmployeeFromSlot() {
       List<Employee> employees = new ArrayList<>();
 
@@ -107,6 +108,34 @@ class ShiftAssignmentServiceImplTest {
           assignment.assignments().get(0).employee().name().equals("Employee0")
               || assignment.assignments().get(1).employee().name().equals("Employee0"));
     }
+
+    @Test
+    @DisplayName("[H-3] Given: 8名中1名が全枠×、他の7名は全枠◯のとき, When: assignを実行すると, Then: Optional.emptyになる")
+    void returnsEmptyWhenOneEmployeeAllUnavailableAndOthersCannotFillAllSlots() {
+      List<Employee> employees = new ArrayList<>();
+
+      // Employee 0: × for all slots
+      List<Wish> wishesAllUnavailable =
+          List.of(
+              Wish.UNAVAILABLE,
+              Wish.UNAVAILABLE,
+              Wish.UNAVAILABLE,
+              Wish.UNAVAILABLE,
+              Wish.UNAVAILABLE,
+              Wish.UNAVAILABLE);
+      employees.add(new Employee("Employee0", wishesAllUnavailable));
+
+      // Employees 1-7: all available
+      for (int i = 1; i < 8; i++) {
+        employees.add(createAvailableEmployee("Employee" + i));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      // Should return empty because only 7 valid employees remain
+      assertFalse(result.isPresent(), "Should return empty when only 7 valid employees remain");
+    }
   }
 
   @Nested
@@ -128,6 +157,71 @@ class ShiftAssignmentServiceImplTest {
   @Nested
   @DisplayName("[スコア評価]")
   class ScoreEvaluation {
+
+    @Test
+    @DisplayName(
+        "[5.2] Given: ある従業員だけが枠1に◎を付けたとき, When: assignを実行すると, Then: その従業員が枠1に割り当てられ、scoreが1になる")
+    void assignsEmployeeWithDesiredSlotAndScoringOne() {
+      List<Employee> employees = new ArrayList<>();
+      // Employee A: Desired for slot 1
+      employees.add(
+          new Employee(
+              "A",
+              List.of(
+                  Wish.DESIRED,
+                  Wish.AVAILABLE,
+                  Wish.AVAILABLE,
+                  Wish.AVAILABLE,
+                  Wish.AVAILABLE,
+                  Wish.AVAILABLE)));
+      // Employees B-H: all available for all slots
+      for (int i = 1; i < 8; i++) {
+        employees.add(createAvailableEmployee((char) ('A' + i) + ""));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+
+      // Employee A should be in slot 1 (position 0 or 1)
+      boolean foundEmployeeInSlot1 = false;
+      for (int i = 0; i < 2; i++) {
+        if (assignment.assignments().get(i).employee().name().equals("A")
+            && assignment.assignments().get(i).slot() == ShiftSlot.SLOT_1) {
+          foundEmployeeInSlot1 = true;
+          break;
+        }
+      }
+      assertTrue(foundEmployeeInSlot1, "Employee A should be assigned to slot 1");
+      assertEquals(1, assignment.score(), "Score should be 1 since only A has ◎");
+    }
+
+    @Test
+    @DisplayName(
+        "[5.3] Given: 全員が全枠◎を付けずに◯で、スコア0のとき, When: assignを実行すると, Then: 入力順どおりに枠1→6へ割り当てられる")
+    void selectsFirstAssignmentWhenAllTiedAtScoreZero() {
+      List<Employee> employees = createAllAvailableEmployees(8);
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+
+      // Verify input order assignment (Employee0, Employee1, etc.)
+      assertEquals("Employee0", assignment.assignments().get(0).employee().name());
+      assertEquals("Employee1", assignment.assignments().get(1).employee().name());
+      assertEquals("Employee2", assignment.assignments().get(2).employee().name());
+      assertEquals("Employee3", assignment.assignments().get(3).employee().name());
+      assertEquals("Employee4", assignment.assignments().get(4).employee().name());
+      assertEquals("Employee5", assignment.assignments().get(5).employee().name());
+      assertEquals("Employee6", assignment.assignments().get(6).employee().name());
+      assertEquals("Employee7", assignment.assignments().get(7).employee().name());
+
+      assertEquals(0, assignment.score(), "Score should be 0 since all are AVAILABLE");
+    }
 
     @Test
     @DisplayName("◎の数が多い案が選ばれること")
@@ -225,21 +319,6 @@ class ShiftAssignmentServiceImplTest {
       // Score should be 6 (A-F have ◎ in their assigned slots)
       assertEquals(6, assignment.score());
     }
-
-    @Test
-    @DisplayName("同点では最初に最大スコアに達した案が採用される")
-    void selectsFirstCombinationWithMaxScoreWhenTied() {
-      // This test would need a specific scenario to verify
-      // that the algorithm doesn't update when score is equal
-      List<Employee> employees = createAllAvailableEmployees(8);
-      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
-
-      Optional<AssignmentResult> result = service.assign(employees);
-
-      assertTrue(result.isPresent());
-      // Score should be 0 since all are AVAILABLE (not DESIRED)
-      assertEquals(0, result.get().score());
-    }
   }
 
   @Nested
@@ -247,32 +326,18 @@ class ShiftAssignmentServiceImplTest {
   class Performance {
 
     @Test
-    @DisplayName("12人全員AVAILABLE時に完了する")
-    void completesForTwelveEmployees() {
-      List<Employee> employees = createAllAvailableEmployees(12);
-      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
-
-      long startTime = System.currentTimeMillis();
-      Optional<AssignmentResult> result = service.assign(employees);
-      long elapsedTime = System.currentTimeMillis() - startTime;
-
-      assertTrue(result.isPresent());
-      assertTrue(elapsedTime < 30000, "Assignment took " + elapsedTime + "ms");
-    }
-
-    @Test
-    @DisplayName("[T-3] Given: 12人全員AVAILABLEのとき, When: assignを実行すると, Then: 10秒以内に完了する")
+    @DisplayName("[H-1] Given: 12人全員が全枠◯のとき, When: assignを実行すると, Then: 10秒以内に完了する")
     void completesWithinTenSecondsForTwelveEmployees() {
       List<Employee> employees = createAllAvailableEmployees(12);
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
 
-      long startTime = System.currentTimeMillis();
-      Optional<AssignmentResult> result = service.assign(employees);
-      long elapsedTime = System.currentTimeMillis() - startTime;
-
-      assertTrue(result.isPresent());
-      assertTrue(
-          elapsedTime < 10000, "Assignment took " + elapsedTime + "ms, should be under 10 seconds");
+      // Use assertTimeout with Duration to measure and enforce time limit
+      org.junit.jupiter.api.Assertions.assertTimeout(
+          Duration.ofSeconds(10),
+          () -> {
+            Optional<AssignmentResult> result = service.assign(employees);
+            assertTrue(result.isPresent(), "Assignment should succeed for 12 employees");
+          });
     }
   }
 

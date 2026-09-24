@@ -88,7 +88,7 @@
     - `ShiftAssignmentServiceImpl` に `MAX_EMPLOYEES` や 13 名以上を判定するコードが存在しない
     - `./mvnw test` が成功する
 
-- [ ] **T3b. 性能・同点・スコアのテストを `ShiftAssignmentServiceImplTest` に追加する（H-1〜H-3、仕様 5.2〜5.4 節）**
+- [x] **T3b. 性能・同点・スコアのテストを `ShiftAssignmentServiceImplTest` に追加する（H-1〜H-3、仕様 5.2〜5.4 節）**
   - 依頼事項：`assign` の実装（最適化済み）に対し、不足しているテストを追加する。実装を変える必要があれば、テストが RED になることを確認してから直す
   - 対象ファイル：`src/test/java/com/example/shiftmatch/service/ShiftAssignmentServiceImplTest.java`、必要なら `ShiftAssignmentServiceImpl.java`
   - 完了条件：
@@ -185,4 +185,13 @@
 
 ## 実行ログ
 
-<!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。Todo ごとに「完了条件ごとの根拠（テスト名）」を書く -->
+### T3b: 性能・同点・スコアのテスト追加
+- 完了条件ごとの根拠：
+  - `[H-1]` 12 名性能テスト：`completesWithinTenSecondsForTwelveEmployees`（0.291 秒で完了、10 秒以内を満たす）
+  - `[5.2]` スコア検証（1 点）：`assignsEmployeeWithDesiredSlotAndScoringOne`
+  - `[5.3]` 同点検証：`selectsFirstAssignmentWhenAllTiedAtScoreZero`（入力順の割り当てを検証）
+  - `[H-3]` × 検証：`returnsEmptyWhenOneEmployeeAllUnavailableAndOthersCannotFillAllSlots`
+  - `[V-4]` 7 名以下：`InsufficientEmployees#returnsEmptyWhenLessThanEightValidEmployees`
+- テスト件数：9 件（ShiftAssignmentServiceImplTest）
+- 実測秒数（12 名・全 ◯）：0.291 秒
+- 状態：実装が既に完成。テストを追加したすべてが GREEN になった
