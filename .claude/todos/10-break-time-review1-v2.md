@@ -17,7 +17,7 @@
 
 ## Todo
 
-- [ ] **T1. [H-1] `AssignmentResult` が早番・遅番それぞれ 2 件でない場合に例外を投げる**
+- [x] **T1. [H-1] `AssignmentResult` が早番・遅番それぞれ 2 件でない場合に例外を投げる**
   - 依頼事項：
     - `AssignmentResultTest` に `@Nested` の異常系グループ（`@DisplayName` は Given-When-Then、先頭に `[H-1]`）を先に追加する（RED 確認）：早番 1 件、早番 3 件、遅番 1 件、遅番 3 件の各ケースで `assertThrows(IllegalArgumentException.class, ...)` になること
     - コンパクトコンストラクタに件数チェックを最小実装で追加する。Javadoc に例外条件を追記する

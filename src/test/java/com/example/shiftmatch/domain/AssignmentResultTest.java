@@ -1,6 +1,7 @@
 package com.example.shiftmatch.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -124,6 +125,92 @@ class AssignmentResultTest {
             breakTimes.get(i + 1).start(),
             "休憩 " + i + " と " + (i + 1) + " が連続していない");
       }
+    }
+  }
+
+  @Nested
+  class 異常系 {
+
+    @Test
+    @DisplayName(
+        "[H-1] Given: 早番が1件の割り当て結果が与えられたとき, When: コンストラクタを呼ぶと, Then:"
+            + " IllegalArgumentExceptionがスローされる")
+    void throwsIllegalArgumentExceptionWhenEarlyEmployeesHaveOnlyOneEmployee() {
+      // Given
+      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
+      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
+      Employee lateEmployee2 = new Employee("田中美咲", Wish.AVAILABLE, Wish.DESIRED);
+
+      // Then
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              new AssignmentResult(
+                  List.of(earlyEmployee1), List.of(lateEmployee1, lateEmployee2), 2, List.of()));
+    }
+
+    @Test
+    @DisplayName(
+        "[H-1] Given: 早番が3件の割り当て結果が与えられたとき, When: コンストラクタを呼ぶと, Then:"
+            + " IllegalArgumentExceptionがスローされる")
+    void throwsIllegalArgumentExceptionWhenEarlyEmployeesHaveThreeEmployees() {
+      // Given
+      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
+      Employee earlyEmployee2 = new Employee("鈴木花子", Wish.AVAILABLE, Wish.DESIRED);
+      Employee earlyEmployee3 = new Employee("佐々木太郎", Wish.DESIRED, Wish.AVAILABLE);
+      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
+      Employee lateEmployee2 = new Employee("田中美咲", Wish.AVAILABLE, Wish.DESIRED);
+
+      // Then
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              new AssignmentResult(
+                  List.of(earlyEmployee1, earlyEmployee2, earlyEmployee3),
+                  List.of(lateEmployee1, lateEmployee2),
+                  3,
+                  List.of()));
+    }
+
+    @Test
+    @DisplayName(
+        "[H-2] Given: 遅番が1件の割り当て結果が与えられたとき, When: コンストラクタを呼ぶと, Then:"
+            + " IllegalArgumentExceptionがスローされる")
+    void throwsIllegalArgumentExceptionWhenLateEmployeesHaveOnlyOneEmployee() {
+      // Given
+      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
+      Employee earlyEmployee2 = new Employee("鈴木花子", Wish.AVAILABLE, Wish.DESIRED);
+      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
+
+      // Then
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              new AssignmentResult(
+                  List.of(earlyEmployee1, earlyEmployee2), List.of(lateEmployee1), 2, List.of()));
+    }
+
+    @Test
+    @DisplayName(
+        "[H-2] Given: 遅番が3件の割り当て結果が与えられたとき, When: コンストラクタを呼ぶと, Then:"
+            + " IllegalArgumentExceptionがスローされる")
+    void throwsIllegalArgumentExceptionWhenLateEmployeesHaveThreeEmployees() {
+      // Given
+      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
+      Employee earlyEmployee2 = new Employee("鈴木花子", Wish.AVAILABLE, Wish.DESIRED);
+      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
+      Employee lateEmployee2 = new Employee("田中美咲", Wish.AVAILABLE, Wish.DESIRED);
+      Employee lateEmployee3 = new Employee("伊藤健太", Wish.DESIRED, Wish.AVAILABLE);
+
+      // Then
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              new AssignmentResult(
+                  List.of(earlyEmployee1, earlyEmployee2),
+                  List.of(lateEmployee1, lateEmployee2, lateEmployee3),
+                  3,
+                  List.of()));
     }
   }
 }

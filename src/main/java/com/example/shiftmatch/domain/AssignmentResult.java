@@ -16,12 +16,21 @@ public record AssignmentResult(
     List<Employee> unassignedEmployees) {
 
   /**
-   * 各リストを不変なリストとして保持する。
+   * 各リストを不変なリストとして保持し、不変条件を検証する。
    *
    * <p>生成後に呼び出し側がリストを変更すると早番・遅番・スコアと未出勤者の整合性が崩れるため、
    * 生成経路によらず不変なリストにする。
+   *
+   * @throws IllegalArgumentException {@code earlyEmployees}または{@code lateEmployees}の件数が
+   *     ちょうど2件でない場合
    */
   public AssignmentResult {
+    if (earlyEmployees.size() != 2) {
+      throw new IllegalArgumentException("早番は必ずちょうど2名である必要があります");
+    }
+    if (lateEmployees.size() != 2) {
+      throw new IllegalArgumentException("遅番は必ずちょうど2名である必要があります");
+    }
     earlyEmployees = List.copyOf(earlyEmployees);
     lateEmployees = List.copyOf(lateEmployees);
     unassignedEmployees = List.copyOf(unassignedEmployees);
@@ -38,11 +47,9 @@ public record AssignmentResult(
   public List<BreakTime> breakTimes() {
     List<BreakTime> breaks = new ArrayList<>();
 
-    // 早番の休憩（13:00～14:00、14:00～15:00）
     breaks.add(new BreakTime(earlyEmployees.get(0), LocalTime.of(13, 0), LocalTime.of(14, 0)));
     breaks.add(new BreakTime(earlyEmployees.get(1), LocalTime.of(14, 0), LocalTime.of(15, 0)));
 
-    // 遅番の休憩（15:00～16:00、16:00～17:00）
     breaks.add(new BreakTime(lateEmployees.get(0), LocalTime.of(15, 0), LocalTime.of(16, 0)));
     breaks.add(new BreakTime(lateEmployees.get(1), LocalTime.of(16, 0), LocalTime.of(17, 0)));
 
