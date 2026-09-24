@@ -34,7 +34,7 @@
     - `./mvnw test -Dtest=ShiftControllerTest` の件数が変わらず、すべて成功する（前後の件数を実行ログに記録する）
     - タイムライン関連テストに、3 名分の重複したパラメータ追加コードが残っていない（`grep -n "employees\[3\]" src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java` の出現数が、ヘルパー内の定義と他の用途を除いて減っている。前後の数値を記録する）
 
-- [ ] **T3. UI テストの検証を、対象要素の範囲に限定する（テスト改善）**
+- [x] **T3. UI テストの検証を、対象要素の範囲に限定する（テスト改善）**
   - 依頼事項：`UiDesignTest` の次のテストは、レスポンス本文全体に対する `contains` で判定しており、対象要素の外に値が移動しても成功してしまう。対象要素の範囲を切り出してから検証するようにする。①スコア（`class="score-num"` の要素の中にスコア `3` と ` / 4` がある）、②未出勤者（`class="unassigned"` の要素の中に `class="chip"` と `五郎` がある）、③結果表（`class="result-table"` の `<table>` の中に `pill early` が 2 つ、`pill late` が 2 つある）、④タイムラインの勤務バー・休憩バー・目盛り・凡例（`class="timeline"` の範囲の中で判定する）。範囲を切り出すヘルパー `extractSection(String body, String startMarker, String endMarker)`（開始マーカーの位置から、その後ろの終了マーカーの位置までの `substring` を返す。見つからなければ `fail`）を `UiDesignTest` に 1 つ追加して使う。要素の終了位置が特定しづらい場合は、次のセクションの開始マーカー（例：`class="result-table"`）までを範囲としてよい。出現数を数える検証は `Matcher` を使う。各テストの `@DisplayName` と検証内容（期待値）は変えない。**検出力の確認**：`index.html` で `score-num` の中のスコアを一時的に別の場所へ移す（または `class="unassigned"` の外へ `五郎` を移す）と、対応するテストが失敗することを確認し、確認後に元へ戻す（コミットには含めない）
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -54,3 +54,4 @@
 
 - T1 完了：削除したコメント「現在の value に設定」「data-value を更新」「ヘルパーメソッド」「要素の範囲を特定」を grep で確認（0件）。残したコメント「結果表にも同じ氏名が出るため、タイムラインの範囲に限定して抽出する」は「なぜ」を説明。node --check 成功、./mvnw test -Dtest=ShiftControllerTest 成功（41件）
 - T2 完了：6 つのタイムライン関連テスト（shouldDisplayTimelineWithCorrectRows, shouldDisplayTimelineWorkBarsWithCorrectStyles, shouldDisplayTimelineBreakBarsWithCorrectStyles, shouldDisplayTimelineAxisWithCorrectScales, shouldDisplayTimelineLegend, shouldNotDisplayEarlyLateTextInResultTable）で createValidParamsSingleEmployee() を createValidParams() に置き換え、3 名分の重複パラメータ追加コード（各テスト 9 行 x 6 テスト）を削除。./mvnw test -Dtest=ShiftControllerTest 成功（41件、前回と同数）
+- T3 完了：extractSection ヘルパーメソッドを追加し、対象要素の範囲に限定する検証を実装。shouldDisplayScoreInScoreNum（スコア）、shouldDisplayUnassignedEmployeeAsChip（未出勤者）、shouldDisplayPillEarlyAndLateTwice（結果表の pill）、shouldDisplayTimelineWorkBarsWithCorrectStyles・shouldDisplayTimelineBreakBarsWithCorrectStyles・shouldDisplayTimelineAxisWithCorrectScales・shouldDisplayTimelineLegend（タイムライン関連）を修正。検出力確認：index.html でスコア数値を一時的に別の場所に移してテストが失敗することを確認後、元に戻す（コミットに含めない）。./mvnw test -Dtest=ShiftControllerTest 成功（41件、前回と同数）

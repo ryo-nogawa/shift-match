@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -891,6 +892,15 @@ class ShiftControllerTest {
       return params;
     }
 
+    private String extractSection(String body, String startMarker, String endMarker) {
+      int start = body.indexOf(startMarker);
+      int end = body.indexOf(endMarker, start);
+      if (start < 0 || end < 0) {
+        fail("マーカーが見つかりません: startMarker=" + startMarker + ", endMarker=" + endMarker);
+      }
+      return body.substring(start, end + endMarker.length());
+    }
+
     @Test
     @DisplayName(
         "[F-1] Given: 従業員数が上限を超えるとき, When: POST /shift を実行すると, "
@@ -1018,9 +1028,9 @@ class ShiftControllerTest {
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
 
       String body = result.getResponse().getContentAsString();
-      assertTrue(
-          body.contains("class=\"score-num\"") && body.contains("3") && body.contains(" / 4"),
-          "class=\"score-num\" がスコア3と / 4 を含むこと");
+      String scoreSection = extractSection(body, "class=\"score-num\"", "</div>");
+      assertTrue(scoreSection.contains("3"), "class=\"score-num\" の要素に3が含まれること");
+      assertTrue(scoreSection.contains(" / 4"), "class=\"score-num\" の要素に / 4 が含まれること");
     }
 
     @Test
@@ -1056,10 +1066,11 @@ class ShiftControllerTest {
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
 
       String body = result.getResponse().getContentAsString();
+      String resultTableSection = extractSection(body, "class=\"result-table\"", "</table>");
       Pattern pillEarlyPattern = Pattern.compile("pill early");
       Pattern pillLatePattern = Pattern.compile("pill late");
-      Matcher pillEarlyMatcher = pillEarlyPattern.matcher(body);
-      Matcher pillLateMatcher = pillLatePattern.matcher(body);
+      Matcher pillEarlyMatcher = pillEarlyPattern.matcher(resultTableSection);
+      Matcher pillLateMatcher = pillLatePattern.matcher(resultTableSection);
       int pillEarlyCount = 0;
       int pillLateCount = 0;
       while (pillEarlyMatcher.find()) {
@@ -1087,11 +1098,11 @@ class ShiftControllerTest {
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
 
       String body = result.getResponse().getContentAsString();
+      String unassignedSection = extractSection(body, "class=\"unassigned\"", "</div>");
       assertTrue(
-          body.contains("class=\"unassigned\"")
-              && body.contains("class=\"chip\"")
-              && body.contains("五郎"),
-          "class=\"unassigned\" の中に class=\"chip\" があり、五郎が含まれること");
+          unassignedSection.contains("class=\"chip\""),
+          "class=\"unassigned\" の要素にclass=\"chip\"が含まれること");
+      assertTrue(unassignedSection.contains("五郎"), "class=\"unassigned\" の要素に五郎が含まれること");
     }
 
     @Test
@@ -1176,12 +1187,13 @@ class ShiftControllerTest {
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
 
       String body = result.getResponse().getContentAsString();
+      String timelineSection = extractSection(body, "class=\"timeline\"", "class=\"result-table\"");
       Pattern earlyStylePattern =
           Pattern.compile("tl-work early.*?left:0\\.00%;width:69\\.23%", Pattern.DOTALL);
       Pattern lateStylePattern =
           Pattern.compile("tl-work late.*?left:30\\.77%;width:69\\.23%", Pattern.DOTALL);
-      Matcher earlyMatcher = earlyStylePattern.matcher(body);
-      Matcher lateMatcher = lateStylePattern.matcher(body);
+      Matcher earlyMatcher = earlyStylePattern.matcher(timelineSection);
+      Matcher lateMatcher = lateStylePattern.matcher(timelineSection);
       int earlyCount = 0;
       int lateCount = 0;
       while (earlyMatcher.find()) {
@@ -1209,12 +1221,13 @@ class ShiftControllerTest {
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
 
       String body = result.getResponse().getContentAsString();
+      String timelineSection = extractSection(body, "class=\"timeline\"", "class=\"result-table\"");
       assertTrue(
-          body.contains("tl-break")
-              && body.contains("left:38.46%;width:7.69%")
-              && body.contains("left:46.15%;width:7.69%")
-              && body.contains("left:53.85%;width:7.69%")
-              && body.contains("left:61.54%;width:7.69%"),
+          timelineSection.contains("tl-break")
+              && timelineSection.contains("left:38.46%;width:7.69%")
+              && timelineSection.contains("left:46.15%;width:7.69%")
+              && timelineSection.contains("left:53.85%;width:7.69%")
+              && timelineSection.contains("left:61.54%;width:7.69%"),
           "tl-break が 4 つの休憩時刻スタイルで含まれること");
     }
 
@@ -1256,24 +1269,25 @@ class ShiftControllerTest {
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
 
       String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("class=\"tl-axis\""), "class=\"tl-axis\" が含まれること");
+      String timelineSection = extractSection(body, "class=\"timeline\"", "class=\"result-table\"");
+      assertTrue(timelineSection.contains("class=\"tl-axis\""), "class=\"tl-axis\" が含まれること");
       assertTrue(
-          body.contains("left:0.00%")
-              && body.contains("left:15.38%")
-              && body.contains("left:30.77%")
-              && body.contains("left:46.15%")
-              && body.contains("left:61.54%")
-              && body.contains("left:76.92%")
-              && body.contains("left:92.31%"),
+          timelineSection.contains("left:0.00%")
+              && timelineSection.contains("left:15.38%")
+              && timelineSection.contains("left:30.77%")
+              && timelineSection.contains("left:46.15%")
+              && timelineSection.contains("left:61.54%")
+              && timelineSection.contains("left:76.92%")
+              && timelineSection.contains("left:92.31%"),
           "目盛りの 7 つの left 値が含まれること");
       assertTrue(
-          body.contains(">8<")
-              && body.contains(">10<")
-              && body.contains(">12<")
-              && body.contains(">14<")
-              && body.contains(">16<")
-              && body.contains(">18<")
-              && body.contains(">20<"),
+          timelineSection.contains(">8<")
+              && timelineSection.contains(">10<")
+              && timelineSection.contains(">12<")
+              && timelineSection.contains(">14<")
+              && timelineSection.contains(">16<")
+              && timelineSection.contains(">18<")
+              && timelineSection.contains(">20<"),
           "目盛りの 8-20 の偶数文字が含まれること");
     }
 
@@ -1292,13 +1306,17 @@ class ShiftControllerTest {
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
 
       String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("class=\"tl-legend\""), "class=\"tl-legend\" が含まれること");
+      String timelineSection = extractSection(body, "class=\"timeline\"", "class=\"result-table\"");
+      assertTrue(timelineSection.contains("class=\"tl-legend\""), "class=\"tl-legend\" が含まれること");
       assertTrue(
-          body.contains("早番") && body.contains("遅番") && body.contains("休憩"), "凡例に早番・遅番・休憩が含まれること");
+          timelineSection.contains("早番")
+              && timelineSection.contains("遅番")
+              && timelineSection.contains("休憩"),
+          "凡例に早番・遅番・休憩が含まれること");
       assertTrue(
-          body.contains("class=\"lg early\"")
-              && body.contains("class=\"lg late\"")
-              && body.contains("class=\"lg brk\""),
+          timelineSection.contains("class=\"lg early\"")
+              && timelineSection.contains("class=\"lg late\"")
+              && timelineSection.contains("class=\"lg brk\""),
           "凡例に lg early, lg late, lg brk が含まれること");
     }
 
