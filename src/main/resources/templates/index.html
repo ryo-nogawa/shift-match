@@ -110,21 +110,23 @@
         <div class="tl-axis">
           <span th:each="h : ${#numbers.sequence(8, 20, 2)}" th:style="|left:${#numbers.formatDecimal((h - 8) * 100.0 / 13, 1, 2, 'POINT')}%|" th:text="${h}"></span>
         </div>
-        <div class="tl-row" th:each="breakTime, stat : ${assignmentResult.breakTimes()}">
-          <span class="tl-name" th:text="${breakTime.employee().name()}"></span>
+        <div
+          class="tl-row"
+          th:each="assignment, stat : ${assignmentResult.assignments()}"
+        >
+          <span class="tl-name" th:text="${assignment.employee().name()}"></span>
           <div class="tl-track">
             <div
               class="tl-work"
-              th:classappend="${stat.index < 2 ? 'early' : 'late'}"
-              th:style="|left:${#numbers.formatDecimal(((stat.index < 2 ? 480 : 720) - 480) * 100.0 / 780, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(((stat.index < 2 ? 1020 : 1260) - (stat.index < 2 ? 480 : 720)) * 100.0 / 780, 1, 2, 'POINT')}%|"
+              th:style="|left:${#numbers.formatDecimal((assignment.slot().startTime().getHour() * 60 + assignment.slot().startTime().getMinute() - 450) * 100.0 / 660, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(((assignment.slot().endTime().getHour() * 60 + assignment.slot().endTime().getMinute()) - (assignment.slot().startTime().getHour() * 60 + assignment.slot().startTime().getMinute())) * 100.0 / 660, 1, 2, 'POINT')}%|"
             ></div>
             <div
               class="tl-break"
-              th:style="|left:${#numbers.formatDecimal((breakTime.start().getHour() * 60 + breakTime.start().getMinute() - 480) * 100.0 / 780, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal((breakTime.end().getHour() * 60 + breakTime.end().getMinute() - (breakTime.start().getHour() * 60 + breakTime.start().getMinute())) * 100.0 / 780, 1, 2, 'POINT')}%|"
+              th:style="|left:${#numbers.formatDecimal((assignment.breakStart().getHour() * 60 + assignment.breakStart().getMinute() - 450) * 100.0 / 660, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(((assignment.breakEnd().getHour() * 60 + assignment.breakEnd().getMinute()) - (assignment.breakStart().getHour() * 60 + assignment.breakStart().getMinute())) * 100.0 / 660, 1, 2, 'POINT')}%|"
             ></div>
           </div>
         </div>
-        <div class="tl-legend"><i class="lg early"></i>早番<i class="lg late"></i>遅番<i class="lg brk"></i>休憩</div>
+        <div class="tl-legend"><i class="lg early"></i>勤務<i class="lg brk"></i>休憩</div>
       </div>
       <table class="result-table">
         <thead>
@@ -135,18 +137,16 @@
           </tr>
         </thead>
         <tbody>
-          <tr th:each="breakTime, stat : ${assignmentResult.breakTimes()}">
-            <td th:text="${breakTime.employee().name()}"></td>
+          <tr th:each="assignment : ${assignmentResult.assignments()}">
+            <td th:text="${assignment.employee().name()}"></td>
             <td>
-              <span
-                class="pill"
-                th:classappend="${stat.index < 2 ? 'early' : 'late'}"
-                th:text="${stat.index < 2 ? '08:00〜17:00' : '12:00〜21:00'}"
+              <span class="pill"
+                th:text="|${#temporals.format(assignment.slot().startTime(), 'HH:mm')}〜${#temporals.format(assignment.slot().endTime(), 'HH:mm')}|"
               ></span>
             </td>
             <td>
-              <span th:text="${#temporals.format(breakTime.start(), 'HH:mm')}"></span>〜<span
-                th:text="${#temporals.format(breakTime.end(), 'HH:mm')}"
+              <span
+                th:text="|${#temporals.format(assignment.breakStart(), 'HH:mm')}〜${#temporals.format(assignment.breakEnd(), 'HH:mm')}|"
               ></span>
             </td>
           </tr>
