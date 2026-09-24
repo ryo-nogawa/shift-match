@@ -95,7 +95,7 @@
     - 割当結果の表の中に「早番」「遅番」が含まれないことを検証するテストが存在する
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T9. `shift-form.js` の残作業（`#row-count` 更新・重複コード整理）**
+- [x] **T9. `shift-form.js` の残作業（`#row-count` 更新・重複コード整理）**
   - 依頼事項：①`#row-count` の表示を、初期表示（`DOMContentLoaded`）・行追加・行削除のたびに現在の行数（`employeeRows.querySelectorAll("tr").length`）へ更新する関数 `updateRowCount()` を追加し、既存の `updateDeleteButtonState()` と同じ箇所から呼ぶ。②行追加時の `<select>` 生成（早番・遅番でほぼ同じコードが 2 回ある）を、`createWishSelect(name)`（`name` 属性・`data-value=""`・4 つの `<option>`（`-- 未選択 --`・`◎ 希望`・`○ 可能`・`× 不可`、value は空・`DESIRED`・`AVAILABLE`・`UNAVAILABLE`）を返す）にまとめる。`name` の形式（`employees[n].name` / `earlyWish` / `lateWish`）、`data-label`、`data-value`、削除後の `renumberInputIndices()`、最後の 1 行の削除ボタン無効化は変えない。デモ用のコードは持ち込まない
   - 対象ファイル：`src/main/resources/static/js/shift-form.js`
   - 完了条件：
@@ -129,3 +129,4 @@
 - T6 完了：成立時の結果カード要素をテストで固定する。5つのテストを追加：①score-num のスコア表示、②result-table、③pill early/late の個数、④unassigned と chip と従業員名、⑤未出勤者0名時は unassigned が出ない。一時的に class="score-num" を削除して検出力を確認。
 - T7 完了：時間軸バーの本体（勤務バー・休憩バー）をテストで検証。5つのテストを追加（RED）：①timeline が 1 つ、tl-row が 4 つ、②tl-name に 4 名の従業員、③tl-work early/late の style、④tl-break の style（4 つの休憩時刻）、⑤不成立時は timeline なし。index.html に `.timeline` 構造を追加し、Thymeleaf で style 属性を生成（GREEN）。
 - T8 完了：時間軸の目盛りと凡例をテストで検証。3つのテストを追加（RED）：①tl-axis に 7 つの目盛り、②tl-legend に早番・遅番・休憩と lg クラス、③表に早番・遅番が出ない。index.html に `.tl-axis` と `.tl-legend` を追加。固定値 13 で時間計算（GREEN）。
+- T9 完了：shift-form.js を JavaScript テストで検証。①updateRowCount() 関数を追加して #row-count を初期化・行追加・行削除時に更新。②createWishSelect() 関数に select 生成をまとめて重複コード（8 箇所）を 1 箇所に削減。node --check/grep で確認：row-count 更新あり、createElement("option") 1 件、employees[ パターン維持、demo コードなし。
