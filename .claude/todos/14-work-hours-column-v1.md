@@ -18,7 +18,7 @@
 
 ## Todo
 
-- [ ] **T1. 割当結果の表ヘッダに「勤務時間」列が「氏名」と「休憩」の間に表示される（TDD）**
+- [x] **T1. 割当結果の表ヘッダに「勤務時間」列が「氏名」と「休憩」の間に表示される（TDD）**
   - 依頼事項：`ShiftControllerTest` に `[F-4]` を付けた Given-When-Then のテストを先に書き、RED を確認する。内容は「有効な割当が存在するとき POST /shift を実行すると、割当結果の表ヘッダが `枠`・`氏名`・`勤務時間`・`休憩` の順で出力される」。その後 `index.html` の `<th>` に `勤務時間` を追加して GREEN にする（この時点では各行に `<td>` を足すと列数がずれるため、T1 では `<td>` の追加も同時に行い空セルでよい）
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：
