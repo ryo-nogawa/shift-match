@@ -37,7 +37,13 @@
       </ul>
     </section>
 
-    <form method="post" th:action="@{/shift}" th:object="${shiftForm}" class="card">
+    <form
+      method="post"
+      th:action="@{/shift}"
+      th:object="${shiftForm}"
+      class="card"
+      data-max-rows="12"
+    >
       <div class="card-head">
         <h2>従業員の希望</h2>
         <span class="count"><b id="row-count" th:text="${shiftForm.employees.size()}">0</b> 名</span>

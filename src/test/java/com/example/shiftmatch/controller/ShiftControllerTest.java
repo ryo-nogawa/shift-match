@@ -1003,4 +1003,76 @@ class ShiftControllerTest {
       assertFalse(legendSection.contains("遅番"), "Legend should not contain '遅番'");
     }
   }
+
+  @Nested
+  @DisplayName("[F-2][F-6] JavaScriptの行追加・削除機能")
+  class JavaScriptAddDeleteRows {
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: HTMLに'data-max-rows=\"12\"'が存在する")
+    void htmlContainsDataMaxRows() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          htmlContent.contains("data-max-rows=\"12\""),
+          "HTML should contain data-max-rows=\"12\" attribute");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:"
+            + " 'wishes['を使ったname生成と'disabled'の設定がある")
+    void shiftFormJsContainsWishesArrayLogic() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Find the script tag that loads shift-form.js
+      int scriptStart = htmlContent.indexOf("src=\"");
+      assertTrue(scriptStart >= 0, "Should have script tag with src");
+
+      // Extract the URL to shift-form.js and verify it's loaded
+      assertTrue(htmlContent.contains("/js/shift-form.js"), "HTML should reference shift-form.js");
+
+      // We need to verify the JS content directly from the file
+      // since MockMvc would serve the resource
+      // Let's check that shift-form.js was already updated in previous test
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
+
+      assertTrue(
+          jsContent.contains("wishes["),
+          "shift-form.js should contain 'wishes[' for new 6-slot structure");
+      assertTrue(
+          jsContent.contains(".disabled"),
+          "shift-form.js should contain '.disabled' for button state management");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-6] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:"
+            + " 'earlyWish'・'lateWish'・「早番」・「遅番」の文字列が存在しない")
+    void shiftFormJsDoesNotContainOldTerms() throws Exception {
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
+
+      assertFalse(jsContent.contains("earlyWish"), "shift-form.js should not contain 'earlyWish'");
+      assertFalse(jsContent.contains("lateWish"), "shift-form.js should not contain 'lateWish'");
+      assertFalse(jsContent.contains("早番"), "shift-form.js should not contain '早番'");
+      assertFalse(jsContent.contains("遅番"), "shift-form.js should not contain '遅番'");
+    }
+  }
 }
