@@ -34,6 +34,32 @@ class ShiftControllerTest {
   @Nested
   class GetIndexTest {
     @Test
+    @DisplayName("[F-1] Given: 初期状態のとき, When: GET / を実行すると, Then: CSS ファイルへの link タグが含まれること")
+    void shouldIncludeCssLink() throws Exception {
+      MvcResult result =
+          mockMvc
+              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
+              .andReturn();
+
+      assertEquals(200, result.getResponse().getStatus());
+      String body = result.getResponse().getContentAsString();
+
+      assertTrue(
+          body.contains("<link")
+              && body.contains("/css/shift-form.css")
+              && body.contains("stylesheet"),
+          "本文に shift-form.css への stylesheet link が含まれていること");
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: 初期状態のとき, When: GET / を実行すると, Then: shift-form.css がクラスパス上に存在すること")
+    void shouldHaveCssFileOnClasspath() {
+      org.springframework.core.io.ClassPathResource cssResource =
+          new org.springframework.core.io.ClassPathResource("static/css/shift-form.css");
+      assertTrue(cssResource.exists(), "shift-form.css がクラスパス上に存在すること");
+    }
+
+    @Test
     @DisplayName("[F-1] Given: 初期状態のとき, When: GET / を実行すると, Then: 4行の空フォームが表示されること")
     void shouldDisplayInitialForm() throws Exception {
       MvcResult result =

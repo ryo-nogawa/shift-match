@@ -20,7 +20,7 @@
 
 ## Todo
 
-- [ ] **T1. CSS ファイルを作成し、`index.html` から読み込む（TDD）**
+- [x] **T1. CSS ファイルを作成し、`index.html` から読み込む（TDD）**
   - 依頼事項：`ShiftControllerTest` に、GET `/` の本文に `<link rel="stylesheet" href="/css/shift-form.css">`（属性の順序・空白の差は許容。`/css/shift-form.css` を指す stylesheet の link）が含まれるテストと、`/css/shift-form.css` がクラスパス上に存在するテスト（`new ClassPathResource("static/css/shift-form.css").exists()`）を追加する。RED を確認してから、`index.html` の `<head>` に `th:href="@{/css/shift-form.css}"` の link と `<meta name="viewport" content="width=device-width, initial-scale=1" />`、`<html lang="ja" ...>` を追加し、`static/css/shift-form.css` を空でない最小内容（コメント 1 行）で作成して GREEN にする。CSS の中身は T7 で書く
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`、`src/main/resources/static/css/shift-form.css`
   - 完了条件：
