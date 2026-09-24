@@ -48,7 +48,7 @@
     - `grep -c "new com.example.shiftmatch.domain.AssignmentResult" src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java` が、リファクタリング前より減っている（前後の数値を実行ログに記録する）
     - `@DisplayName` の文言が変更されていない（`git diff` で `@DisplayName` の行に差分がない。T1 と T3 で意図して変えたものを除く）
 
-- [ ] **T5. デザイン案 HTML の行末空白を削除する**
+- [x] **T5. デザイン案 HTML の行末空白を削除する**
   - 依頼事項：`.claude/design/proposal-a-clean.html` の 132 行目と `.claude/design/proposal-b-dark-glass.html` の 131 行目の行末空白（trailing whitespace）を削除する。それ以外は変更しない
   - 対象ファイル：`.claude/design/proposal-a-clean.html`、`.claude/design/proposal-b-dark-glass.html`
   - 完了条件：
