@@ -1362,5 +1362,163 @@ class ShiftControllerTest {
       String body = result.getResponse().getContentAsString();
       assertTrue(!body.contains("class=\"timeline\""), "不成立時に class=\"timeline\" が含まれていないこと");
     }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, Then: class=\"tl-axis\""
+            + " に目盛り left が 0.00%, 15.38%, 30.77%, 46.15%, 61.54%, 76.92%, 92.31% で 7 つ")
+    void shouldDisplayTimelineAxisWithCorrectScales() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
+              3,
+              java.util.List.of(new com.example.shiftmatch.domain.Employee("五郎", null, null)));
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+      params.add("employees[2].name", "次郎");
+      params.add("employees[2].earlyWish", "DESIRED");
+      params.add("employees[2].lateWish", "AVAILABLE");
+      params.add("employees[3].name", "美咲");
+      params.add("employees[3].earlyWish", "AVAILABLE");
+      params.add("employees[3].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("class=\"tl-axis\""), "class=\"tl-axis\" が含まれること");
+      assertTrue(
+          body.contains("left:0.00%")
+              && body.contains("left:15.38%")
+              && body.contains("left:30.77%")
+              && body.contains("left:46.15%")
+              && body.contains("left:61.54%")
+              && body.contains("left:76.92%")
+              && body.contains("left:92.31%"),
+          "目盛りの 7 つの left 値が含まれること");
+      assertTrue(
+          body.contains(">8<")
+              && body.contains(">10<")
+              && body.contains(">12<")
+              && body.contains(">14<")
+              && body.contains(">16<")
+              && body.contains(">18<")
+              && body.contains(">20<"),
+          "目盛りの 8-20 の偶数文字が含まれること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: class=\"tl-legend\" に「早番」「遅番」「休憩」が含まれること")
+    void shouldDisplayTimelineLegend() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
+              3,
+              java.util.List.of(new com.example.shiftmatch.domain.Employee("五郎", null, null)));
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+      params.add("employees[2].name", "次郎");
+      params.add("employees[2].earlyWish", "DESIRED");
+      params.add("employees[2].lateWish", "AVAILABLE");
+      params.add("employees[3].name", "美咲");
+      params.add("employees[3].earlyWish", "AVAILABLE");
+      params.add("employees[3].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("class=\"tl-legend\""), "class=\"tl-legend\" が含まれること");
+      assertTrue(
+          body.contains("早番") && body.contains("遅番") && body.contains("休憩"), "凡例に早番・遅番・休憩が含まれること");
+      assertTrue(
+          body.contains("class=\"lg early\"")
+              && body.contains("class=\"lg late\"")
+              && body.contains("class=\"lg brk\""),
+          "凡例に lg early, lg late, lg brk が含まれること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, " + "Then: 割当結果の表に「早番」「遅番」が含まれていないこと")
+    void shouldNotDisplayEarlyLateTextInResultTable() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
+              3,
+              java.util.List.of(new com.example.shiftmatch.domain.Employee("五郎", null, null)));
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+      params.add("employees[2].name", "次郎");
+      params.add("employees[2].earlyWish", "DESIRED");
+      params.add("employees[2].lateWish", "AVAILABLE");
+      params.add("employees[3].name", "美咲");
+      params.add("employees[3].earlyWish", "AVAILABLE");
+      params.add("employees[3].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      int tableStart = body.indexOf("<table class=\"result-table\">");
+      int tableEnd = body.indexOf("</table>", tableStart);
+      assertTrue(tableStart > -1 && tableEnd > tableStart, "result-table が存在すること");
+      String tableContent = body.substring(tableStart, tableEnd);
+      assertTrue(
+          !tableContent.contains("早番") && !tableContent.contains("遅番"), "表内に早番・遅番が含まれていないこと");
+    }
   }
 }

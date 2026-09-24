@@ -112,6 +112,9 @@
         <span class="score-label">スコア（◎ が反映された人数）</span>
       </div>
       <div class="timeline">
+        <div class="tl-axis">
+          <span th:each="h : ${#numbers.sequence(8, 20, 2)}" th:style="|left:${#numbers.formatDecimal((h - 8) * 100.0 / 13, 1, 2, 'POINT')}%|" th:text="${h}"></span>
+        </div>
         <div class="tl-row" th:each="breakTime, stat : ${assignmentResult.breakTimes()}">
           <span class="tl-name" th:text="${breakTime.employee().name()}"></span>
           <div class="tl-track">
@@ -126,6 +129,7 @@
             ></div>
           </div>
         </div>
+        <div class="tl-legend"><i class="lg early"></i>早番<i class="lg late"></i>遅番<i class="lg brk"></i>休憩</div>
       </div>
       <table class="result-table">
         <thead>

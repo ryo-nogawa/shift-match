@@ -86,7 +86,7 @@
     - 既存の `[F-4]` テスト（表ヘッダ・勤務時間・「早番」「遅番」が行に含まれないこと）が変更なしで成功する
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T8. 時間軸の目盛りと凡例（早番・遅番・休憩）を表示する（TDD）**
+- [x] **T8. 時間軸の目盛りと凡例（早番・遅番・休憩）を表示する（TDD）**
   - 依頼事項：`UiDesignTest` に、成立時のモックで、次を検証するテストを追加する。①`class="tl-axis"` が含まれ、目盛りの `left` が `0.00%`・`15.38%`・`30.77%`・`46.15%`・`61.54%`・`76.92%`・`92.31%` の 7 つ（文字は `8`・`10`・`12`・`14`・`16`・`18`・`20`）、②`class="tl-legend"` の中に `早番`・`遅番`・`休憩` が含まれ、`class="lg early"`・`class="lg late"`・`class="lg brk"` が含まれる、③割当結果の表（`<table class="result-table">` から `</table>` まで）に「早番」「遅番」が含まれない。RED を確認してから、`src/main/resources/templates/index.html` の `.timeline` 内に、見本 `.claude/design/proposal-c-timeline.html` の `.tl-axis`（先頭、7 つの `<span style="left:X%">`）と `.tl-legend`（末尾）を実装する。目盛りは `th:each="h : ${#numbers.sequence(8, 20, 2)}"`、`left = (h - 8) * 100.0 / 13`（小数 2 桁）で出力する。凡例の文言は `<i class="lg early"></i>早番<i class="lg late"></i>遅番<i class="lg brk"></i>休憩`
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：
@@ -128,3 +128,4 @@
 - T5 完了：不成立時の補足文をテストで検証するテストを追加（RED）。補足文がないことを確認。`index.html` に `<small>希望（×）を見直すか、従業員を追加してください。</small>` を追加。成立時に class="empty" が出ないことを検証するテストも追加（GREEN）。
 - T6 完了：成立時の結果カード要素をテストで固定する。5つのテストを追加：①score-num のスコア表示、②result-table、③pill early/late の個数、④unassigned と chip と従業員名、⑤未出勤者0名時は unassigned が出ない。一時的に class="score-num" を削除して検出力を確認。
 - T7 完了：時間軸バーの本体（勤務バー・休憩バー）をテストで検証。5つのテストを追加（RED）：①timeline が 1 つ、tl-row が 4 つ、②tl-name に 4 名の従業員、③tl-work early/late の style、④tl-break の style（4 つの休憩時刻）、⑤不成立時は timeline なし。index.html に `.timeline` 構造を追加し、Thymeleaf で style 属性を生成（GREEN）。
+- T8 完了：時間軸の目盛りと凡例をテストで検証。3つのテストを追加（RED）：①tl-axis に 7 つの目盛り、②tl-legend に早番・遅番・休憩と lg クラス、③表に早番・遅番が出ない。index.html に `.tl-axis` と `.tl-legend` を追加。固定値 13 で時間計算（GREEN）。
