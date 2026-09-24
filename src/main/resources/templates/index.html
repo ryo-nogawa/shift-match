@@ -7,108 +7,141 @@
   <title>シフト作成</title>
 </head>
 <body>
-  <h1>シフト作成</h1>
+  <main class="app">
+    <header class="hero">
+      <p class="eyebrow">Shift Match</p>
+      <h1>シフト作成</h1>
+      <p class="lead">従業員の希望を入力すると、早番 2 名・遅番 2 名の最適な割り当て案を提案します。</p>
+    </header>
 
-  <div th:if="${limitExceededError != null}">
-    <h2>エラー</h2>
-    <p th:text="${limitExceededError}"></p>
-  </div>
+    <section class="alert" role="alert" th:if="${limitExceededError != null}">
+      <h2>エラー</h2>
+      <p th:text="${limitExceededError}"></p>
+    </section>
 
-  <div th:if="${duplicateErrors != null && !duplicateErrors.isEmpty()}">
-    <h2>重複エラー</h2>
-    <ul>
-      <li th:each="error : ${duplicateErrors}">
-        氏名「<span th:text="${error.name()}"></span>」が重複しています（該当行：<span th:each="idx, idxStat : ${error.rowIndexes()}"><span th:text="${idx + 1}"></span><span th:if="${!idxStat.last}">, </span></span>行目）
-      </li>
-    </ul>
-  </div>
-
-  <div th:if="${wishErrors != null && !wishErrors.isEmpty()}">
-    <h2>入力エラー</h2>
-    <ul>
-      <li th:each="error : ${wishErrors}">
-        <span th:text="|${error.getRowIndex() + 1}行目 ${error.getWishLabel()}: 不正な値です|"></span>
-      </li>
-    </ul>
-  </div>
-
-  <form method="post" th:action="@{/shift}" th:object="${shiftForm}">
-    <table>
-      <thead>
-        <tr>
-          <th>氏名</th>
-          <th>早番希望</th>
-          <th>遅番希望</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="employee-rows">
-        <tr th:each="employee, stat : ${shiftForm.employees}">
-          <td>
-            <input
-              type="text"
-              th:field="*{employees[__${stat.index}__].name}"
-              placeholder="氏名を入力"
-            />
-          </td>
-          <td>
-            <select th:field="*{employees[__${stat.index}__].earlyWish}">
-              <option value="">-- 未選択 --</option>
-              <option value="DESIRED">◎ 希望</option>
-              <option value="AVAILABLE">○ 可能</option>
-              <option value="UNAVAILABLE">× 不可</option>
-            </select>
-          </td>
-          <td>
-            <select th:field="*{employees[__${stat.index}__].lateWish}">
-              <option value="">-- 未選択 --</option>
-              <option value="DESIRED">◎ 希望</option>
-              <option value="AVAILABLE">○ 可能</option>
-              <option value="UNAVAILABLE">× 不可</option>
-            </select>
-          </td>
-          <td>
-            <button type="button" class="delete-row-btn">削除</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <button type="button" id="add-row-btn">行を追加</button>
-    <button type="submit">シフトを作成</button>
-  </form>
-
-  <div th:if="${unassignable != null && unassignable}">
-    <h2>割当結果</h2>
-    <p>条件を満たす組み合わせが見つかりませんでした。</p>
-  </div>
-
-  <div th:if="${assignmentResult != null}">
-    <h2>割当結果</h2>
-    <table border="1">
-      <tr>
-        <th>氏名</th>
-        <th>勤務時間</th>
-        <th>休憩時間</th>
-      </tr>
-      <tr th:each="breakTime, stat : ${assignmentResult.breakTimes()}">
-        <td th:text="${breakTime.employee().name()}"></td>
-        <td th:text="${stat.index < 2 ? '08:00〜17:00' : '12:00〜21:00'}"></td>
-        <td>
-          <span th:text="${#temporals.format(breakTime.start(), 'HH:mm')}"></span>〜<span
-            th:text="${#temporals.format(breakTime.end(), 'HH:mm')}"
-          ></span>
-        </td>
-      </tr>
-    </table>
-    <p th:text="|スコア: ${assignmentResult.score()}|"></p>
-    <div th:if="${assignmentResult.unassignedEmployees().size() > 0}">
-      <p>未出勤者:</p>
+    <section class="alert" role="alert" th:if="${duplicateErrors != null && !duplicateErrors.isEmpty()}">
+      <h2>重複エラー</h2>
       <ul>
-        <li th:each="employee : ${assignmentResult.unassignedEmployees()}" th:text="${employee.name()}"></li>
+        <li th:each="error : ${duplicateErrors}">
+          氏名「<span th:text="${error.name()}"></span>」が重複しています（該当行：<span th:each="idx, idxStat : ${error.rowIndexes()}"><span th:text="${idx + 1}"></span><span th:if="${!idxStat.last}">, </span></span>行目）
+        </li>
       </ul>
-    </div>
-  </div>
+    </section>
+
+    <section class="alert" role="alert" th:if="${wishErrors != null && !wishErrors.isEmpty()}">
+      <h2>入力エラー</h2>
+      <ul>
+        <li th:each="error : ${wishErrors}">
+          <span th:text="|${error.getRowIndex() + 1}行目 ${error.getWishLabel()}: 不正な値です|"></span>
+        </li>
+      </ul>
+    </section>
+
+    <form method="post" th:action="@{/shift}" th:object="${shiftForm}" class="card">
+      <div class="card-head">
+        <h2>従業員の希望</h2>
+        <span class="count"><b id="row-count" th:text="${shiftForm.employees.size()}">0</b> 名</span>
+      </div>
+      <p class="wish-legend"><b class="w d">◎</b>希望 <b class="w a">○</b>可能 <b class="w u">×</b>不可</p>
+      <table class="input-table">
+        <thead>
+          <tr>
+            <th>氏名</th>
+            <th>早番希望</th>
+            <th>遅番希望</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="employee-rows">
+          <tr th:each="employee, stat : ${shiftForm.employees}">
+            <td>
+              <input
+                type="text"
+                th:field="*{employees[__${stat.index}__].name}"
+                placeholder="氏名を入力"
+              />
+            </td>
+            <td>
+              <select th:field="*{employees[__${stat.index}__].earlyWish}">
+                <option value="">-- 未選択 --</option>
+                <option value="DESIRED">◎ 希望</option>
+                <option value="AVAILABLE">○ 可能</option>
+                <option value="UNAVAILABLE">× 不可</option>
+              </select>
+            </td>
+            <td>
+              <select th:field="*{employees[__${stat.index}__].lateWish}">
+                <option value="">-- 未選択 --</option>
+                <option value="DESIRED">◎ 希望</option>
+                <option value="AVAILABLE">○ 可能</option>
+                <option value="UNAVAILABLE">× 不可</option>
+              </select>
+            </td>
+            <td>
+              <button type="button" class="delete-row-btn">削除</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="actions">
+        <button type="button" id="add-row-btn" class="btn ghost">＋ 行を追加</button>
+        <button type="submit" class="btn primary">シフトを作成</button>
+      </div>
+    </form>
+
+    <section class="card result" th:if="${unassignable != null && unassignable}">
+      <div class="card-head">
+        <h2>割当結果</h2>
+      </div>
+      <div class="empty">
+        <span class="empty-icon">！</span>
+        <p>条件を満たす組み合わせが見つかりませんでした。</p>
+      </div>
+    </section>
+
+    <section class="card result" th:if="${assignmentResult != null}">
+      <div class="card-head">
+        <h2>割当結果</h2>
+      </div>
+      <div class="score">
+        <span class="score-num"
+          ><span th:text="${assignmentResult.score()}">0</span><small> / 4</small></span
+        >
+        <span class="score-label">スコア（◎ が反映された人数）</span>
+      </div>
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th>氏名</th>
+            <th>勤務時間</th>
+            <th>休憩時間</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="breakTime, stat : ${assignmentResult.breakTimes()}">
+            <td th:text="${breakTime.employee().name()}"></td>
+            <td>
+              <span
+                class="pill"
+                th:classappend="${stat.index < 2 ? 'early' : 'late'}"
+                th:text="${stat.index < 2 ? '08:00〜17:00' : '12:00〜21:00'}"
+              ></span>
+            </td>
+            <td>
+              <span th:text="${#temporals.format(breakTime.start(), 'HH:mm')}"></span>〜<span
+                th:text="${#temporals.format(breakTime.end(), 'HH:mm')}"
+              ></span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="unassigned" th:if="${assignmentResult.unassignedEmployees().size() > 0}">
+        <b>未出勤者</b>
+        <span class="chip" th:each="employee : ${assignmentResult.unassignedEmployees()}" th:text="${employee.name()}"></span>
+      </div>
+    </section>
+  </main>
 
   <script th:src="@{/js/shift-form.js}"></script>
 </body>

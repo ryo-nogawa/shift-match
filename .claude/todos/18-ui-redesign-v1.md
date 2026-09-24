@@ -28,7 +28,7 @@
     - `@DisplayName` の先頭に `[F-1]` を付けたテストが存在し、Given-When-Then で書かれている
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T2. ページの骨格（ヘッダー・カード・ボタン）を C 案のクラス構成にする（TDD）**
+- [x] **T2. ページの骨格（ヘッダー・カード・ボタン）を C 案のクラス構成にする（TDD）**
   - 依頼事項：GET `/` の本文に、`class="app"` を持つ要素、`class="hero"` 内に `<h1>` の「シフト作成」と `class="eyebrow"`（文言 `Shift Match`）と `class="lead"`（文言は見本 HTML の `.lead` と同じ）、`class="card"` を持つ `<form>`、`class="btn ghost"` の「行を追加」ボタン（`id="add-row-btn"` を維持）、`class="btn primary"` の「シフトを作成」ボタンが含まれるテストを追加し、RED を確認してから `index.html` を見本 `proposal-c-timeline.html` のマークアップに合わせて変更する。従業員数の表示（`<b id="row-count">`）は、`shiftForm.employees.size()` を `th:text` で出力する。希望の凡例（`.wish-legend`）も見本どおり入れる。`<script>` の読み込みは維持する
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：

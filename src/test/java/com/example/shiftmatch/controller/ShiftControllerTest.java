@@ -60,6 +60,41 @@ class ShiftControllerTest {
     }
 
     @Test
+    @DisplayName(
+        "[F-1] Given: 初期状態のとき, When: GET / を実行すると, "
+            + "Then: ページの骨格（hero・card・ボタン）が C 案のクラス構成で表示されること")
+    void shouldDisplayCardUiWithDesignClasses() throws Exception {
+      MvcResult result =
+          mockMvc
+              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
+              .andReturn();
+
+      assertEquals(200, result.getResponse().getStatus());
+      String body = result.getResponse().getContentAsString();
+
+      assertTrue(body.contains("class=\"app\""), "本文に class=\"app\" を持つ要素が含まれること");
+      assertTrue(body.contains("class=\"hero\""), "本文に class=\"hero\" が含まれること");
+      assertTrue(
+          body.contains("Shift Match") && body.contains("class=\"eyebrow\""),
+          "本文に class=\"eyebrow\" 内に「Shift Match」が含まれること");
+      assertTrue(body.contains("<h1>") && body.contains("シフト作成"), "本文に <h1> で「シフト作成」が含まれること");
+      assertTrue(
+          body.contains("class=\"lead\"") && body.contains("早番 2 名・遅番 2 名の最適な割り当て案を提案します"),
+          "本文に class=\"lead\" 内に「早番 2 名・遅番 2 名の最適な割り当て案を提案します」が含まれること");
+      assertTrue(
+          body.contains("class=\"card\"") && body.contains("method=\"post\""),
+          "本文に class=\"card\" を持つフォームが含まれること");
+      assertTrue(
+          body.contains("class=\"btn ghost\"") && body.contains("id=\"add-row-btn\""),
+          "本文に class=\"btn ghost\" の「行を追加」ボタン（id=\"add-row-btn\"）が含まれること");
+      assertTrue(
+          body.contains("class=\"btn primary\"") && body.contains("type=\"submit\""),
+          "本文に class=\"btn primary\" の送信ボタンが含まれること");
+      assertTrue(body.contains("class=\"wish-legend\""), "本文に class=\"wish-legend\" が含まれること");
+      assertTrue(body.contains("id=\"row-count\""), "本文に従業員数の表示用 id=\"row-count\" が含まれること");
+    }
+
+    @Test
     @DisplayName("[F-1] Given: 初期状態のとき, When: GET / を実行すると, Then: 4行の空フォームが表示されること")
     void shouldDisplayInitialForm() throws Exception {
       MvcResult result =
