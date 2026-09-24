@@ -18,7 +18,7 @@
 
 ## Todo
 
-- [ ] **T1. 割当結果の表ヘッダが「氏名」・「勤務時間」・「休憩時間」の順で出力される（TDD）**
+- [x] **T1. 割当結果の表ヘッダが「氏名」・「勤務時間」・「休憩時間」の順で出力される（TDD）**
   - 依頼事項：`ShiftControllerTest` の `[F-4]` 表ヘッダの列順テスト（`namePos`・`workHoursPos`・`breakPos` で位置を比較しているもの）を、見出しの `休憩` を `休憩時間` に変更する（DisplayName・エラーメッセージ文言・`indexOf` の引数も合わせる）。あわせて `<th>休憩</th>` が出力されないことを検証する。先にテストだけ変更して RED（アサーション失敗）を確認する。その後 `index.html` の `<th>休憩</th>` を `<th>休憩時間</th>` にして GREEN にする
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：

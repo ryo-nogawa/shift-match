@@ -338,7 +338,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: 割当結果の表ヘッダが「氏名」・「勤務時間」・「休憩」の順で出力され、「枠」を含まないこと")
+            + "Then: 割当結果の表ヘッダが「氏名」・「勤務時間」・「休憩時間」の順で出力され、「枠」を含まないこと")
     void shouldDisplayWorkHoursHeaderInResultTable() throws Exception {
       com.example.shiftmatch.domain.AssignmentResult assignmentResult =
           new com.example.shiftmatch.domain.AssignmentResult(
@@ -400,12 +400,16 @@ class ShiftControllerTest {
       int framePos = headerRow.indexOf("枠");
       int namePos = headerRow.indexOf("氏名");
       int workHoursPos = headerRow.indexOf("勤務時間");
-      int breakPos = headerRow.indexOf("休憩");
+      int breakTimePos = headerRow.indexOf("休憩時間");
 
       assertTrue(framePos == -1, "ヘッダに「枠」が含まれていないこと");
-      assertTrue(namePos > -1 && workHoursPos > -1 && breakPos > -1, "「氏名」・「勤務時間」・「休憩」が含まれていること");
       assertTrue(
-          namePos < workHoursPos && workHoursPos < breakPos, "ヘッダが「氏名」・「勤務時間」・「休憩」の順で出力されていること");
+          namePos > -1 && workHoursPos > -1 && breakTimePos > -1, "「氏名」・「勤務時間」・「休憩時間」が含まれていること");
+      assertTrue(
+          namePos < workHoursPos && workHoursPos < breakTimePos,
+          "ヘッダが「氏名」・「勤務時間」・「休憩時間」の順で出力されていること");
+      int breakOnlyPos = headerRow.indexOf("<th>休憩</th>");
+      assertTrue(breakOnlyPos == -1, "「<th>休憩</th>」（「時間」なし）が出力されていないこと");
     }
 
     @Test

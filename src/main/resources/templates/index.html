@@ -87,7 +87,7 @@
       <tr>
         <th>氏名</th>
         <th>勤務時間</th>
-        <th>休憩</th>
+        <th>休憩時間</th>
       </tr>
       <tr th:each="breakTime, stat : ${assignmentResult.breakTimes()}">
         <td th:text="${breakTime.employee().name()}"></td>
