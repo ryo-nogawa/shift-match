@@ -1231,13 +1231,24 @@ class ShiftControllerTest {
       }
       assertEquals(1, timelineCount, "class=\"timeline\" が 1 つ含まれること");
       assertEquals(4, tlRowCount, "class=\"tl-row\" が 4 つ含まれること");
-      assertTrue(
-          body.contains("tl-name")
-              && body.contains("太郎")
-              && body.contains("花子")
-              && body.contains("次郎")
-              && body.contains("美咲"),
-          "tl-name に太郎・花子・次郎・美咲が含まれること");
+
+      // タイムラインの範囲を切り出し、tl-name から氏名を抽出
+      int timelineStart = body.indexOf("class=\"timeline\"");
+      int resultTableStart = body.indexOf("class=\"result-table\"", timelineStart);
+      String timelineSection = body.substring(timelineStart, resultTableStart);
+
+      java.util.List<String> extractedNames = new java.util.ArrayList<>();
+      java.util.regex.Pattern pattern =
+          java.util.regex.Pattern.compile("<span class=\"tl-name\">([^<]*)</span>");
+      java.util.regex.Matcher matcher = pattern.matcher(timelineSection);
+      while (matcher.find()) {
+        extractedNames.add(matcher.group(1));
+      }
+
+      assertEquals(
+          java.util.List.of("太郎", "花子", "次郎", "美咲"),
+          extractedNames,
+          "tl-name に太郎・花子・次郎・美咲が順に含まれること");
     }
 
     @Test
