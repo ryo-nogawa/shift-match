@@ -627,4 +627,162 @@ class ShiftControllerTest {
       assertFalse(resultTableContent.contains("遅番"), "Result table should not contain '遅番'");
     }
   }
+
+  @Nested
+  @DisplayName("[F-4] スコアと未出勤者の表示")
+  class ScoreAndUnassignedDisplay {
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: スコア5の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then: '.score-num'に'5'と'/ 8'が表示される")
+    void displaysScoreFiveWithCorrectFormat() throws Exception {
+      // Create 8 employees where only 5 are marked as DESIRED for any slot
+      // to generate a score of 5
+      StringBuilder params = new StringBuilder();
+
+      // Employees 0-4: Mark them all as DESIRED for slot 0
+      for (int i = 0; i < 5; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        params.append("&employees[").append(i).append("].wishes[0]=DESIRED");
+        for (int j = 1; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      // Employees 5-7: Mark them as AVAILABLE for all slots
+      for (int i = 5; i < 8; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Verify score display
+      assertTrue(
+          responseContent.contains("class=\"score-num\""),
+          "Score display section should be present");
+      assertTrue(
+          responseContent.contains("5") && responseContent.contains("/ 8"),
+          "Score should show 5 / 8");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 未出勤者2名（I・J）の割当結果が表示されるとき, When: 未出勤者セクションを確認すると, Then: '.chip'が2つ表示され、氏名が正しい")
+    void displaysUnassignedEmployeesWithChips() throws Exception {
+      // Create 10 employees but system will only assign 8
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 10; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Verify unassigned section exists and contains chips
+      assertTrue(
+          responseContent.contains("class=\"unassigned\""),
+          "Unassigned section should be displayed");
+
+      // Count chips
+      int chipCount = 0;
+      int index = 0;
+      while ((index = responseContent.indexOf("class=\"chip\"", index)) != -1) {
+        chipCount++;
+        index++;
+      }
+      assertEquals(2, chipCount, "Should have exactly 2 chips for 2 unassigned employees");
+
+      // Verify the unassigned employees are I and J
+      assertTrue(
+          responseContent.contains(">I<") || responseContent.contains("I</span>"),
+          "Should contain employee I");
+      assertTrue(
+          responseContent.contains(">J<") || responseContent.contains("J</span>"),
+          "Should contain employee J");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 未出勤者0名の割当結果が表示されるとき, When: 未出勤者セクションを確認すると, Then: '.unassigned'が表示されない")
+    void doesNotDisplayUnassignedSectionWhenAllAssigned() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Verify unassigned section does not exist when all are assigned
+      assertFalse(
+          responseContent.contains("class=\"unassigned\""),
+          "Unassigned section should not be displayed when all employees are assigned");
+    }
+  }
 }
