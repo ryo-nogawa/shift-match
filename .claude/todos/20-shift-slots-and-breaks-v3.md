@@ -133,7 +133,7 @@
     - `[F-5]` 不成立のとき、時間軸（`.timeline`）が表示されないことをテストで検証している
     - `./mvnw test` が成功する
 
-- [ ] **T7. 割当結果の表を新仕様で表示する（F-4、仕様 7 章）**
+- [x] **T7. 割当結果の表を新仕様で表示する（F-4、仕様 7 章）**
   - 依頼事項：割当結果の表（列は「氏名・勤務時間・休憩時間」）の内容をテストで固定する。行は枠 1 → 6 の順の 8 行。勤務時間と休憩時間は `07:30〜14:30`、`12:00〜12:45` の形式。勤務時間の `pill` の色クラスは 1 種類にし、CSS の `early`・`late` の色指定は 1 つにまとめる。表の中に「早番」「遅番」の文字を出さない。`lead`（ヒーローの説明文）から「早番 2 名・遅番 2 名」の記述をなくし、新仕様（6 つの勤務枠・8 名）の説明にする
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/main/resources/static/css/shift-form.css`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -143,7 +143,7 @@
     - `git grep -n "早番\|遅番" src/main/resources` が 0 件
     - `./mvnw test` が成功する
 
-- [ ] **T8. スコアと未出勤者の表示をテストで固定する（F-4、仕様 7 章）**
+- [x] **T8. スコアと未出勤者の表示をテストで固定する（F-4、仕様 7 章）**
   - 依頼事項：スコアを `N / 8` の形式で表示する（現在 `/ 4` の場合は直す）。未出勤者は既存のチップ表示を維持し、0 名なら表示しない
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -152,7 +152,7 @@
     - `[F-4]` 未出勤者 0 名の結果で、`.unassigned` が表示されないことをテストで検証している
     - `./mvnw test` が成功する
 
-- [ ] **T9. 時間軸バーを 7:30〜18:30 に対応させる（F-4、仕様 7 章）**
+- [x] **T9. 時間軸バーを 7:30〜18:30 に対応させる（F-4、仕様 7 章）**
   - 依頼事項：`index.html` の時間軸を、営業時間 7:30〜18:30（計 660 分）に変更する。各行は 1 人分（8 行）で、勤務バー（枠の開始〜終了）と休憩バーを、7:30 を 0%・18:30 を 100% として `left`・`width` の割合（小数 2 桁）で表示する。軸の目盛りは 8〜18 時の 1 時間ごとに、7:30 からの位置で配置する。凡例は「勤務」「休憩」の 2 つだけにする（`early`・`late` の凡例は廃止し、CSS も整理する）。旧仕様の `480`・`780` などの固定値を残さない。行が多くて Thymeleaf の式が複雑になる場合は、`AssignmentResult` や `ShiftAssignment` に「開始・終了の分（0:00 からの分）を返すメソッド」などを足してよい（足す場合は、そのメソッドの単体テストも書く）
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/main/resources/static/css/shift-form.css`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -164,7 +164,7 @@
     - `git grep -n "480\|780" src/main/resources/templates` が 0 件
     - `./mvnw test` が成功する
 
-- [ ] **T10. JavaScript の行追加・削除を 6 枠の希望と上限 12 行に対応させる（F-2、F-6、仕様 8 章）**
+- [x] **T10. JavaScript の行追加・削除を 6 枠の希望と上限 12 行に対応させる（F-2、F-6、仕様 8 章）**
   - 依頼事項：`src/main/resources/static/js/shift-form.js` の行追加処理を、`earlyWish`・`lateWish` の 2 つの `select` から、`employees[i].wishes[0]`〜`wishes[5]` の 6 つの `select` を生成する形に変更する。各 `select` の `data-label` に、枠の勤務時間（`07:30〜14:30` など。テンプレートの見出しと同じ値）を設定する。入力行が 12 行のとき「行を追加」ボタンを無効にし、削除後に 12 行未満になれば有効に戻す。行の削除後は `name` 属性のインデックスを 0 から連番に振り直す既存の挙動を維持する。上限の 12 と枠の勤務時間は、テンプレート側の `data-max-rows="12"` や `data-slot-labels` などの属性から受け取り、JS にマジックナンバーで直接書かない
   - 対象ファイル：`src/main/resources/static/js/shift-form.js`、`src/main/resources/templates/index.html`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -175,7 +175,7 @@
     - `node --check src/main/resources/static/js/shift-form.js` が成功する（Node が使えない場合は、その旨を実行ログに記録する）
     - `./mvnw test` が成功する
 
-- [ ] **T11. 旧仕様の取り残しを除去し、全テストと静的解析を確認する（全仕様）**
+- [x] **T11. 旧仕様の取り残しを除去し、全テストと静的解析を確認する（全仕様）**
   - 依頼事項：`git grep -n "早番\|遅番\|earlyWish\|lateWish\|breakTimes\|20名" -- src README.md` を実行し、旧仕様の記述が残っていれば新仕様に合わせて直す（`docs/` は更新済みのため対象外。`README.md` に旧仕様の説明があれば更新する。T4・T10 で「旧 `earlyWish` が存在しないこと」を検証するテストの文字列は、意図的な記述のため除く）。最後に `./mvnw spotless:apply` を実行し、`./mvnw test` で全テストと静的解析を確認する
   - 対象ファイル：`src/`、`README.md`
   - 完了条件：
@@ -226,3 +226,53 @@
   - `[F-5]` 時間軸非表示：`doesNotShowTimelineWhenUnassignable`
 - テスト件数：5 件（ShiftControllerTest 追加）+ 全体 62 件
 - 状態：実装が既に完成、テストがすべて成功
+
+### T7: 割当結果の表を新仕様で表示
+- 完了条件ごとの根拠：
+  - `[F-4]` 結果表の見出しが「氏名」「勤務時間」「休憩時間」の順：`displaysResultTableHeadersInCorrectOrder`
+  - `[F-4]` 8名の結果が仕様どおり：`displaysCorrectNumberOfRowsAndCorrectWorkSchedules`（枠1-6の勤務時間・休憩時間が仕様と一致）
+  - `[F-4]` 表に「早番」「遅番」がない：`resultTableDoesNotContainEarlyOrLateTerms`
+- 修正内容：shift-form.js の行追加時に6つの枠対応（旧早番・遅番を削除）
+- テスト件数：3 件追加（ShiftControllerTest）、全体 65 件
+- `git grep "早番|遅番" src/main/resources` の結果：0 件（shift-form.js の旧仕様削除完了）
+- 状態：実装が完成、テストがすべて成功
+
+### T8: スコアと未出勤者の表示
+- 完了条件ごとの根拠：
+  - `[F-4]` スコア5の表示：`displaysScoreFiveWithCorrectFormat`（'.score-num'に'5'と'/ 8'）
+  - `[F-4]` 未出勤者2名の表示：`displaysUnassignedEmployeesWithChips`（'.chip'が2つ、氏名I・Jが表示）
+  - `[F-4]` 未出勤者0名のとき非表示：`doesNotDisplayUnassignedSectionWhenAllAssigned`
+- テスト件数：3 件追加（ShiftControllerTest）、全体 68 件
+- 状態：実装が完成、テストがすべて成功
+
+### T9: 時間軸バーを7:30〜18:30に対応
+- 完了条件ごとの根拠：
+  - `[F-4]` 8行8本のバー：`displaysCorrectNumberOfTimelineRows`（.tl-row 8、.tl-work 8、.tl-break 8）
+  - `[F-4]` 枠1の勤務バー：`displaysSlot1WorkBarWithCorrectStyle`（left:0.00%, width:63.64%）
+  - `[F-4]` 枠6の勤務バー：`displaysSlot6WorkBarWithCorrectStyle`（left:13.64%, width:86.36%。仕様計算値に修正）
+  - `[F-4]` 枠1の休憩バー：`displaysSlot1BreakBarWithCorrectStyle`（left:40.91%, width:6.82%）
+  - 凡例の検証：`displaysCorrectLegend`（「勤務」「休憩」あり、「早番」「遅番」なし）
+- テスト件数：5 件追加（ShiftControllerTest）、全体 73 件
+- `git grep "480|780" src/main/resources/templates` の結果：0 件
+- 状態：実装が完成、テストがすべて成功
+
+### T10: JavaScriptの行追加・削除機能
+- 完了条件ごとの根拠：
+  - `[F-2]` HTMLに data-max-rows="12"：`htmlContainsDataMaxRows`
+  - `[F-2]` shift-form.jsの wishes[] 対応：`shiftFormJsContainsWishesArrayLogic`
+  - `[F-6]` 旧仕様削除：`shiftFormJsDoesNotContainOldTerms`（earlyWish・lateWish・早番・遅番が0件）
+  - `node --check` の実行：成功（v24.14.0、構文OK）
+- 修正内容：テンプレートの form タグに data-max-rows="12" を追加
+- テスト件数：3 件追加（ShiftControllerTest）、全体 76 件
+- 状態：実装が完成、テストがすべて成功
+
+### T11: 旧仕様の取り残しを除去し全テスト・静的解析を確認
+- 修正内容：README.md を新仕様に更新
+  - 11行：「早番・遅番それぞれ ◎ 希望／○ 可能／× 不可」→「6つの勤務枠ごとに ◎ 希望／○ 可能／× 不可」
+  - 11行：「早番 2 名・遅番 2 名」→「6つの枠に 8 名」
+  - 41行：「早番・遅番それぞれの希望」→「6つの枠ごとの希望」
+- `git grep "早番|遅番|earlyWish|lateWish|breakTimes|20名" -- src README.md` の結果：
+  - 意図的な記述（テストの assertFalse 文字列）のみ残存
+- 全テスト実行結果：76 件すべて成功
+- Checkstyle 違反：0 件
+- 状態：全仕様の実装完了、テストと静的解析がすべて成功
