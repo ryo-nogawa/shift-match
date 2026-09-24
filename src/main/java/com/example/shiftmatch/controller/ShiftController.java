@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 @Controller
 public class ShiftController {
 
-  private static final int MAX_EMPLOYEE_COUNT = 20;
+  private static final int MAX_EMPLOYEE_COUNT = 12;
 
   private final ShiftAssignmentService shiftAssignmentService;
 
@@ -93,12 +93,15 @@ public class ShiftController {
         continue;
       }
 
-      if (!isValidWish(employee.getEarlyWish())) {
-        wishErrors.add(new InvalidWishError(i, "早番希望"));
-      }
-
-      if (!isValidWish(employee.getLateWish())) {
-        wishErrors.add(new InvalidWishError(i, "遅番希望"));
+      // 6 つの枠ごとの希望をチェック
+      List<String> wishes = employee.getWishes();
+      for (int j = 0; j < 6; j++) {
+        String wish = (wishes != null && j < wishes.size()) ? wishes.get(j) : null;
+        if (!isValidWish(wish)) {
+          // エラーメッセージには枠の勤務時間を表示（T4 で詳細化する）
+          wishErrors.add(new InvalidWishError(i, "枠" + (j + 1)));
+          break;
+        }
       }
     }
 
@@ -128,9 +131,13 @@ public class ShiftController {
   private List<Employee> convertToEmployees(ShiftForm shiftForm) {
     List<Employee> employees = new ArrayList<>();
     for (EmployeeForm form : shiftForm.getEmployees()) {
-      Wish earlyWish = convertStringToWish(form.getEarlyWish());
-      Wish lateWish = convertStringToWish(form.getLateWish());
-      employees.add(new Employee(form.getName(), earlyWish, lateWish));
+      List<Wish> wishes = new ArrayList<>();
+      List<String> wishStrings = form.getWishes();
+      for (int i = 0; i < 6; i++) {
+        String wish = (wishStrings != null && i < wishStrings.size()) ? wishStrings.get(i) : null;
+        wishes.add(convertStringToWish(wish));
+      }
+      employees.add(new Employee(form.getName(), wishes));
     }
     return employees;
   }

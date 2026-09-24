@@ -4,191 +4,86 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+@DisplayName("AssignmentResult")
 class AssignmentResultTest {
 
   @Nested
-  class 正常系 {
+  @DisplayName("[H-1] 割り当て結果")
+  class AssignmentConstruction {
 
     @Test
-    @DisplayName(
-        "[T-1] Given: 早番2名・遅番2名の割り当て結果が与えられたとき, When: breakTimes()を実行すると, Then:"
-            + " 先頭2件が早番1人目=13:00~14:00、早番2人目=14:00~15:00である")
-    void earlyEmployeesBreakTimesAreAssignedCorrectly() {
-      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee earlyEmployee2 = new Employee("鈴木花子", Wish.AVAILABLE, Wish.DESIRED);
-      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee lateEmployee2 = new Employee("田中美咲", Wish.AVAILABLE, Wish.DESIRED);
+    @DisplayName("Given: 8件の割り当てが与えられたとき, When: AssignmentResultを生成すると, Then: 割り当てがそれぞれ取得できる")
+    void canCreateAssignmentResultWithEightAssignments() {
+      List<ShiftAssignment> assignments = createStandardAssignments();
+      int score = 5;
+      List<Employee> unassigned = new ArrayList<>();
 
-      AssignmentResult result =
-          new AssignmentResult(
-              List.of(earlyEmployee1, earlyEmployee2),
-              List.of(lateEmployee1, lateEmployee2),
-              4,
-              List.of());
+      AssignmentResult result = new AssignmentResult(assignments, score, unassigned);
 
-      List<BreakTime> breakTimes = result.breakTimes();
-
-      assertEquals(4, breakTimes.size());
-      assertEquals(earlyEmployee1, breakTimes.get(0).employee());
-      assertEquals(LocalTime.of(13, 0), breakTimes.get(0).start());
-      assertEquals(LocalTime.of(14, 0), breakTimes.get(0).end());
-
-      assertEquals(earlyEmployee2, breakTimes.get(1).employee());
-      assertEquals(LocalTime.of(14, 0), breakTimes.get(1).start());
-      assertEquals(LocalTime.of(15, 0), breakTimes.get(1).end());
+      assertEquals(8, result.assignments().size());
+      assertEquals(score, result.score());
+      assertEquals(0, result.unassignedEmployees().size());
     }
 
     @Test
     @DisplayName(
-        "[T-1] Given: 早番2名・遅番2名の割り当て結果が与えられたとき, When: breakTimes()を実行すると, Then:"
-            + " 全体が4件で順序が早番1人目=13:00~14:00→早番2人目=14:00~15:00→"
-            + "遅番1人目=15:00~16:00→遅番2人目=16:00~17:00である")
-    void allBreakTimesAreOrderedCorrectly() {
-      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee earlyEmployee2 = new Employee("鈴木花子", Wish.AVAILABLE, Wish.DESIRED);
-      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee lateEmployee2 = new Employee("田中美咲", Wish.AVAILABLE, Wish.DESIRED);
+        "Given: 割り当ての件数が8でないとき, When: AssignmentResultを生成すると, Then:"
+            + " IllegalArgumentExceptionがスローされる")
+    void throwsExceptionWhenAssignmentsCountIsNotEight() {
+      List<ShiftAssignment> assignments = new ArrayList<>();
+      assignments.add(createAssignment(0, ShiftSlot.SLOT_1));
+      assignments.add(createAssignment(1, ShiftSlot.SLOT_1));
 
-      AssignmentResult result =
-          new AssignmentResult(
-              List.of(earlyEmployee1, earlyEmployee2),
-              List.of(lateEmployee1, lateEmployee2),
-              4,
-              List.of());
+      int score = 0;
+      List<Employee> unassigned = new ArrayList<>();
 
-      List<BreakTime> breakTimes = result.breakTimes();
-
-      assertEquals(4, breakTimes.size());
-
-      assertEquals(earlyEmployee1, breakTimes.get(0).employee());
-      assertEquals(LocalTime.of(13, 0), breakTimes.get(0).start());
-      assertEquals(LocalTime.of(14, 0), breakTimes.get(0).end());
-
-      assertEquals(earlyEmployee2, breakTimes.get(1).employee());
-      assertEquals(LocalTime.of(14, 0), breakTimes.get(1).start());
-      assertEquals(LocalTime.of(15, 0), breakTimes.get(1).end());
-
-      assertEquals(lateEmployee1, breakTimes.get(2).employee());
-      assertEquals(LocalTime.of(15, 0), breakTimes.get(2).start());
-      assertEquals(LocalTime.of(16, 0), breakTimes.get(2).end());
-
-      assertEquals(lateEmployee2, breakTimes.get(3).employee());
-      assertEquals(LocalTime.of(16, 0), breakTimes.get(3).start());
-      assertEquals(LocalTime.of(17, 0), breakTimes.get(3).end());
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> new AssignmentResult(assignments, score, unassigned));
     }
 
     @Test
-    @DisplayName(
-        "[T-1] Given: 早番2名・遅番2名の割り当て結果が与えられたとき, When: breakTimes()を実行すると, Then:"
-            + " 各休憩は1時間で、終了時刻が次の開始時刻と一致し、重ならない")
-    void breakTimesAreConsecutiveAndNonOverlapping() {
-      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee earlyEmployee2 = new Employee("鈴木花子", Wish.AVAILABLE, Wish.DESIRED);
-      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee lateEmployee2 = new Employee("田中美咲", Wish.AVAILABLE, Wish.DESIRED);
+    @DisplayName("Given: 割り当てが与えられたとき, When: assignmentsにアクセスすると, Then: 不変なリストが返される")
+    void returnsImmutableAssignments() {
+      List<ShiftAssignment> assignments = createStandardAssignments();
+      int score = 0;
+      List<Employee> unassigned = new ArrayList<>();
 
-      AssignmentResult result =
-          new AssignmentResult(
-              List.of(earlyEmployee1, earlyEmployee2),
-              List.of(lateEmployee1, lateEmployee2),
-              4,
-              List.of());
+      AssignmentResult result = new AssignmentResult(assignments, score, unassigned);
+      List<ShiftAssignment> returnedAssignments = result.assignments();
 
-      List<BreakTime> breakTimes = result.breakTimes();
-
-      for (BreakTime breakTime : breakTimes) {
-        assertEquals(1, breakTime.end().getHour() - breakTime.start().getHour());
-      }
-
-      for (int i = 0; i < breakTimes.size() - 1; i++) {
-        assertEquals(
-            breakTimes.get(i).end(),
-            breakTimes.get(i + 1).start(),
-            "休憩 " + i + " と " + (i + 1) + " が連続していない");
-      }
+      // Try to modify should throw
+      assertThrows(
+          UnsupportedOperationException.class,
+          () -> returnedAssignments.add(createAssignment(8, ShiftSlot.SLOT_6)));
     }
   }
 
-  @Nested
-  class 異常系 {
-
-    @Test
-    @DisplayName(
-        "[H-1] Given: 早番が1件の割り当て結果が与えられたとき, When: コンストラクタを呼ぶと, Then:"
-            + " IllegalArgumentExceptionがスローされる")
-    void throwsIllegalArgumentExceptionWhenEarlyEmployeesHaveOnlyOneEmployee() {
-      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee lateEmployee2 = new Employee("田中美咲", Wish.AVAILABLE, Wish.DESIRED);
-
-      assertThrows(
-          IllegalArgumentException.class,
-          () ->
-              new AssignmentResult(
-                  List.of(earlyEmployee1), List.of(lateEmployee1, lateEmployee2), 2, List.of()));
+  private List<ShiftAssignment> createStandardAssignments() {
+    List<ShiftAssignment> assignments = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      assignments.add(createAssignment(i, ShiftSlot.values()[Math.min(i, 5)]));
     }
+    return assignments;
+  }
 
-    @Test
-    @DisplayName(
-        "[H-1] Given: 早番が3件の割り当て結果が与えられたとき, When: コンストラクタを呼ぶと, Then:"
-            + " IllegalArgumentExceptionがスローされる")
-    void throwsIllegalArgumentExceptionWhenEarlyEmployeesHaveThreeEmployees() {
-      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee earlyEmployee2 = new Employee("鈴木花子", Wish.AVAILABLE, Wish.DESIRED);
-      Employee earlyEmployee3 = new Employee("佐々木太郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee lateEmployee2 = new Employee("田中美咲", Wish.AVAILABLE, Wish.DESIRED);
-
-      assertThrows(
-          IllegalArgumentException.class,
-          () ->
-              new AssignmentResult(
-                  List.of(earlyEmployee1, earlyEmployee2, earlyEmployee3),
-                  List.of(lateEmployee1, lateEmployee2),
-                  3,
-                  List.of()));
-    }
-
-    @Test
-    @DisplayName(
-        "[H-2] Given: 遅番が1件の割り当て結果が与えられたとき, When: コンストラクタを呼ぶと, Then:"
-            + " IllegalArgumentExceptionがスローされる")
-    void throwsIllegalArgumentExceptionWhenLateEmployeesHaveOnlyOneEmployee() {
-      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee earlyEmployee2 = new Employee("鈴木花子", Wish.AVAILABLE, Wish.DESIRED);
-      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
-
-      assertThrows(
-          IllegalArgumentException.class,
-          () ->
-              new AssignmentResult(
-                  List.of(earlyEmployee1, earlyEmployee2), List.of(lateEmployee1), 2, List.of()));
-    }
-
-    @Test
-    @DisplayName(
-        "[H-2] Given: 遅番が3件の割り当て結果が与えられたとき, When: コンストラクタを呼ぶと, Then:"
-            + " IllegalArgumentExceptionがスローされる")
-    void throwsIllegalArgumentExceptionWhenLateEmployeesHaveThreeEmployees() {
-      Employee earlyEmployee1 = new Employee("山田太郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee earlyEmployee2 = new Employee("鈴木花子", Wish.AVAILABLE, Wish.DESIRED);
-      Employee lateEmployee1 = new Employee("佐藤次郎", Wish.DESIRED, Wish.AVAILABLE);
-      Employee lateEmployee2 = new Employee("田中美咲", Wish.AVAILABLE, Wish.DESIRED);
-      Employee lateEmployee3 = new Employee("伊藤健太", Wish.DESIRED, Wish.AVAILABLE);
-
-      assertThrows(
-          IllegalArgumentException.class,
-          () ->
-              new AssignmentResult(
-                  List.of(earlyEmployee1, earlyEmployee2),
-                  List.of(lateEmployee1, lateEmployee2, lateEmployee3),
-                  3,
-                  List.of()));
-    }
+  private ShiftAssignment createAssignment(int id, ShiftSlot slot) {
+    Employee employee =
+        new Employee(
+            "Employee" + id,
+            List.of(
+                Wish.AVAILABLE,
+                Wish.AVAILABLE,
+                Wish.AVAILABLE,
+                Wish.AVAILABLE,
+                Wish.AVAILABLE,
+                Wish.AVAILABLE));
+    return new ShiftAssignment(employee, slot, LocalTime.of(12, 0), LocalTime.of(12, 45));
   }
 }

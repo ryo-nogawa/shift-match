@@ -45,7 +45,7 @@
     - `@DisplayName` の先頭に `[C-6]` を付けた Given-When-Then のテストが存在する
     - `./mvnw test -Dtest=BreakSchedulerTest` が成功する
 
-- [ ] **T3. ドメインと割り当てロジックを新仕様へ置き換える（H-1〜H-3、V-4、F-3、仕様 5 章・6 章）**
+- [x] **T3. ドメインと割り当てロジックを新仕様へ置き換える（H-1〜H-3、V-4、F-3、仕様 5 章・6 章）**
   - 依頼事項：次を 1 つずつ TDD で行い、最後にビルドが通る状態にする。
     1. `Employee` を `Employee(String name, List<Wish> wishes)` に変更する。`wishes` は不変リストで保持し、`wishes.get(i)` が枠 No.(i+1) への希望。件数は 6 でなければ `IllegalArgumentException`
     2. 1 人分の割り当てを表す `ShiftAssignment`（従業員・枠・休憩の開始終了）を追加し、`AssignmentResult` を「枠順に並んだ 8 件の `ShiftAssignment`、スコア、未出勤者」を保持する形に変更する（8 件でなければ `IllegalArgumentException`。旧 `earlyEmployees`・`lateEmployees`・`breakTimes()` は廃止し、休憩は `BreakScheduler` から求める）。不要になった `BreakTime` は、使われなくなった時点で削除する
