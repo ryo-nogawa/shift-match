@@ -89,7 +89,7 @@
         <td th:text="${stat.index < 2 ? '早番' : '遅番'}"></td>
         <td th:text="${breakTime.employee().name()}"></td>
         <td>
-          <span th:text="${#temporals.format(breakTime.start(), 'HH:mm')}"></span>～<span
+          <span th:text="${#temporals.format(breakTime.start(), 'HH:mm')}"></span>〜<span
             th:text="${#temporals.format(breakTime.end(), 'HH:mm')}"
           ></span>
         </td>
