@@ -5,9 +5,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const addRowBtn = document.getElementById("add-row-btn");
   const employeeRows = document.getElementById("employee-rows");
 
-  /**
-   * 削除ボタンの状態を更新します。行数が1の場合は削除ボタンを無効にします。
-   */
   function updateDeleteButtonState() {
     const rows = employeeRows.querySelectorAll("tr");
     const deleteButtons = employeeRows.querySelectorAll(".delete-row-btn");
@@ -17,9 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  /**
-   * 全行のname属性インデックスを0から連番に振り直します。
-   */
+  // インデックスに欠番があると Spring MVC でリストをバインドできないため、削除後に振り直す
   function renumberInputIndices() {
     const rows = employeeRows.querySelectorAll("tr");
 
@@ -35,7 +30,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // 行追加ボタンのイベントリスナー
   addRowBtn.addEventListener("click", function () {
     const currentRowCount = employeeRows.querySelectorAll("tr").length;
     const newRow = document.createElement("tr");
@@ -118,7 +112,6 @@ document.addEventListener("DOMContentLoaded", function () {
     updateDeleteButtonState();
   });
 
-  // 行削除のイベント委譲
   employeeRows.addEventListener("click", function (event) {
     if (event.target.classList.contains("delete-row-btn")) {
       const row = event.target.closest("tr");
@@ -130,6 +123,5 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // 初期状態で削除ボタンの状態を更新
   updateDeleteButtonState();
 });

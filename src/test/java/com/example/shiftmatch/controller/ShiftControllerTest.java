@@ -357,8 +357,8 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
-        "[F-6] Given: POST /shift で再表示するとき, When: 入力行がエラー表示付きで再描画されると, "
-            + "Then: 行数分の「削除」ボタン（class=\"delete-row-btn\"）が含まれる")
+        "[F-6] Given: 2行を送信して POST /shift で再表示するとき, When: 入力行が再描画されると, "
+            + "Then: 送信した行数と同じ2個の「削除」ボタンが含まれ、削除した行は復活しない")
     void shouldDisplayDeleteButtonsInPostResponse() throws Exception {
       org.mockito.Mockito.when(
               shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
@@ -386,7 +386,7 @@ class ShiftControllerTest {
         deleteButtonCount++;
       }
 
-      assertEquals(4, deleteButtonCount, "POST再表示時も削除ボタンが4個含まれていること（エラーがあっても行数は4）");
+      assertEquals(2, deleteButtonCount, "送信した行数（2行）と同数の削除ボタンが含まれること");
     }
 
     @Test
