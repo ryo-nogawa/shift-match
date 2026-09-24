@@ -430,5 +430,33 @@ class ShiftControllerTest {
       String body = result.getResponse().getContentAsString();
       assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"));
     }
+
+    @Test
+    @DisplayName(
+        "[F-6] Given: 従業員パラメータが一切送られないとき, When: POST /shift で再表示すると, "
+            + "Then: 入力行が最低1行残り、無効な削除ボタンが1個含まれる")
+    void shouldKeepOneRowWhenNoEmployeeParametersArePosted() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.empty());
+
+      MvcResult result =
+          mockMvc
+              .perform(
+                  MockMvcRequestBuilders.post("/shift")
+                      .params(new LinkedMultiValueMap<String, String>()))
+              .andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("name=\"employees[0].name\""));
+      Matcher matcher = Pattern.compile("class=\"delete-row-btn\"").matcher(body);
+      int count = 0;
+      while (matcher.find()) {
+        count++;
+      }
+      assertEquals(1, count, "削除ボタンが1個含まれること");
+    }
   }
 }
