@@ -115,7 +115,7 @@
     - `index.html` で使うクラス（`app`・`hero`・`eyebrow`・`lead`・`card`・`card-head`・`count`・`wish-legend`・`input-table`・`actions`・`btn`・`primary`・`ghost`・`alert`・`empty`・`empty-icon`・`score`・`score-num`・`score-label`・`result-table`・`pill`・`early`・`late`・`unassigned`・`chip`・`timeline`・`tl-axis`・`tl-row`・`tl-name`・`tl-track`・`tl-work`・`tl-break`・`tl-legend`・`lg`・`delete-row-btn`）が、すべて CSS にセレクターとして存在する（確認に使った `grep` を実行ログに残す）
     - `./mvnw test` が成功する
 
-- [ ] **T11. 全テストと静的解析が成功することを確認する**
+- [x] **T11. 全テストと静的解析が成功することを確認する**
   - 依頼事項：`./mvnw spotless:apply` を実行してから `./mvnw test` を実行する。失敗があれば原因を修正する（テストの期待値を仕様と異なる値へ書き換えない）。`git status` で、変更が前提に書いた 4 ファイル種別（`index.html`、`shift-form.css`、`shift-form.js`、`ShiftControllerTest.java`）と `.claude/todos/` 以外に及んでいないことを確認する
   - 対象ファイル：（変更なし。確認のみ）
   - 完了条件：
@@ -131,3 +131,4 @@
 - T8 完了：時間軸の目盛りと凡例をテストで検証。3つのテストを追加（RED）：①tl-axis に 7 つの目盛り、②tl-legend に早番・遅番・休憩と lg クラス、③表に早番・遅番が出ない。index.html に `.tl-axis` と `.tl-legend` を追加。固定値 13 で時間計算（GREEN）。
 - T9 完了：shift-form.js を JavaScript テストで検証。①updateRowCount() 関数を追加して #row-count を初期化・行追加・行削除時に更新。②createWishSelect() 関数に select 生成をまとめて重複コード（8 箇所）を 1 箇所に削減。node --check/grep で確認：row-count 更新あり、createElement("option") 1 件、employees[ パターン維持、demo コードなし。
 - T10 完了：shift-form.css に C 案のスタイル全体を実装。proposal-c-timeline.html の CSS をコピー（.demo-bar と [hidden] 除外）。含まれる要素：:root 変数・色分け（DESIRED/AVAILABLE/UNAVAILABLE）・タイムライン関連（.timeline/.tl-*/.lg）・スマホ用 @media・ダークモード @media。grep で demo-bar なし、./mvnw test 成功。
+- T11 完了：全テストと静的解析の最終確認。./mvnw spotless:apply で自動整形→./mvnw test で全テスト実行。結果：Tests run: 68, Failures: 0, Errors: 0, Skipped: 0（全成功）。git diff で Java/pom.xml は main から変更なし。docs/ は 7 章の仕様変更のみ（既にコミット済み）。git status はクリーン（フロントエンド変更のみ）。
