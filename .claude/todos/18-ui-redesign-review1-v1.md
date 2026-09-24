@@ -40,7 +40,7 @@
     - 一時的に `tl-name` の出力を変えると失敗することを確認した（実行ログに記録する）
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T4. `UiDesignTest` の重複コードをヘルパーメソッドへまとめる（リファクタリング）**
+- [x] **T4. `UiDesignTest` の重複コードをヘルパーメソッドへまとめる（リファクタリング）**
   - 依頼事項：`ShiftControllerTest` の `UiDesignTest`（836 行目〜）内で繰り返されている ①`AssignmentResult`（早番: 太郎・花子、遅番: 次郎・美咲、スコア 3、未出勤者: 五郎）の生成、②`shiftAssignmentService.findDuplicateNames(any())` が空リストを返し `assign(any())` が指定の結果を返すスタブ設定、③4 人分（または 1 人分）の POST パラメータの構築、を `UiDesignTest` 内の private ヘルパーメソッド（例：`createAssignmentResult()`、`stubAssignSuccess(AssignmentResult)`、`stubAssignEmpty()`、`createValidParams()`）へ抽出し、各テストから呼ぶ。**各テストの `@DisplayName`・期待値・検証内容は一切変えない**（テストの件数も変えない）。完全修飾名（`com.example.shiftmatch.domain.AssignmentResult` など）の繰り返しは、ヘルパーの中に閉じ込めるか `import` にまとめてよい。抽出前後で `./mvnw test -Dtest=ShiftControllerTest` の件数が同じであることを確認する
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -65,3 +65,4 @@
 ## 実行ログ
 
 - T3 検出力確認：期待値を一時的に `["太郎", "太郎", "次郎", "美咲"]` に変更してテストを実行し、失敗することを確認した（エラーメッセージで実際の出力 `[太郎, 花子, 次郎, 美咲]` が正しく検出された）。その後、期待値を正しい値に戻して成功を確認した。
+- T4 リファクタリング前後の件数：リファクタリング前は `AssignmentResult` 生成が 17 回、後は 6 回（削減 65%）。UiDesignTest のテスト件数は 17 件でリファクタリング前後で変更なし。@DisplayName の文言も変更なし。
