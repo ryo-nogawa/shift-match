@@ -837,8 +837,6 @@ class ShiftControllerTest {
   @Nested
   class UiDesignTest {
 
-    // ヘルパーメソッド
-
     private com.example.shiftmatch.domain.AssignmentResult createAssignmentResult(
         int score, com.example.shiftmatch.domain.Employee... unassignedEmployees) {
       return new com.example.shiftmatch.domain.AssignmentResult(
@@ -982,7 +980,6 @@ class ShiftControllerTest {
       assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"), "本文に既存のメッセージが含まれること");
       assertFalse(body.contains("希望（×）を見直すか、従業員を追加してください。"), "本文に補足文が含まれないこと");
 
-      // class="empty" 要素の範囲を特定
       int emptyStart = body.indexOf("class=\"empty\"");
       int emptyEnd = body.indexOf("</div>", emptyStart);
       String emptySection = body.substring(emptyStart, emptyEnd);
@@ -1154,7 +1151,7 @@ class ShiftControllerTest {
       assertEquals(1, timelineCount, "class=\"timeline\" が 1 つ含まれること");
       assertEquals(4, tlRowCount, "class=\"tl-row\" が 4 つ含まれること");
 
-      // タイムラインの範囲を切り出し、tl-name から氏名を抽出
+      // 結果表にも同じ氏名が出るため、タイムラインの範囲に限定して抽出する
       int timelineStart = body.indexOf("class=\"timeline\"");
       int resultTableStart = body.indexOf("class=\"result-table\"", timelineStart);
       String timelineSection = body.substring(timelineStart, resultTableStart);

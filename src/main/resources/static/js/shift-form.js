@@ -48,7 +48,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return select;
   }
 
-  // 初期化：既存の select の data-value を現在の value に設定
   employeeRows.querySelectorAll("select").forEach((select) => {
     updateDataValue(select);
   });
@@ -125,7 +124,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // select の変更時に data-value を更新
   employeeRows.addEventListener("change", function (event) {
     if (event.target.tagName === "SELECT") {
       updateDataValue(event.target);

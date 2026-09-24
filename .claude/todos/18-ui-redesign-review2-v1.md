@@ -15,7 +15,7 @@
 
 ## Todo
 
-- [ ] **T1. 「何をしているか」を言い換えるだけのコメントを削除する（MUST 指摘）**
+- [x] **T1. 「何をしているか」を言い換えるだけのコメントを削除する（MUST 指摘）**
   - 依頼事項：`.agents/rules/comment.md` は、コメントに「何をしているか」ではなく「なぜこの実装にしたか」を書くことを求めている。今回の変更で追加された、直後のコードを言い換えるだけのコメントを削除する。対象は次のとおり（行番号は目安。`git diff main -- src/main/resources/static/js/shift-form.js src/test` の追加行で `//` や `/*` を含む行を探して確認する）
     - `shift-form.js`：`// 初期化：既存の select の data-value を現在の value に設定`、`// select の変更時に data-value を更新`、`// ヘルパーメソッド`（`createWishSelect` の直前など）
     - `ShiftControllerTest.java`：`// class="empty" 要素の範囲を特定`、`// タイムラインの範囲を切り出し、tl-name から氏名を抽出`、および同様に「何を」だけを説明しているコメント（`UiDesignTest` 内のヘルパーメソッド直前のコメントを含む）
@@ -52,4 +52,4 @@
 
 ## 実行ログ
 
-<!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
+- T1 完了：削除したコメント「現在の value に設定」「data-value を更新」「ヘルパーメソッド」「要素の範囲を特定」を grep で確認（0件）。残したコメント「結果表にも同じ氏名が出るため、タイムラインの範囲に限定して抽出する」は「なぜ」を説明。node --check 成功、./mvnw test -Dtest=ShiftControllerTest 成功（41件）
