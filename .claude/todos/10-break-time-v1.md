@@ -34,7 +34,7 @@
 
 ## Todo
 
-- [ ] **T1. [T-1] 早番 2 名の休憩時刻（13:00・14:00 開始）を `AssignmentResult#breakTimes()` で導出する**
+- [x] **T1. [T-1] 早番 2 名の休憩時刻（13:00・14:00 開始）を `AssignmentResult#breakTimes()` で導出する**
   - 依頼事項：
     - `src/test/java/com/example/shiftmatch/domain/AssignmentResultTest.java` を新規作成し、先にテストを書く（RED 確認）。早番 2 名・遅番 2 名の `AssignmentResult` を作り、`breakTimes()` の先頭 2 件が 早番 1 人目＝13:00〜14:00、早番 2 人目＝14:00〜15:00 であることを検証する
     - `BreakTime` レコードを新設し、`AssignmentResult#breakTimes()` を最小実装で追加する（この時点では早番分のみ実装してよい）
