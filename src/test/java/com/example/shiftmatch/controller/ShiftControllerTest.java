@@ -1106,5 +1106,39 @@ class ShiftControllerTest {
       assertFalse(jsContent.contains("早番"), "shift-form.js should not contain '早番'");
       assertFalse(jsContent.contains("遅番"), "shift-form.js should not contain '遅番'");
     }
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: dataset.maxRowsまたはgetAttribute(data-max-rows)を読み取っている")
+    void shiftFormJsReadsDataMaxRows() throws Exception {
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
+
+      assertTrue(
+          jsContent.contains("data-max-rows") || jsContent.contains("dataset.maxRows"),
+          "shift-form.js should read data-max-rows attribute");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: addRowBtn.disabledに代入する箇所と、クリック処理に上限ガードがある")
+    void shiftFormJsHasMaxRowsGuardAndButtonDisable() throws Exception {
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
+
+      assertTrue(
+          jsContent.contains("addRowBtn.disabled"),
+          "shift-form.js should have addRowBtn.disabled assignment");
+      assertTrue(
+          jsContent.contains("currentRowCount >= maxRows") || jsContent.contains(">= maxRows"),
+          "shift-form.js should have max rows guard in click handler");
+      assertTrue(
+          jsContent.contains("updateAddButtonState"),
+          "shift-form.js should call updateAddButtonState function");
+    }
   }
 }

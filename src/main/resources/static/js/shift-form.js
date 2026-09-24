@@ -18,6 +18,12 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function updateAddButtonState() {
+    const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows") || "12", 10);
+    const currentRowCount = employeeRows.querySelectorAll("tr").length;
+    addRowBtn.disabled = currentRowCount >= maxRows;
+  }
+
   function updateRowCount() {
     const rowCount = employeeRows.querySelectorAll("tr").length;
     const rowCountElement = document.getElementById("row-count");
@@ -69,7 +75,13 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   addRowBtn.addEventListener("click", function () {
+    // ガード: 上限に達していれば行を追加しない
+    const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows") || "12", 10);
     const currentRowCount = employeeRows.querySelectorAll("tr").length;
+    if (currentRowCount >= maxRows) {
+      return;
+    }
+
     const newRow = document.createElement("tr");
 
     const nameCell = document.createElement("td");
@@ -114,6 +126,7 @@ document.addEventListener("DOMContentLoaded", function () {
     employeeRows.appendChild(newRow);
 
     updateDeleteButtonState();
+    updateAddButtonState();
     updateRowCount();
   });
 
@@ -124,6 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
         row.remove();
         renumberInputIndices();
         updateDeleteButtonState();
+        updateAddButtonState();
         updateRowCount();
       }
     }
@@ -136,5 +150,6 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   updateDeleteButtonState();
+  updateAddButtonState();
   updateRowCount();
 });
