@@ -99,7 +99,7 @@
     - `[V-4]` 7 名以下で `Optional.empty()` になるテストが存在する
     - `./mvnw test` が成功する
 
-- [ ] **T4. 入力表の見出しと `name` 属性をテストで固定する（F-1、仕様 4 章・8 章）**
+- [x] **T4. 入力表の見出しと `name` 属性をテストで固定する（F-1、仕様 4 章・8 章）**
   - 依頼事項：`ShiftControllerTest`（`@WebMvcTest(ShiftController.class)`、`ShiftAssignmentService` は `@MockitoBean`）に、`GET /` の HTML を検証するテストを追加する。実装が足りなければ `index.html`・`ShiftController` を直す。見出しは「氏名」「枠1」〜「枠6」の各枠に勤務時間（`07:30〜14:30` の形式）を併記する。各 `select` に `data-label`（勤務時間）を付ける
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：
@@ -195,3 +195,12 @@
 - テスト件数：9 件（ShiftAssignmentServiceImplTest）
 - 実測秒数（12 名・全 ◯）：0.291 秒
 - 状態：実装が既に完成。テストを追加したすべてが GREEN になった
+
+### T4: 入力表の見出しと name 属性をテストで固定
+- 完了条件ごとの根拠：
+  - `[F-1]` 初期 4 行 24 個の select 要素：`returns24SelectElementsForFourRows`
+  - `[F-1]` 見出しの 6 つの勤務時間の順序：`displaysHeadersWithWorkTimesInOrder`
+  - `[F-1]` 各 select の data-label：`selectsHaveCorrectDataLabels`（select 要素の属性順序に依存しない検証）
+  - `[F-1]` 旧 earlyWish・lateWish の非存在：`doesNotContainOldEarlyOrLateWish`
+- テスト件数：4 件（ShiftControllerTest）+ 全体 53 件
+- 状態：テンプレート側で各 select に data-label="勤務時間" を追加し、すべてのテストが成功
