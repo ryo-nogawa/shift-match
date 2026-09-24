@@ -25,7 +25,7 @@
     - `grep -rn "見直すか" src/` が 0 件である
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T2. `.unassigned` の折り返しを有効にする**
+- [x] **T2. `.unassigned` の折り返しを有効にする**
   - 依頼事項：`src/main/resources/static/css/shift-form.css` の `.unassigned`（25 行目付近、`display: flex` のルール）に `flex-wrap: wrap` を追加する。それ以外の値は変えない。未出勤者が多数いるとき（最大 16 名）でもチップがカード外にあふれないようにするため
   - 対象ファイル：`src/main/resources/static/css/shift-form.css`
   - 完了条件：

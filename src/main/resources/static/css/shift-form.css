@@ -22,7 +22,7 @@ table { border-collapse: collapse; width: 100% }
 .score-num { font-size: 44px; font-weight: 800; line-height: 1 }
 .score-num small { font-size: 18px; font-weight: 600; opacity: .5 }
 .score-label { font-size: 13px; opacity: .7 }
-.unassigned { margin-top: 16px; font-size: 14px; display: flex; gap: 10px; align-items: center }
+.unassigned { margin-top: 16px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center }
 .chip { padding: 2px 12px; border-radius: 999px; font-size: 13px }
 .alert h2 { font-size: 15px; margin-bottom: 4px }
 .alert ul { margin: 0; padding-left: 1.2em; font-size: 14px }
