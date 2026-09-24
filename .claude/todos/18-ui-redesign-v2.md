@@ -106,7 +106,7 @@
     - `grep -n "demo" src/main/resources/static/js/shift-form.js` が 0 件である
     - `./mvnw test` が成功する
 
-- [ ] **T10. `shift-form.css` に C 案のスタイルを実装する**
+- [x] **T10. `shift-form.css` に C 案のスタイルを実装する**
   - 依頼事項：`.claude/design/proposal-c-timeline.html` の `<style>` から、`/* ---- デモ用の状態切替バー ---- */` 以降（`.demo-bar`・`[hidden]`）を除いた全 CSS を、`src/main/resources/static/css/shift-form.css` へ移す（先頭のコメント 1 行は残してよい）。`:root` の変数、ダークモード（`@media (prefers-color-scheme: dark)`）、スマホ用（`@media (max-width:640px)`）、タイムライン関連（`.timeline`・`.tl-*`・`.lg`）、希望の色分け（`select[data-value=DESIRED]` など）をすべて含める。`index.html` の `class="..."` に使われている各クラスが CSS に定義されていることを確認し、足りなければ見本の定義に合わせて補う。**この CSS は見本の見た目を再現するためのもので、値を変えない**
   - 対象ファイル：`src/main/resources/static/css/shift-form.css`
   - 完了条件：
@@ -130,3 +130,4 @@
 - T7 完了：時間軸バーの本体（勤務バー・休憩バー）をテストで検証。5つのテストを追加（RED）：①timeline が 1 つ、tl-row が 4 つ、②tl-name に 4 名の従業員、③tl-work early/late の style、④tl-break の style（4 つの休憩時刻）、⑤不成立時は timeline なし。index.html に `.timeline` 構造を追加し、Thymeleaf で style 属性を生成（GREEN）。
 - T8 完了：時間軸の目盛りと凡例をテストで検証。3つのテストを追加（RED）：①tl-axis に 7 つの目盛り、②tl-legend に早番・遅番・休憩と lg クラス、③表に早番・遅番が出ない。index.html に `.tl-axis` と `.tl-legend` を追加。固定値 13 で時間計算（GREEN）。
 - T9 完了：shift-form.js を JavaScript テストで検証。①updateRowCount() 関数を追加して #row-count を初期化・行追加・行削除時に更新。②createWishSelect() 関数に select 生成をまとめて重複コード（8 箇所）を 1 箇所に削減。node --check/grep で確認：row-count 更新あり、createElement("option") 1 件、employees[ パターン維持、demo コードなし。
+- T10 完了：shift-form.css に C 案のスタイル全体を実装。proposal-c-timeline.html の CSS をコピー（.demo-bar と [hidden] 除外）。含まれる要素：:root 変数・色分け（DESIRED/AVAILABLE/UNAVAILABLE）・タイムライン関連（.timeline/.tl-*/.lg）・スマホ用 @media・ダークモード @media。grep で demo-bar なし、./mvnw test 成功。
