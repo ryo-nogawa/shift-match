@@ -832,4 +832,70 @@ class ShiftControllerTest {
       assertEquals(1, count, "削除ボタンが1個含まれること");
     }
   }
+
+  @Nested
+  class UiDesignTest {
+    @Test
+    @DisplayName(
+        "[F-1] Given: 従業員数が上限を超えるとき, When: POST /shift を実行すると, "
+            + "Then: .alert と role=\"alert\" が含まれるエラーが表示されること")
+    void shouldDisplayLimitExceededErrorWithAlertMarkup() throws Exception {
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      for (int i = 0; i < 21; i++) {
+        params.add("employees[" + i + "].name", "従業員" + i);
+        params.add("employees[" + i + "].earlyWish", "DESIRED");
+        params.add("employees[" + i + "].lateWish", "AVAILABLE");
+      }
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("class=\"alert\""), "本文に class=\"alert\" が含まれること");
+      assertTrue(body.contains("role=\"alert\""), "本文に role=\"alert\" が含まれること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 氏名が重複しているとき, When: POST /shift を実行すると, "
+            + "Then: .alert と role=\"alert\" が含まれるエラーが表示されること")
+    void shouldDisplayDuplicateErrorWithAlertMarkup() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of(new DuplicateNameError("太郎", java.util.List.of(0, 1))));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "太郎");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("class=\"alert\""), "本文に class=\"alert\" が含まれること");
+      assertTrue(body.contains("role=\"alert\""), "本文に role=\"alert\" が含まれること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 希望が不正値のとき, When: POST /shift を実行すると, "
+            + "Then: .alert と role=\"alert\" が含まれるエラーが表示されること")
+    void shouldDisplayWishErrorWithAlertMarkup() throws Exception {
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "INVALID_VALUE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("class=\"alert\""), "本文に class=\"alert\" が含まれること");
+      assertTrue(body.contains("role=\"alert\""), "本文に role=\"alert\" が含まれること");
+    }
+  }
 }

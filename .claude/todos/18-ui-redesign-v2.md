@@ -50,7 +50,7 @@
   - 完了条件：
     - v1 で完了済み（b78fb5d）
 
-- [ ] **T4. 入力エラー 3 種が `.alert`（`role="alert"`）で表示されることをテストで固定する**
+- [x] **T4. 入力エラー 3 種が `.alert`（`role="alert"`）で表示されることをテストで固定する**
   - 依頼事項：`ShiftControllerTest` の `UiDesignTest`（T2 で作成済みの `@Nested`。無ければ新規作成）に、`[V-1][F-1]` などの既存テストと同様の入力で、次の 3 テストを追加する。①上限超過（`limitExceededError`）、②氏名の重複（`duplicateErrors`）、③希望の不正値（`wishErrors`）のそれぞれで、本文に `class="alert"` と `role="alert"` が含まれる。再現のさせ方は、既存の同種テスト（重複は `shiftAssignmentService.findDuplicateNames` をモック、希望の不正値は `employees[0].earlyWish` に不正値を送る等）を参考にする。**マークアップは実装済みなので RED にならない**。代わりに、各テストが検出力を持つことを、`index.html` の該当 `class="alert"` を一時的に消して失敗することで確認し、確認後に元へ戻す（コミットには含めない）
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -124,4 +124,4 @@
 
 ## 実行ログ
 
-<!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
+- T4 完了：3つのテスト（上限超過、重複エラー、希望の不正値）を追加し、class="alert" と role="alert" を検証。一時的に class="alert" を削除して3つのテストが失敗することを確認。
