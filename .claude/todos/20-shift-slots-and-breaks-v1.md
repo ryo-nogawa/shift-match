@@ -23,7 +23,7 @@
 
 ## Todo
 
-- [ ] **T1. 枠を表す `ShiftSlot` を追加する（C-1〜C-3、C-6、仕様 2 章）**
+- [x] **T1. 枠を表す `ShiftSlot` を追加する（C-1〜C-3、C-6、仕様 2 章）**
   - 依頼事項：`src/main/java/com/example/shiftmatch/domain/ShiftSlot.java` を作成する。6 種類の枠（No.1〜6）を列挙型で定義し、各枠が「開始時刻・終了時刻（`LocalTime`）・人数」を持つ。さらに「拘束時間」と、労働基準法第 34 条に基づく「休憩の長さ（分）」（6 時間以下は 0、6 時間超〜8 時間以下は 45、8 時間超は 60）を返すメソッドを持つ。宣言順が枠 1 → 6 の順になること。定数名は `.agents/rules/naming.md` に従う
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/ShiftSlot.java`、`src/test/java/com/example/shiftmatch/domain/ShiftSlotTest.java`
   - 完了条件：
