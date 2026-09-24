@@ -434,7 +434,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-6] Given: 従業員パラメータが一切送られないとき, When: POST /shift で再表示すると, "
-            + "Then: 入力行が最低1行残り、無効な削除ボタンが1個含まれる")
+            + "Then: 入力行が最低1行残り、削除ボタンが1個含まれる")
     void shouldKeepOneRowWhenNoEmployeeParametersArePosted() throws Exception {
       org.mockito.Mockito.when(
               shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
