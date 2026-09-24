@@ -16,7 +16,7 @@
 
 ## Todo
 
-- [ ] **T1. 不成立表示から補足文を削除する（TDD）**
+- [x] **T1. 不成立表示から補足文を削除する（TDD）**
   - 依頼事項：`ShiftControllerTest` の `UiDesignTest` にある `shouldDisplaySupplementalTextInEmptyMessage`（`[F-5]`、約 900〜926 行目）を、補足文が**出力されない**ことを検証するテストへ変更する。メソッド名を `shouldDisplayOnlyUnassignableMessageWithoutSupplementalText`、`@DisplayName` を `[F-5] Given: 条件を満たす組み合わせがないとき, When: POST /shift を実行すると, Then: 不成立の事実のみが表示され、補足文や対応案は表示されないこと` に変更し、①`class="card result"`・`class="empty"`・`class="empty-icon"`・`条件を満たす組み合わせが見つかりませんでした。` が含まれる（既存の検証は維持）、②`希望（×）を見直すか、従業員を追加してください。` が含まれない、③`class="empty"` の要素（`class="empty"` から対応する `</div>` まで）に `<small>` が含まれない、を検証する。先にテストだけ変更し、②③で失敗（RED）することを確認してから、`src/main/resources/templates/index.html` の 100 行目付近の `<small>希望（×）を見直すか、従業員を追加してください。</small>` の行を削除して GREEN にする
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：

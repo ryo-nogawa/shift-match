@@ -1,6 +1,7 @@
 package com.example.shiftmatch.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
@@ -901,8 +902,8 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-5] Given: 条件を満たす組み合わせがないとき, When: POST /shift を実行すると, "
-            + "Then: class=\"empty\" の中に補足文「希望（×）を見直すか、従業員を追加してください。」が <small> で含まれること")
-    void shouldDisplaySupplementalTextInEmptyMessage() throws Exception {
+            + "Then: 不成立の事実のみが表示され、補足文や対応案は表示されないこと")
+    void shouldDisplayOnlyUnassignableMessageWithoutSupplementalText() throws Exception {
       org.mockito.Mockito.when(
               shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
           .thenReturn(java.util.List.of());
@@ -922,7 +923,13 @@ class ShiftControllerTest {
       assertTrue(body.contains("class=\"empty\""), "本文に class=\"empty\" が含まれること");
       assertTrue(body.contains("class=\"empty-icon\""), "本文に class=\"empty-icon\" が含まれること");
       assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"), "本文に既存のメッセージが含まれること");
-      assertTrue(body.contains("希望（×）を見直すか、従業員を追加してください。"), "本文に補足文が含まれること");
+      assertFalse(body.contains("希望（×）を見直すか、従業員を追加してください。"), "本文に補足文が含まれないこと");
+
+      // class="empty" 要素の範囲を特定
+      int emptyStart = body.indexOf("class=\"empty\"");
+      int emptyEnd = body.indexOf("</div>", emptyStart);
+      String emptySection = body.substring(emptyStart, emptyEnd);
+      assertFalse(emptySection.contains("<small>"), "class=\"empty\" の要素に <small> が含まれないこと");
     }
 
     @Test
