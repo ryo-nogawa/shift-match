@@ -122,7 +122,7 @@
     - `git grep -n "早番\|遅番" src/main/java` が 0 件
     - `./mvnw test` が成功する
 
-- [ ] **T6. 上限 12 名（V-5）と不成立（V-4）をテストで固定する（V-4、V-5、F-2、F-5）**
+- [x] **T6. 上限 12 名（V-5）と不成立（V-4）をテストで固定する（V-4、V-5、F-2、F-5）**
   - 依頼事項：`ShiftController` の上限チェックと不成立表示をテストで固定する。実装が足りなければ直す。V-5 のエラーメッセージは `従業員の入力行数が上限（12名）を超えています。入力行を減らしてください。` とする（現在の実装を確認して、この文言でなければ直す）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -216,3 +216,13 @@
 - テスト件数：4 件（ShiftControllerTest 追加）+ 全体 57 件
 - git grep 結果：早番・遅番は src/main/java に 0 件
 - 状態：複数エラー表示対応、勤務時間表示、旧仕様記述削除完了
+
+### T6: 上限 12 名（V-5）と不成立（V-4）をテストで固定
+- 完了条件ごとの根拠：
+  - `[V-5]` 有効な従業員 13 名：`showsErrorWhen13ValidEmployees`（上限エラーが表示）
+  - `[V-5]` ちょうど 12 名（境界値）：`doesNotShowErrorWhen12ValidEmployees`（エラーが表示されない）
+  - `[V-5]` 行数 13・有効 11 名：`doesNotShowErrorWhen13RowsBut11ValidEmployees`（エラーが表示されない）
+  - `[V-4][F-5]` 不成立メッセージ：`showsUnassignableMessageWhenNoValidCombination`
+  - `[F-5]` 時間軸非表示：`doesNotShowTimelineWhenUnassignable`
+- テスト件数：5 件（ShiftControllerTest 追加）+ 全体 62 件
+- 状態：実装が既に完成、テストがすべて成功

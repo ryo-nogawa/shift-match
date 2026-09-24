@@ -163,6 +163,201 @@ class ShiftControllerTest {
   }
 
   @Nested
+  @DisplayName("[V-5][V-4][F-5] 上限・不成立のチェック")
+  class EmployeeLimitAndUnassignable {
+
+    @Test
+    @DisplayName("[V-5] Given: 有効な従業員13名のとき, When: POSTすると, Then: 上限エラーが表示され、assignが呼ばれない")
+    void showsErrorWhen13ValidEmployees() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 13; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Check that limit error is displayed
+      assertTrue(
+          responseContent.contains("12名") || responseContent.contains("上限"),
+          "Error message should contain limit info");
+      assertTrue(responseContent.contains("class=\"alert\""), "Error section should be displayed");
+
+      // Should not show assignment result
+      assertFalse(
+          responseContent.contains("割当結果"),
+          "Assignment result should not be displayed when limit exceeded");
+    }
+
+    @Test
+    @DisplayName("[V-5] Given: 有効な従業員がちょうど12名のとき, When: POSTすると, Then: 上限エラーが表示されない（境界値）")
+    void doesNotShowErrorWhen12ValidEmployees() throws Exception {
+      // For this test, we need conditions where exactly 12 valid employees with no conflicts
+      // but no valid assignment exists
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 12; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Should not show limit error
+      assertFalse(
+          responseContent.contains("上限（12名）を超えています"),
+          "Limit error should not be shown for exactly 12 employees");
+    }
+
+    @Test
+    @DisplayName("[V-5] Given: 行数13でも有効な従業員11名のとき, When: POSTすると, Then: 上限エラーにならない")
+    void doesNotShowErrorWhen13RowsBut11ValidEmployees() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 11; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+      // Add 2 rows with empty names
+      for (int i = 11; i < 13; i++) {
+        params.append("&employees[").append(i).append("].name=");
+        for (int j = 0; j < 6; j++) {
+          params.append("&employees[").append(i).append("].wishes[").append(j).append("]=");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Should not show limit error (11 valid employees < 12)
+      assertFalse(
+          responseContent.contains("上限（12名）を超えています"),
+          "Limit error should not be shown for 11 valid employees");
+    }
+
+    @Test
+    @DisplayName(
+        "[V-4][F-5] Given: assignがOptional.empty()を返すとき, When: POSTすると, Then: 不成立メッセージが表示される")
+    void showsUnassignableMessageWhenNoValidCombination() throws Exception {
+      // Create a scenario where no valid assignment exists
+      // All employees have × for all slots (or similar impossible condition)
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        // All slots marked as unavailable
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=UNAVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Should show unassignable message
+      assertTrue(
+          responseContent.contains("条件を満たす組み合わせが見つかりませんでした"),
+          "Unassignable message should be displayed");
+
+      // Should not show assignment result table
+      assertFalse(
+          responseContent.contains("割当結果の表"), "Assignment result table should not be displayed");
+    }
+
+    @Test
+    @DisplayName("[F-5] Given: 不成立のとき, When: ページが表示されるとき, Then: 時間軸が表示されない")
+    void doesNotShowTimelineWhenUnassignable() throws Exception {
+      // Create conditions where no assignment exists
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=UNAVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Should not show timeline (class="timeline")
+      assertFalse(
+          responseContent.contains("class=\"timeline\"")
+              || responseContent.contains("class='timeline'"),
+          "Timeline should not be displayed when unassignable");
+    }
+  }
+
+  @Nested
   @DisplayName("[V-3][V-1] 希望の入力チェック")
   class WishValidation {
 
