@@ -5,6 +5,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const addRowBtn = document.getElementById("add-row-btn");
   const employeeRows = document.getElementById("employee-rows");
 
+  function updateDataValue(select) {
+    select.setAttribute("data-value", select.value);
+  }
+
   function updateDeleteButtonState() {
     const rows = employeeRows.querySelectorAll("tr");
     const deleteButtons = employeeRows.querySelectorAll(".delete-row-btn");
@@ -13,6 +17,11 @@ document.addEventListener("DOMContentLoaded", function () {
       btn.disabled = rows.length === 1;
     });
   }
+
+  // 初期化：既存の select の data-value を現在の value に設定
+  employeeRows.querySelectorAll("select").forEach((select) => {
+    updateDataValue(select);
+  });
 
   // インデックスに欠番があると Spring MVC でリストをバインドできないため、削除後に振り直す
   function renumberInputIndices() {
@@ -35,6 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const newRow = document.createElement("tr");
 
     const nameCell = document.createElement("td");
+    nameCell.setAttribute("data-label", "氏名");
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.name = "employees[" + currentRowCount + "].name";
@@ -42,8 +52,10 @@ document.addEventListener("DOMContentLoaded", function () {
     nameCell.appendChild(nameInput);
 
     const earlyCell = document.createElement("td");
+    earlyCell.setAttribute("data-label", "早番希望");
     const earlySelect = document.createElement("select");
     earlySelect.name = "employees[" + currentRowCount + "].earlyWish";
+    earlySelect.setAttribute("data-value", "");
 
     const emptyOption1 = document.createElement("option");
     emptyOption1.value = "";
@@ -69,8 +81,10 @@ document.addEventListener("DOMContentLoaded", function () {
     earlyCell.appendChild(earlySelect);
 
     const lateCell = document.createElement("td");
+    lateCell.setAttribute("data-label", "遅番希望");
     const lateSelect = document.createElement("select");
     lateSelect.name = "employees[" + currentRowCount + "].lateWish";
+    lateSelect.setAttribute("data-value", "");
 
     const emptyOption2 = document.createElement("option");
     emptyOption2.value = "";
@@ -120,6 +134,13 @@ document.addEventListener("DOMContentLoaded", function () {
         renumberInputIndices();
         updateDeleteButtonState();
       }
+    }
+  });
+
+  // select の変更時に data-value を更新
+  employeeRows.addEventListener("change", function (event) {
+    if (event.target.tagName === "SELECT") {
+      updateDataValue(event.target);
     }
   });
 

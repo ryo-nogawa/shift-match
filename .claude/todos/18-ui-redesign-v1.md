@@ -37,7 +37,7 @@
     - `#add-row-btn` と `<form ... th:action="@{/shift}">` が維持されている（既存の DOM 契約テストが成功する）
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T3. 入力行に `data-label`（スマホ表示用）と、選択値を示す `data-value` を付ける（TDD）**
+- [x] **T3. 入力行に `data-label`（スマホ表示用）と、選択値を示す `data-value` を付ける（TDD）**
   - 依頼事項：POST `/shift` で `employees[0].earlyWish=DESIRED`・`employees[0].lateWish=UNAVAILABLE` を送って入力エラー（例：氏名重複）で再表示させ、本文の該当行の早番 `<select>` に `data-value="DESIRED"`、遅番 `<select>` に `data-value="UNAVAILABLE"` が含まれるテストを追加する（再表示の作り方は既存の `[V-3]` などのテストを参考にする）。また GET `/` の各行の `<td>` に `data-label="氏名"`・`data-label="早番希望"`・`data-label="遅番希望"` が含まれ、`<select>` に `data-value=""` が付くことを検証する。RED を確認してから `index.html` の入力行を変更する。`data-value` は `th:attr="data-value=*{employees[__${stat.index}__].earlyWish}"` のように出力する（値が null のときは空文字になるよう確認する）。既存の `th:field` はそのまま維持する。入力表の見出しは見本どおり `<small>` で時間帯（`8:00〜17:00`・`12:00〜21:00`）を付ける
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：

@@ -114,6 +114,42 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[F-1] Given: 初期状態のとき, When: GET / を実行すると, "
+            + "Then: 入力行の各 <td> に data-label と <select> に data-value が含まれること")
+    void shouldDisplayDataLabelsAndDataValues() throws Exception {
+      MvcResult result =
+          mockMvc
+              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
+              .andReturn();
+
+      assertEquals(200, result.getResponse().getStatus());
+      String body = result.getResponse().getContentAsString();
+
+      assertTrue(body.contains("data-label=\"氏名\""), "本文に data-label=\"氏名\" が含まれること");
+      assertTrue(body.contains("data-label=\"早番希望\""), "本文に data-label=\"早番希望\" が含まれること");
+      assertTrue(body.contains("data-label=\"遅番希望\""), "本文に data-label=\"遅番希望\" が含まれること");
+      assertTrue(body.contains("data-value"), "本文に <select> の data-value が含まれること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 初期状態のとき, When: GET / を実行すると, "
+            + "Then: 入力表の見出しに 8:00〜17:00 と 12:00〜21:00 の時間帯が表示されること")
+    void shouldDisplayTimeRangeInTableHeaders() throws Exception {
+      MvcResult result =
+          mockMvc
+              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
+              .andReturn();
+
+      assertEquals(200, result.getResponse().getStatus());
+      String body = result.getResponse().getContentAsString();
+
+      assertTrue(body.contains("8:00〜17:00"), "本文に 8:00〜17:00 が含まれること");
+      assertTrue(body.contains("12:00〜21:00"), "本文に 12:00〜21:00 が含まれること");
+    }
+
+    @Test
+    @DisplayName(
         "[F-6] Given: GET / で初期表示するとき, When: 画面を取得すると, "
             + "Then: 入力行（4行）と同数の「削除」ボタン（class=\"delete-row-btn\"）が含まれる")
     void shouldDisplayDeleteButtonsInInitialForm() throws Exception {
@@ -138,6 +174,38 @@ class ShiftControllerTest {
 
   @Nested
   class PostShiftTest {
+    @Test
+    @DisplayName(
+        "[F-1] Given: 入力に不正値があるとき, When: POST /shift で再表示されると, "
+            + "Then: 再表示時の <select> に入力済みの data-value が含まれること")
+    void shouldPreserveDataValueWhenReDisplayingAfterError() throws Exception {
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "UNAVAILABLE");
+      params.add("employees[1].name", "太郎");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "AVAILABLE");
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of(new DuplicateNameError("太郎", java.util.List.of(0, 1))));
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+
+      assertTrue(
+          body.contains("value=\"DESIRED\" selected")
+              || body.contains("selected value=\"DESIRED\""),
+          "再表示時に早番の選択値 DESIRED が selected 属性で反映されていること");
+      assertTrue(
+          body.contains("value=\"UNAVAILABLE\" selected")
+              || body.contains("selected value=\"UNAVAILABLE\""),
+          "再表示時に遅番の選択値 UNAVAILABLE が selected 属性で反映されていること");
+    }
+
     @Test
     @DisplayName(
         "[V-3] Given: 氏名が入力されていて早番希望が未選択のとき, When: POST /shift を実行すると, "

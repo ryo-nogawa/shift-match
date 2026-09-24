@@ -47,30 +47,30 @@
         <thead>
           <tr>
             <th>氏名</th>
-            <th>早番希望</th>
-            <th>遅番希望</th>
+            <th>早番希望<small>8:00〜17:00</small></th>
+            <th>遅番希望<small>12:00〜21:00</small></th>
             <th></th>
           </tr>
         </thead>
         <tbody id="employee-rows">
           <tr th:each="employee, stat : ${shiftForm.employees}">
-            <td>
+            <td data-label="氏名">
               <input
                 type="text"
                 th:field="*{employees[__${stat.index}__].name}"
                 placeholder="氏名を入力"
               />
             </td>
-            <td>
-              <select th:field="*{employees[__${stat.index}__].earlyWish}">
+            <td data-label="早番希望">
+              <select th:field="*{employees[__${stat.index}__].earlyWish}" data-value="">
                 <option value="">-- 未選択 --</option>
                 <option value="DESIRED">◎ 希望</option>
                 <option value="AVAILABLE">○ 可能</option>
                 <option value="UNAVAILABLE">× 不可</option>
               </select>
             </td>
-            <td>
-              <select th:field="*{employees[__${stat.index}__].lateWish}">
+            <td data-label="遅番希望">
+              <select th:field="*{employees[__${stat.index}__].lateWish}" data-value="">
                 <option value="">-- 未選択 --</option>
                 <option value="DESIRED">◎ 希望</option>
                 <option value="AVAILABLE">○ 可能</option>
