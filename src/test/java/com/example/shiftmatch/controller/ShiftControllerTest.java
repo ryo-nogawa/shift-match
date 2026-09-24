@@ -3,36 +3,64 @@ package com.example.shiftmatch.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.shiftmatch.service.ShiftAssignmentService;
+import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
 
 /**
  * ShiftControllerのテスト。
  */
-@SpringBootTest
+@WebMvcTest(ShiftController.class)
 @DisplayName("ShiftController")
 class ShiftControllerTest {
 
-  @Autowired private WebApplicationContext webApplicationContext;
+  @Autowired private MockMvc mockMvc;
 
-  private MockMvc mockMvc;
+  @MockitoBean private ShiftAssignmentService shiftAssignmentService;
 
-  @Autowired
-  void setup() {
-    mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+  @BeforeEach
+  void resetMock() {
+    // Reset the mock before each test so previous verifications don't interfere
+    Mockito.reset(shiftAssignmentService);
+
+    // Delegate all calls to a real service instance
+    ShiftAssignmentServiceImpl realService = new ShiftAssignmentServiceImpl();
+    Mockito.doAnswer(invocation -> realService.assign((java.util.List) invocation.getArgument(0)))
+        .when(shiftAssignmentService)
+        .assign(Mockito.any());
+    Mockito.doAnswer(
+            invocation ->
+                realService.findDuplicateNames((java.util.List) invocation.getArgument(0)))
+        .when(shiftAssignmentService)
+        .findDuplicateNames(Mockito.any());
+  }
+
+  @Configuration
+  static class ServiceConfiguration {
+    @Bean
+    ShiftAssignmentService shiftAssignmentService() {
+      return new ShiftAssignmentServiceImpl();
+    }
   }
 
   @Nested
@@ -203,6 +231,9 @@ class ShiftControllerTest {
       assertFalse(
           responseContent.contains("割当結果"),
           "Assignment result should not be displayed when limit exceeded");
+
+      // Verify that assign was not called
+      verify(shiftAssignmentService, never()).assign(any());
     }
 
     @Test
@@ -365,8 +396,6 @@ class ShiftControllerTest {
     @DisplayName(
         "[V-3] Given: wishes[2]だけが未選択のとき, When: POSTすると, Then: 08:30〜16:30を含むエラーが表示され、assignが呼ばれない")
     void showsErrorForMissingWishSlot2() throws Exception {
-      // Note: We cannot test without mocking service, as we need to verify assign is not called.
-      // This test checks that error message is displayed in the response.
       String responseContent =
           mockMvc
               .perform(
@@ -388,6 +417,9 @@ class ShiftControllerTest {
           responseContent.contains("08:30〜16:30"),
           "Error message should contain work time 08:30〜16:30");
       assertTrue(responseContent.contains("class=\"alert\""), "Error section should be displayed");
+
+      // Verify that assign was not called
+      verify(shiftAssignmentService, never()).assign(any());
     }
 
     @Test
