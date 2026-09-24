@@ -979,5 +979,195 @@ class ShiftControllerTest {
       String body = result.getResponse().getContentAsString();
       assertTrue(!body.contains("class=\"empty\""), "成立時に class=\"empty\" が含まれていないこと");
     }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 早番2名・遅番2名・スコア3・未出勤者1名の割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: class=\"score-num\" がスコア3と \" / 4\" を含むこと")
+    void shouldDisplayScoreInScoreNum() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
+              3,
+              java.util.List.of(new com.example.shiftmatch.domain.Employee("五郎", null, null)));
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(
+          body.contains("class=\"score-num\"") && body.contains("3") && body.contains(" / 4"),
+          "class=\"score-num\" がスコア3と / 4 を含むこと");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 早番2名・遅番2名の割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: class=\"result-table\" が含まれること")
+    void shouldDisplayResultTable() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
+              3,
+              java.util.List.of(new com.example.shiftmatch.domain.Employee("五郎", null, null)));
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("class=\"result-table\""), "class=\"result-table\" が含まれること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 早番2名・遅番2名の割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: pill early が 2 つ・pill late が 2 つ含まれること")
+    void shouldDisplayPillEarlyAndLateTwice() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
+              3,
+              java.util.List.of(new com.example.shiftmatch.domain.Employee("五郎", null, null)));
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      Pattern pillEarlyPattern = Pattern.compile("pill early");
+      Pattern pillLatePattern = Pattern.compile("pill late");
+      Matcher pillEarlyMatcher = pillEarlyPattern.matcher(body);
+      Matcher pillLateMatcher = pillLatePattern.matcher(body);
+      int pillEarlyCount = 0;
+      int pillLateCount = 0;
+      while (pillEarlyMatcher.find()) {
+        pillEarlyCount++;
+      }
+      while (pillLateMatcher.find()) {
+        pillLateCount++;
+      }
+      assertEquals(2, pillEarlyCount, "pill early が 2 つ含まれること");
+      assertEquals(2, pillLateCount, "pill late が 2 つ含まれること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 早番2名・遅番2名・未出勤者1名(五郎)の割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: class=\"unassigned\" の中に class=\"chip\" があり、五郎が含まれること")
+    void shouldDisplayUnassignedEmployeeAsChip() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
+              3,
+              java.util.List.of(new com.example.shiftmatch.domain.Employee("五郎", null, null)));
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(
+          body.contains("class=\"unassigned\"")
+              && body.contains("class=\"chip\"")
+              && body.contains("五郎"),
+          "class=\"unassigned\" の中に class=\"chip\" があり、五郎が含まれること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 早番2名・遅番2名・未出勤者0名の割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: class=\"unassigned\" が含まれていないこと")
+    void shouldNotDisplayUnassignedWhenNoUnassignedEmployees() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
+                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
+              4,
+              java.util.List.of());
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(
+          !body.contains("class=\"unassigned\""), "未出勤者がいない場合、class=\"unassigned\" が含まれていないこと");
+    }
   }
 }

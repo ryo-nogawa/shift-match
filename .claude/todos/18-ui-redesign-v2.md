@@ -67,7 +67,7 @@
     - 成立時に `class="empty"` が出ないことを検証するテストが存在する
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T6. 成立時の結果カード（スコア・表・ピル・未出勤者チップ）をテストで固定する**
+- [x] **T6. 成立時の結果カード（スコア・表・ピル・未出勤者チップ）をテストで固定する**
   - 依頼事項：`UiDesignTest` に、成立時（既存テストと同様に `AssignmentResult` を作る。早番: 太郎・花子、遅番: 次郎・美咲、スコア 3、未出勤者: 五郎）のテストを追加する。①`class="score-num"` の中にスコア `3` と ` / 4` が含まれる、②`class="result-table"` が含まれる、③`pill early` が 2 つ・`pill late` が 2 つ含まれる（本文中の出現回数を数える）、④`class="unassigned"` の中に `class="chip"` があり `五郎` が含まれる、⑤未出勤者が 0 名（`List.of()`）のとき `class="unassigned"` が含まれない（異常系側）。**マークアップは実装済みなので RED にならない**。T4 と同様に、`index.html` の該当クラスを一時的に外して失敗することで検出力を確認し、確認後に元へ戻す（コミットには含めない）
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -126,3 +126,4 @@
 
 - T4 完了：3つのテスト（上限超過、重複エラー、希望の不正値）を追加し、class="alert" と role="alert" を検証。一時的に class="alert" を削除して3つのテストが失敗することを確認。
 - T5 完了：不成立時の補足文をテストで検証するテストを追加（RED）。補足文がないことを確認。`index.html` に `<small>希望（×）を見直すか、従業員を追加してください。</small>` を追加。成立時に class="empty" が出ないことを検証するテストも追加（GREEN）。
+- T6 完了：成立時の結果カード要素をテストで固定する。5つのテストを追加：①score-num のスコア表示、②result-table、③pill early/late の個数、④unassigned と chip と従業員名、⑤未出勤者0名時は unassigned が出ない。一時的に class="score-num" を削除して検出力を確認。
