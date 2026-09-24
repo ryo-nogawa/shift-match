@@ -19,7 +19,7 @@
 
 ## Todo
 
-- [ ] **T1. 割当結果の表が「氏名」・「勤務時間」・「休憩」の順で出力される（TDD）**
+- [x] **T1. 割当結果の表が「氏名」・「勤務時間」・「休憩」の順で出力される（TDD）**
   - 依頼事項：`ShiftControllerTest` の `[F-4]` 表ヘッダの列順テストを、「氏名」→「勤務時間」→「休憩」の順を期待する内容に書き換え（DisplayName・エラーメッセージ文言も合わせる）、先にテストだけ変更して RED（アサーション失敗）を確認する。あわせて、各データ行の中でも氏名が勤務時間より前に出力されること（同じ `<tr>` 内で氏名の位置 < 勤務時間の位置）を検証するテストを追加する。その後 `index.html` の `<th>` と各行の `<td>` を「氏名」・「勤務時間」・「休憩」の順に入れ替えて GREEN にする
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：

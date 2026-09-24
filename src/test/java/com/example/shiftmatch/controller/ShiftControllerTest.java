@@ -338,7 +338,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: 割当結果の表ヘッダが「勤務時間」・「氏名」・「休憩」の順で出力され、「枠」を含まないこと")
+            + "Then: 割当結果の表ヘッダが「氏名」・「勤務時間」・「休憩」の順で出力され、「枠」を含まないこと")
     void shouldDisplayWorkHoursHeaderInResultTable() throws Exception {
       com.example.shiftmatch.domain.AssignmentResult assignmentResult =
           new com.example.shiftmatch.domain.AssignmentResult(
@@ -403,8 +403,9 @@ class ShiftControllerTest {
       int breakPos = headerRow.indexOf("休憩");
 
       assertTrue(framePos == -1, "ヘッダに「枠」が含まれていないこと");
-      assertTrue(namePos > -1 && workHoursPos > -1 && breakPos > -1, "「勤務時間」・「氏名」・「休憩」が含まれていること");
-      assertTrue(workHoursPos < namePos && namePos < breakPos, "ヘッダが「勤務時間」・「氏名」・「休憩」の順で出力されていること");
+      assertTrue(namePos > -1 && workHoursPos > -1 && breakPos > -1, "「氏名」・「勤務時間」・「休憩」が含まれていること");
+      assertTrue(
+          namePos < workHoursPos && workHoursPos < breakPos, "ヘッダが「氏名」・「勤務時間」・「休憩」の順で出力されていること");
     }
 
     @Test
@@ -496,6 +497,82 @@ class ShiftControllerTest {
               && dataRows.get(3).contains("美咲")
               && !dataRows.get(3).contains("遅番"),
           "行3（12:00〜21:00・美咲）が同一行内に含まれ、「遅番」は含まれていないこと");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: 割当結果の表のデータ行で、各行内で氏名が勤務時間より前に出力されること")
+    void shouldDisplayNameBeforeWorkHoursInDataRows() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "太郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "花子",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "次郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "美咲",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              4,
+              java.util.List.of());
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+      params.add("employees[2].name", "次郎");
+      params.add("employees[2].earlyWish", "DESIRED");
+      params.add("employees[2].lateWish", "AVAILABLE");
+      params.add("employees[3].name", "美咲");
+      params.add("employees[3].earlyWish", "AVAILABLE");
+      params.add("employees[3].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+
+      int resultSectionStart = body.indexOf("割当結果");
+      String resultSection = body.substring(resultSectionStart);
+
+      Pattern tableRowPattern = Pattern.compile("<tr>.*?</tr>", Pattern.DOTALL);
+      Matcher tableRowMatcher = tableRowPattern.matcher(resultSection);
+      List<String> rows = new ArrayList<>();
+      while (tableRowMatcher.find()) {
+        rows.add(tableRowMatcher.group());
+      }
+
+      List<String> dataRows = rows.subList(1, rows.size());
+      assertEquals(4, dataRows.size(), "結果表のデータ行は4行であること");
+
+      for (int i = 0; i < dataRows.size(); i++) {
+        String row = dataRows.get(i);
+        int namePos = row.indexOf(i < 2 ? (i == 0 ? "太郎" : "花子") : (i == 2 ? "次郎" : "美咲"));
+        int workHoursPos = row.indexOf(i < 2 ? "08:00〜17:00" : "12:00〜21:00");
+        assertTrue(
+            namePos > -1 && workHoursPos > -1 && namePos < workHoursPos,
+            "行" + i + "で氏名が勤務時間より前に出力されていること");
+      }
     }
 
     @Test
