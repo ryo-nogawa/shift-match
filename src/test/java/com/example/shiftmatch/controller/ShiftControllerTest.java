@@ -785,4 +785,222 @@ class ShiftControllerTest {
           "Unassigned section should not be displayed when all employees are assigned");
     }
   }
+
+  @Nested
+  @DisplayName("[F-4] 時間軸バーの表示")
+  class TimelineDisplay {
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 8名の割当結果が表示されるとき, When: 時間軸の行とバーを確認すると, Then: 8行8本のworkバー、8本のbreakバーが表示される")
+    void displaysCorrectNumberOfTimelineRows() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Count timeline rows
+      int tlRowCount = 0;
+      int index = 0;
+      while ((index = responseContent.indexOf("class=\"tl-row\"", index)) != -1) {
+        tlRowCount++;
+        index++;
+      }
+      assertEquals(8, tlRowCount, "Should have exactly 8 timeline rows");
+
+      // Count work bars
+      int tlWorkCount = 0;
+      index = 0;
+      while ((index = responseContent.indexOf("class=\"tl-work\"", index)) != -1) {
+        tlWorkCount++;
+        index++;
+      }
+      assertEquals(8, tlWorkCount, "Should have exactly 8 work bars");
+
+      // Count break bars
+      int tlBreakCount = 0;
+      index = 0;
+      while ((index = responseContent.indexOf("class=\"tl-break\"", index)) != -1) {
+        tlBreakCount++;
+        index++;
+      }
+      assertEquals(8, tlBreakCount, "Should have exactly 8 break bars");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 枠1の勤務バーが表示されるとき, When: スタイル属性を確認すると, Then: 'left:0.00%'かつ'width:63.64%'である")
+    void displaysSlot1WorkBarWithCorrectStyle() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Extract the first work bar (Slot 1, should have left:0.00% and width:63.64%)
+      // The formula: Slot 1 is 7:30-14:30 = 420 minutes from 7:30
+      // left = 0 minutes / 660 * 100% = 0.00%
+      // width = 420 minutes / 660 * 100% = 63.64%
+      assertTrue(responseContent.contains("left:0.00%"), "First work bar should have left:0.00%");
+      assertTrue(
+          responseContent.contains("width:63.64%"), "First work bar should have width:63.64%");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 枠6の勤務バーが表示されるとき, When: スタイル属性を確認すると, Then: 'left:13.64%'かつ'width:86.36%'である")
+    void displaysSlot6WorkBarWithCorrectStyle() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Slot 6 is 9:00-18:30 = 570 minutes, starting at 9:00 (90 min from 7:30)
+      // left = 90 minutes / 660 * 100% = 13.64%
+      // width = 570 minutes / 660 * 100% = 86.36%
+      assertTrue(
+          responseContent.contains("left:13.64%"),
+          "Last work bars (Slot 6) should have left:13.64%");
+      assertTrue(
+          responseContent.contains("width:86.36%"),
+          "Last work bars (Slot 6) should have width:86.36%");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 枠1の1人目の休憩バーが表示されるとき, When: スタイル属性を確認すると, Then:"
+            + " 'left:40.91%'かつ'width:6.82%'である")
+    void displaysSlot1BreakBarWithCorrectStyle() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Slot 1 break time: 12:00-12:45
+      // left = 270 minutes (12:00 - 7:30) / 660 * 100% = 40.91%
+      // width = 45 minutes / 660 * 100% = 6.82%
+      assertTrue(
+          responseContent.contains("left:40.91%"), "First break bar should have left:40.91%");
+      assertTrue(
+          responseContent.contains("width:6.82%"), "First break bar should have width:6.82%");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 時間軸の凡例が表示されるとき, When: 凡例の内容を確認すると, Then: 「勤務」「休憩」が含まれ、「早番」「遅番」が含まれない")
+    void displaysCorrectLegend() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Verify timeline legend section
+      int legendStart = responseContent.indexOf("class=\"tl-legend\"");
+      assertTrue(legendStart >= 0, "Legend section should exist");
+
+      // Extract legend content (approximately next 200 chars)
+      String legendSection =
+          responseContent.substring(
+              legendStart, Math.min(legendStart + 300, responseContent.length()));
+
+      assertTrue(legendSection.contains("勤務"), "Legend should contain '勤務'");
+      assertTrue(legendSection.contains("休憩"), "Legend should contain '休憩'");
+      assertFalse(legendSection.contains("早番"), "Legend should not contain '早番'");
+      assertFalse(legendSection.contains("遅番"), "Legend should not contain '遅番'");
+    }
+  }
 }
