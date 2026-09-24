@@ -79,20 +79,29 @@ document.addEventListener("DOMContentLoaded", function () {
     nameInput.name = "employees[" + currentRowCount + "].name";
     nameInput.placeholder = "氏名を入力";
     nameCell.appendChild(nameInput);
+    newRow.appendChild(nameCell);
 
-    const earlyCell = document.createElement("td");
-    earlyCell.setAttribute("data-label", "早番希望");
-    const earlySelect = createWishSelect(
-      "employees[" + currentRowCount + "].earlyWish"
-    );
-    earlyCell.appendChild(earlySelect);
+    // Work time labels for each slot
+    const workTimes = [
+      "07:30〜14:30",
+      "08:00〜15:30",
+      "08:30〜16:30",
+      "09:00〜16:30",
+      "09:00〜18:00",
+      "09:00〜18:30",
+    ];
 
-    const lateCell = document.createElement("td");
-    lateCell.setAttribute("data-label", "遅番希望");
-    const lateSelect = createWishSelect(
-      "employees[" + currentRowCount + "].lateWish"
-    );
-    lateCell.appendChild(lateSelect);
+    // Create select elements for each of the 6 slots
+    for (let slotIndex = 0; slotIndex < 6; slotIndex++) {
+      const slotCell = document.createElement("td");
+      slotCell.setAttribute("data-label", workTimes[slotIndex]);
+      const slotSelect = createWishSelect(
+        "employees[" + currentRowCount + "].wishes[" + slotIndex + "]"
+      );
+      slotSelect.setAttribute("data-label", workTimes[slotIndex]);
+      slotCell.appendChild(slotSelect);
+      newRow.appendChild(slotCell);
+    }
 
     const deleteCell = document.createElement("td");
     const deleteBtn = document.createElement("button");
@@ -100,10 +109,6 @@ document.addEventListener("DOMContentLoaded", function () {
     deleteBtn.className = "delete-row-btn";
     deleteBtn.textContent = "削除";
     deleteCell.appendChild(deleteBtn);
-
-    newRow.appendChild(nameCell);
-    newRow.appendChild(earlyCell);
-    newRow.appendChild(lateCell);
     newRow.appendChild(deleteCell);
 
     employeeRows.appendChild(newRow);

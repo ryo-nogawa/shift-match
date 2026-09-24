@@ -467,4 +467,164 @@ class ShiftControllerTest {
           "Error section should be displayed for invalid value");
     }
   }
+
+  @Nested
+  @DisplayName("[F-4] 割当結果の表表示")
+  class ResultTableDisplay {
+
+    @Test
+    @DisplayName("[F-4] Given: 割当結果が表示されるとき, When: テーブルの見出しを確認すると, Then: 「氏名」「勤務時間」「休憩時間」の順である")
+    void displaysResultTableHeadersInCorrectOrder() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Find the result table and verify headers
+      assertTrue(
+          responseContent.contains("class=\"result-table\""), "Result table should be present");
+
+      // Check header order: 氏名 → 勤務時間 → 休憩時間
+      int pos1 = responseContent.indexOf("<th>氏名</th>");
+      int pos2 = responseContent.indexOf("<th>勤務時間</th>");
+      int pos3 = responseContent.indexOf("<th>休憩時間</th>");
+
+      assertTrue(pos1 >= 0, "Should contain header '氏名'");
+      assertTrue(pos2 >= 0, "Should contain header '勤務時間'");
+      assertTrue(pos3 >= 0, "Should contain header '休憩時間'");
+      assertTrue(pos1 < pos2, "'氏名' should come before '勤務時間'");
+      assertTrue(pos2 < pos3, "'勤務時間' should come before '休憩時間'");
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 8名の割当結果が表示されるとき, When: テーブルの行を確認すると, Then: 8行の氏名・勤務時間・休憩時間が仕様と一致する")
+    void displaysCorrectNumberOfRowsAndCorrectWorkSchedules() throws Exception {
+      // Create 8 employees with all slots available
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Verify result table is shown
+      assertTrue(
+          responseContent.contains("class=\"result-table\""), "Result table should be displayed");
+
+      // Expected work times according to specification
+      String[] expectedWorkTimes = {
+        "07:30〜14:30", // Slot 1
+        "07:30〜14:30", // Slot 1
+        "08:00〜15:30", // Slot 2
+        "08:30〜16:30", // Slot 3
+        "09:00〜16:30", // Slot 4
+        "09:00〜18:00", // Slot 5
+        "09:00〜18:30", // Slot 6
+        "09:00〜18:30" // Slot 6
+      };
+
+      // Expected break times according to specification
+      String[] expectedBreakTimes = {
+        "12:00〜12:45", // Slot 1
+        "12:00〜12:45", // Slot 1
+        "12:45〜13:30", // Slot 2
+        "12:45〜13:30", // Slot 3
+        "13:30〜14:15", // Slot 4
+        "13:30〜14:30", // Slot 5
+        "14:15〜15:15", // Slot 6
+        "14:30〜15:30" // Slot 6
+      };
+
+      // Verify all expected work times are present
+      for (String workTime : expectedWorkTimes) {
+        assertTrue(responseContent.contains(workTime), "Should contain work time: " + workTime);
+      }
+
+      // Verify all expected break times are present
+      for (String breakTime : expectedBreakTimes) {
+        assertTrue(responseContent.contains(breakTime), "Should contain break time: " + breakTime);
+      }
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 割当結果の表が表示されるとき, When: 表の内容を確認すると, Then: 「早番」「遅番」の文字が存在しない")
+    void resultTableDoesNotContainEarlyOrLateTerms() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Verify result table section
+      int resultTableStart = responseContent.indexOf("class=\"result-table\"");
+      assertTrue(resultTableStart >= 0, "Result table should be present");
+
+      // Extract just the result table section
+      int resultTableEnd =
+          responseContent.indexOf("</table>", resultTableStart) + "</table>".length();
+      String resultTableContent = responseContent.substring(resultTableStart, resultTableEnd);
+
+      // Check that "早番" and "遅番" do not appear in the result table
+      assertFalse(resultTableContent.contains("早番"), "Result table should not contain '早番'");
+      assertFalse(resultTableContent.contains("遅番"), "Result table should not contain '遅番'");
+    }
+  }
 }
