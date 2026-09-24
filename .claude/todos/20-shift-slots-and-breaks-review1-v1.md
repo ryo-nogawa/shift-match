@@ -16,7 +16,7 @@
 
 ## Todo
 
-- [ ] **R1. `ShiftControllerTest` を `@WebMvcTest` 構成に戻す（レビュー SHOULD）**
+- [x] **R1. `ShiftControllerTest` を `@WebMvcTest` 構成に戻す（レビュー SHOULD）**
   - 依頼事項：`ShiftControllerTest` を `@SpringBootTest` から `@WebMvcTest(ShiftController.class)` に戻し、`MockMvc` を注入、`ShiftAssignmentService` は `@MockitoBean`（`org.springframework.test.context.bean.override.mockito.MockitoBean`）にする。引数なしの `@Autowired setup()` は廃止し、初期化が必要なら `@BeforeEach` を使う。実サービスの計算結果に依存していたテストは、`when(service.assign(any())).thenReturn(...)` で結果を明示し、`findDuplicateNames` は実装をそのまま返すのではなく、必要なテストで明示的にスタブする（スタブしないと空リストを返す）。V-3 のテストの「assign が呼ばれないことを検証できない」というコメントを、`verify(service, never()).assign(any())` による実際の検証に置き換える。旧仕様の書き方の実例は `git show origin/main:src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java` にある
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -25,7 +25,7 @@
     - テスト件数が R1 の前後で減っていない（減った場合は理由を実行ログに記録する）
     - `./mvnw test` が成功する（実行ログの警告に `Autowired annotation should only be used on methods with parameters` が出ない）
 
-- [ ] **R2. 「行を追加」ボタンを 12 行で無効にする（F-2、レビュー MUST）**
+- [x] **R2. 「行を追加」ボタンを 12 行で無効にする（F-2、レビュー MUST）**
   - 依頼事項：`shift-form.js` で、`data-max-rows`（数値として読み取る）を参照する。現在の行数が上限以上のときは、クリック処理の冒頭で行を追加せずに戻る（ガード）。初期表示・行の追加後・行の削除後に呼ぶ共通関数（例：`updateAddButtonState`）で、行数が上限以上なら `addRowBtn.disabled = true`、未満なら `false` にする
   - 対象ファイル：`src/main/resources/static/js/shift-form.js`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`（または既存の JS 静的検証テストがあるクラス）
   - 完了条件：
@@ -36,7 +36,7 @@
     - `node --check src/main/resources/static/js/shift-form.js` が成功する（Node が使えない場合は、その旨を実行ログに記録する）
     - `./mvnw test` が成功する
 
-- [ ] **R3. 時間軸の目盛りと背景を 7:30〜18:30 に対応させ、勤務バーの色を定義する（F-4、レビュー MUST）**
+- [x] **R3. 時間軸の目盛りと背景を 7:30〜18:30 に対応させ、勤務バーの色を定義する（F-4、レビュー MUST）**
   - 依頼事項：`index.html` の時間軸の目盛りを 8〜18 時の 1 時間刻みにし、位置は `(その時刻の分 − 450) / 660`（7:30 = 450 分）で計算する（例：8 時は 30/660 = 4.55%、18 時は 630/660 = 95.45%）。旧仕様の `13` 時間基準・`8, 10, ..., 20` の目盛りを残さない。`shift-form.css` の背景目盛り（`100% / 13` など）も 660 分の軸（11 時間 = 8:00 から 1 時間ごと）に合わせる。`.tl-work` に勤務バーの背景色を直接定義し、旧 `.tl-work.early`・`.tl-work.late` のセレクターを削除する（HTML にも `early`・`late` クラスを残さない）
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/main/resources/static/css/shift-form.css`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -46,7 +46,7 @@
     - `index.html` に `early`・`late` の `class` 指定が存在しないことをテストで検証している
     - `./mvnw test` が成功する
 
-- [ ] **R4. 入力チェックの順序を V-1 → V-2 → V-3 → V-5 にする（V-2、V-3、V-5、レビュー MUST）**
+- [x] **R4. 入力チェックの順序を V-1 → V-2 → V-3 → V-5 にする（V-2、V-3、V-5、レビュー MUST）**
   - 依頼事項：`ShiftController.createShift` を、仕様書 4.2 節の順序に合わせる。空行を除いた後、V-2（重複）と V-3（不正な希望）の両方を確認し、その次に V-5（有効な従業員 13 名以上）を確認する。V-2・V-3・V-5 のエラーはすべて同時に表示できる（複数あれば全部表示する）。エラーが 1 つでもあるときは `assign` を呼ばない。V-5 のとき、13 名の入力でも V-2・V-3 のチェック自体は行う（`autoGrowCollectionLimit` により入力行数は 256 までに制限されるため、計算量は問題にならない）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
