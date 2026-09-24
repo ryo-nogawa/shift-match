@@ -79,7 +79,7 @@
     - `ShiftAssignmentServiceImpl` に `MAX_EMPLOYEES` や 13 名以上を判定するコードが存在しない
     - `./mvnw test` が成功する
 
-- [ ] **T4. 入力表を枠ごと 6 列の希望入力にする（F-1、V-3、仕様 4 章・8 章）**
+- [x] **T4. 入力表を枠ごと 6 列の希望入力にする（F-1、V-3、仕様 4 章・8 章）**
   - 依頼事項：`EmployeeForm` の希望を `List<String> wishes`（初期状態で 6 件の `null`）にし、フォーム名は `employees[i].wishes[j]`（j = 0〜5）とする。`ShiftController` の V-3 チェックは、氏名が入力された行について 6 つの希望それぞれが `DESIRED`／`AVAILABLE`／`UNAVAILABLE` のいずれかであることを確認し、不正な場合は `InvalidWishError` に「行番号」と「その枠の勤務時間（例：`07:30〜14:30`）の希望」を持たせて表示する。リクエストに `wishes` が 6 件未満で届いた場合も、不足分を未選択として V-3 のエラーにする。`index.html` の入力表は「氏名・枠 1〜6 の希望・削除」の列とし、枠の列見出しに勤務時間（`07:30〜14:30` の形式）を表示する。`th:field="*{employees[__${stat.index}__].wishes[__${j}__]}"` で 6 個の `<select>` を繰り返し出力し、各 `select` に `data-label`（勤務時間）と `data-value` を付ける
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/EmployeeForm.java`、`ShiftController.java`、`src/main/java/com/example/shiftmatch/domain/InvalidWishError.java`、`src/main/resources/templates/index.html`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -148,3 +148,4 @@
 ## 実行ログ
 
 - T3 試行 1/1：成功 — ShiftAssignmentServiceImplの最適化により12名全員○で0.26秒（10秒以内目標達成） / tests: 48 PASS / V-5判定をサービスから削除（コントローラー責務へ移行完了）
+- T4 試行 1/1：成功 — index.htmlを6枠の希望入力に変更、ShiftControllerTestを追加 / tests: 49 PASS / 旧early/lateWish完全削除、employees[i].wishes[j]構造に対応
