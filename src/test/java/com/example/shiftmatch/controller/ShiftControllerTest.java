@@ -263,8 +263,6 @@ class ShiftControllerTest {
 
       String body = result.getResponse().getContentAsString();
 
-      // 全角波ダッシュ (U+301C) を使った休憩時刻が含まれることを確認
-      // 改行と空白を無視した正規表現で検証
       Pattern breakTime1 = Pattern.compile("13:00.*?〜.*?14:00", Pattern.DOTALL);
       assertTrue(breakTime1.matcher(body).find(), "13:00〜14:00 が見つかりません");
       Pattern breakTime2 = Pattern.compile("14:00.*?〜.*?15:00", Pattern.DOTALL);
@@ -274,37 +272,31 @@ class ShiftControllerTest {
       Pattern breakTime4 = Pattern.compile("16:00.*?〜.*?17:00", Pattern.DOTALL);
       assertTrue(breakTime4.matcher(body).find(), "16:00〜17:00 が見つかりません");
 
-      // 各行の枠・氏名・休憩が対応していることを正規表現で検証（4 行分）
       // <span> タグや改行を含む可能性があるため、柔軟に対応
-      // 行 1: 早番・太郎・13:00〜14:00
       Pattern row1 =
           Pattern.compile(
               "<tr>\\s*<td>早番</td>\\s*<td>太郎</td>\\s*<td>.*?13:00.*?〜.*?14:00.*?</td>\\s*</tr>",
               Pattern.DOTALL);
       assertTrue(row1.matcher(body).find(), "行1（早番・太郎・13:00〜14:00）が見つかりません");
 
-      // 行 2: 早番・花子・14:00〜15:00
       Pattern row2 =
           Pattern.compile(
               "<tr>\\s*<td>早番</td>\\s*<td>花子</td>\\s*<td>.*?14:00.*?〜.*?15:00.*?</td>\\s*</tr>",
               Pattern.DOTALL);
       assertTrue(row2.matcher(body).find(), "行2（早番・花子・14:00〜15:00）が見つかりません");
 
-      // 行 3: 遅番・次郎・15:00〜16:00
       Pattern row3 =
           Pattern.compile(
               "<tr>\\s*<td>遅番</td>\\s*<td>次郎</td>\\s*<td>.*?15:00.*?〜.*?16:00.*?</td>\\s*</tr>",
               Pattern.DOTALL);
       assertTrue(row3.matcher(body).find(), "行3（遅番・次郎・15:00〜16:00）が見つかりません");
 
-      // 行 4: 遅番・美咲・16:00〜17:00
       Pattern row4 =
           Pattern.compile(
               "<tr>\\s*<td>遅番</td>\\s*<td>美咲</td>\\s*<td>.*?16:00.*?〜.*?17:00.*?</td>\\s*</tr>",
               Pattern.DOTALL);
       assertTrue(row4.matcher(body).find(), "行4（遅番・美咲・16:00〜17:00）が見つかりません");
 
-      // 行の並びが早番 2 行 → 遅番 2 行の順であることを検証
       int row1Pos = body.indexOf("太郎");
       int row2Pos = body.indexOf("花子");
       int row3Pos = body.indexOf("次郎");
