@@ -62,20 +62,6 @@ public class ShiftController {
    */
   @PostMapping("/shift")
   public String createShift(@ModelAttribute("shiftForm") ShiftForm shiftForm, Model model) {
-    // 入力行数が上限を超える場合は、DoS 攻撃への耐性を保つため処理を中断する
-    int validEmployeeCount = 0;
-    for (EmployeeForm employee : shiftForm.getEmployees()) {
-      if (employee.getName() != null && !employee.getName().isBlank()) {
-        validEmployeeCount++;
-      }
-    }
-    if (validEmployeeCount > MAX_EMPLOYEE_COUNT) {
-      model.addAttribute(
-          "limitExceededError", "従業員の入力行数が上限（" + MAX_EMPLOYEE_COUNT + "名）を超えています。入力行を減らしてください。");
-      model.addAttribute("shiftForm", shiftForm);
-      return "index";
-    }
-
     // 仕様上、入力表には最低 1 行を残す必要があるため、行が 1 件も送られなかった場合だけ空行を補う
     if (shiftForm.getEmployees().isEmpty()) {
       shiftForm.getEmployees().add(new EmployeeForm());
@@ -83,9 +69,15 @@ public class ShiftController {
 
     List<Employee> employees = convertToEmployees(shiftForm);
 
-    List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
+    // V-1: 氏名が空の行を処理対象から除外（エラーにしない）
+    List<Employee> validEmployees =
+        employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
-    // V-1 では氏名が空の行をエラーにせず処理対象から除く必要があるため、V-3 のチェック時も空行は対象外とする
+    // V-2: 重複チェック
+    List<DuplicateNameError> duplicateErrors =
+        shiftAssignmentService.findDuplicateNames(validEmployees);
+
+    // V-3: 希望の有効性チェック
     List<InvalidWishError> wishErrors = new ArrayList<>();
     for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
       EmployeeForm employee = shiftForm.getEmployees().get(i);
@@ -93,7 +85,6 @@ public class ShiftController {
         continue;
       }
 
-      // 6 つの枠ごとの希望をチェック
       List<String> wishes = employee.getWishes();
       String[] workTimes = {
         "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
@@ -101,26 +92,36 @@ public class ShiftController {
       for (int j = 0; j < 6; j++) {
         String wish = (wishes != null && j < wishes.size()) ? wishes.get(j) : null;
         if (!isValidWish(wish)) {
-          // エラーメッセージには枠の勤務時間を表示
           wishErrors.add(new InvalidWishError(i, workTimes[j]));
         }
       }
     }
 
-    // V-2・V-3 いずれのエラーもない場合のみ assign を呼び出し、割当案を算出する
-    if (wishErrors.isEmpty() && duplicateErrors.isEmpty()) {
-      var result = shiftAssignmentService.assign(employees);
-      if (result.isPresent()) {
-        model.addAttribute("assignmentResult", result.get());
-      } else {
-        model.addAttribute("unassignable", true);
-      }
+    // V-5: 有効な従業員が13名以上のチェック
+    boolean limitExceeded = validEmployees.size() > MAX_EMPLOYEE_COUNT;
+    if (limitExceeded) {
+      model.addAttribute(
+          "limitExceededError", "従業員の入力行数が上限（" + MAX_EMPLOYEE_COUNT + "名）を超えています。入力行を減らしてください。");
     }
 
-    model.addAttribute("wishErrors", wishErrors);
-    model.addAttribute("duplicateErrors", duplicateErrors);
-    model.addAttribute("shiftForm", shiftForm);
+    // V-2・V-3・V-5 のいずれのエラーもない場合のみ assign を呼び出す
+    if (!duplicateErrors.isEmpty() || !wishErrors.isEmpty() || limitExceeded) {
+      model.addAttribute("wishErrors", wishErrors);
+      model.addAttribute("duplicateErrors", duplicateErrors);
+      model.addAttribute("shiftForm", shiftForm);
+      return "index";
+    }
 
+    // assign を呼び出し、割当案を算出
+    var result = shiftAssignmentService.assign(validEmployees);
+    if (result.isPresent()) {
+      model.addAttribute("assignmentResult", result.get());
+    } else {
+      // V-4: 有効な従業員が8名未満、または条件を満たす案がない場合は不成立
+      model.addAttribute("unassignable", true);
+    }
+
+    model.addAttribute("shiftForm", shiftForm);
     return "index";
   }
 
