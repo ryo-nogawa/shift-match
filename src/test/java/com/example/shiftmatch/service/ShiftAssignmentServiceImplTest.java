@@ -126,22 +126,6 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
-  @DisplayName("[V-5] 有効な従業員が13名以上")
-  class TooManyEmployees {
-
-    @Test
-    @DisplayName("Given: 有効な従業員が13名のとき, When: assignを実行すると, Then: Optional.emptyが返される")
-    void returnsEmptyWhenMoreThanTwelveValidEmployees() {
-      List<Employee> employees = createAllAvailableEmployees(13);
-      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
-
-      Optional<AssignmentResult> result = service.assign(employees);
-
-      assertFalse(result.isPresent());
-    }
-  }
-
-  @Nested
   @DisplayName("[スコア評価]")
   class ScoreEvaluation {
 
@@ -274,6 +258,21 @@ class ShiftAssignmentServiceImplTest {
 
       assertTrue(result.isPresent());
       assertTrue(elapsedTime < 30000, "Assignment took " + elapsedTime + "ms");
+    }
+
+    @Test
+    @DisplayName("[T-3] Given: 12人全員AVAILABLEのとき, When: assignを実行すると, Then: 10秒以内に完了する")
+    void completesWithinTenSecondsForTwelveEmployees() {
+      List<Employee> employees = createAllAvailableEmployees(12);
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      long startTime = System.currentTimeMillis();
+      Optional<AssignmentResult> result = service.assign(employees);
+      long elapsedTime = System.currentTimeMillis() - startTime;
+
+      assertTrue(result.isPresent());
+      assertTrue(
+          elapsedTime < 10000, "Assignment took " + elapsedTime + "ms, should be under 10 seconds");
     }
   }
 

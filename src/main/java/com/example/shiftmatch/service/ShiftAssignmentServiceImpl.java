@@ -23,7 +23,6 @@ import org.springframework.stereotype.Service;
 public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   private static final int TOTAL_EMPLOYEES = 8;
-  private static final int MAX_EMPLOYEES = 12;
   private static final int MIN_EMPLOYEES = 8;
 
   @Override
@@ -37,184 +36,235 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       return Optional.empty();
     }
 
-    // V-5: 有効な従業員が13名以上
-    if (validEmployees.size() > MAX_EMPLOYEES) {
-      return Optional.empty();
-    }
-
-    List<AssignmentResult> solutions = new ArrayList<>();
-    List<Integer> assignment = new ArrayList<>();
-    findAssignments(validEmployees, assignment, 0, solutions);
-
-    if (solutions.isEmpty()) {
-      return Optional.empty();
-    }
-
-    // 最初に最大スコアに達した案を返す
-    AssignmentResult best = solutions.get(0);
-    for (AssignmentResult solution : solutions) {
-      if (solution.score() > best.score()) {
-        best = solution;
+    // 希望を事前に展開（Wish[][]：従業員 × 枠）
+    Wish[][] wishes = new Wish[validEmployees.size()][6];
+    for (int i = 0; i < validEmployees.size(); i++) {
+      List<Wish> employeeWishes = validEmployees.get(i).wishes();
+      for (int j = 0; j < 6; j++) {
+        wishes[i][j] = employeeWishes.get(j);
       }
     }
 
-    return Optional.of(best);
+    // 最適な案を探す
+    BestAssignment bestAssignment = new BestAssignment();
+    boolean[] used = new boolean[validEmployees.size()];
+    int[] assignment = new int[8];
+    findBestAssignment(validEmployees, wishes, used, assignment, 0, 0, bestAssignment);
+
+    if (bestAssignment.assignment == null) {
+      return Optional.empty();
+    }
+
+    return Optional.of(buildResult(validEmployees, bestAssignment.assignment));
   }
 
   /**
-   * 枠 1 → 6 の順に従業員を割り当てます（再帰）。
+   * 最適な割り当てを保持するクラス。
+   */
+  private static class BestAssignment {
+    int[] assignment;
+    int score;
+
+    BestAssignment() {
+      this.assignment = null;
+      this.score = -1;
+    }
+  }
+
+  /**
+   * 再帰的に最適な割り当てを探します。
    *
    * @param employees 有効な従業員リスト
-   * @param assignment 現在の割り当て（従業員インデックスのリスト、8 件になったら完成）
-   * @param slotIndex 次に割り当てる枠のインデックス（0 = 枠 1）
-   * @param solutions 見つかった解のリスト
+   * @param wishes 希望の2次元配列（従業員 × 枠）
+   * @param used 割り当て済みの従業員フラグ
+   * @param assignment 現在の割り当て（長さ8）
+   * @param assignmentIndex 割り当て配列の次の位置
+   * @param slotIndex 次に割り当てる枠のインデックス
+   * @param bestAssignment 最適な割り当て
    */
-  private void findAssignments(
+  private void findBestAssignment(
       List<Employee> employees,
-      List<Integer> assignment,
+      Wish[][] wishes,
+      boolean[] used,
+      int[] assignment,
+      int assignmentIndex,
       int slotIndex,
-      List<AssignmentResult> solutions) {
+      BestAssignment bestAssignment) {
+
     if (slotIndex >= ShiftSlot.values().length) {
-      // すべての枠を割り当てたら、解を構築
-      AssignmentResult result = buildResult(employees, assignment);
-      solutions.add(result);
+      // すべての枠を割り当てた：スコアを計算
+      int score = calculateScore(employees, wishes, assignment);
+      if (score > bestAssignment.score) {
+        bestAssignment.score = score;
+        bestAssignment.assignment = assignment.clone();
+      }
       return;
     }
 
     ShiftSlot slot = ShiftSlot.values()[slotIndex];
     int requiredCount = slot.numberOfEmployees();
 
-    // この枠に割り当てる従業員を探す（残りの従業員から）
-    findCombinations(
-        employees, assignment, 0, new ArrayList<>(), requiredCount, slotIndex, solutions);
+    // この枠に割り当てる従業員の組み合わせを探す
+    findCombinationsOptimized(
+        employees,
+        wishes,
+        used,
+        assignment,
+        assignmentIndex,
+        0,
+        requiredCount,
+        slotIndex,
+        bestAssignment);
   }
 
   /**
-   * 与えられた枠に割り当てる従業員の組み合わせを列挙します。
+   * 与えられた枠に割り当てる従業員の組み合わせを列挙します（最適化版）。
    *
    * @param employees 有効な従業員リスト
+   * @param wishes 希望の2次元配列
+   * @param used 割り当て済みフラグ
    * @param assignment 現在の割り当て
+   * @param assignmentIndex 割り当て配列の次の位置
    * @param candidateStart 次にチェックする候補の開始インデックス
-   * @param currentSlotAssignment この枠に割り当てる従業員のインデックス
    * @param requiredCount この枠に必要な人数
    * @param slotIndex 現在の枠のインデックス
-   * @param solutions 見つかった解のリスト
+   * @param bestAssignment 最適な割り当て
    */
-  private void findCombinations(
+  private void findCombinationsOptimized(
       List<Employee> employees,
-      List<Integer> assignment,
+      Wish[][] wishes,
+      boolean[] used,
+      int[] assignment,
+      int assignmentIndex,
       int candidateStart,
-      List<Integer> currentSlotAssignment,
       int requiredCount,
       int slotIndex,
-      List<AssignmentResult> solutions) {
+      BestAssignment bestAssignment) {
 
-    if (currentSlotAssignment.size() == requiredCount) {
+    if (requiredCount == 0) {
       // この枠への割り当てが完成したら、次の枠へ
-      assignment.addAll(currentSlotAssignment);
-      findAssignments(employees, assignment, slotIndex + 1, solutions);
-      assignment.removeAll(currentSlotAssignment);
+      findBestAssignment(
+          employees, wishes, used, assignment, assignmentIndex, slotIndex + 1, bestAssignment);
       return;
     }
 
-    ShiftSlot slot = ShiftSlot.values()[slotIndex];
-
     for (int i = candidateStart; i < employees.size(); i++) {
       // この従業員が既に割り当てられていないか確認（H-2）
-      if (assignment.contains(i)) {
+      if (used[i]) {
         continue;
       }
-
-      Employee employee = employees.get(i);
 
       // この従業員がこの枠で × でないか確認（H-3）
-      if (employee.wishes().get(slotIndex) == Wish.UNAVAILABLE) {
+      if (wishes[i][slotIndex] == Wish.UNAVAILABLE) {
         continue;
       }
 
-      currentSlotAssignment.add(i);
-      findCombinations(
-          employees, assignment, i + 1, currentSlotAssignment, requiredCount, slotIndex, solutions);
-      currentSlotAssignment.remove(currentSlotAssignment.size() - 1);
+      // この従業員を割り当てる
+      used[i] = true;
+      assignment[assignmentIndex] = i;
+
+      findCombinationsOptimized(
+          employees,
+          wishes,
+          used,
+          assignment,
+          assignmentIndex + 1,
+          i + 1,
+          requiredCount - 1,
+          slotIndex,
+          bestAssignment);
+
+      // バックトラック
+      used[i] = false;
     }
+  }
+
+  /**
+   * 割り当てのスコアを計算します。
+   *
+   * @param employees 有効な従業員リスト
+   * @param wishes 希望の2次元配列
+   * @param assignment 割り当て配列
+   * @return スコア
+   */
+  private int calculateScore(List<Employee> employees, Wish[][] wishes, int[] assignment) {
+    int score = 0;
+    int position = 0;
+
+    for (int slotIndex = 0; slotIndex < ShiftSlot.values().length; slotIndex++) {
+      ShiftSlot slot = ShiftSlot.values()[slotIndex];
+      int requiredCount = slot.numberOfEmployees();
+
+      for (int i = 0; i < requiredCount; i++) {
+        int employeeIndex = assignment[position];
+        if (wishes[employeeIndex][slotIndex] == Wish.DESIRED) {
+          score++;
+        }
+        position++;
+      }
+    }
+
+    return score;
   }
 
   /**
    * 割り当てから AssignmentResult を構築します。
    *
    * @param employees 有効な従業員リスト
-   * @param assignment 従業員インデックスの割り当て（8 件）
+   * @param assignment 従業員インデックスの割り当て（8 件の配列）
    * @return AssignmentResult
    */
-  private AssignmentResult buildResult(List<Employee> employees, List<Integer> assignment) {
-    List<ShiftSlot> slots = new ArrayList<>();
-    List<Employee> assignedEmployees = new ArrayList<>();
+  private AssignmentResult buildResult(List<Employee> employees, int[] assignment) {
+    ShiftSlot[] slots = ShiftSlot.values();
+    List<ShiftSlot> slotList = new ArrayList<>();
 
-    for (int index : assignment) {
-      Employee employee = employees.get(index);
-      assignedEmployees.add(employee);
-
-      // この従業員がどの枠に割り当てられたかを determine
-      ShiftSlot slotForThisEmployee = getSlotForEmployee(assignment, index);
-      slots.add(slotForThisEmployee);
+    // 割り当てから枠のリストを構築
+    int position = 0;
+    for (int slotIndex = 0; slotIndex < slots.length; slotIndex++) {
+      ShiftSlot slot = slots[slotIndex];
+      int requiredCount = slot.numberOfEmployees();
+      for (int i = 0; i < requiredCount; i++) {
+        slotList.add(slot);
+        position++;
+      }
     }
 
     // BreakScheduler で休憩時刻を割り当て
     BreakScheduler scheduler = new BreakScheduler();
-    List<BreakInterval> breaks = scheduler.schedule(slots);
+    List<BreakInterval> breaks = scheduler.schedule(slotList);
 
     // ShiftAssignment のリストを構築
     List<ShiftAssignment> shiftAssignments = new ArrayList<>();
-    for (int i = 0; i < assignedEmployees.size(); i++) {
-      shiftAssignments.add(
-          new ShiftAssignment(
-              assignedEmployees.get(i),
-              slots.get(i),
-              breaks.get(i).startTime(),
-              breaks.get(i).endTime()));
-    }
-
-    // スコアを計算
     int score = 0;
-    for (ShiftAssignment sa : shiftAssignments) {
-      int slotIndex = getSlotIndex(sa.slot());
-      if (sa.employee().wishes().get(slotIndex) == Wish.DESIRED) {
+    boolean[] used = new boolean[employees.size()];
+
+    for (int i = 0; i < assignment.length; i++) {
+      int employeeIndex = assignment[i];
+      Employee employee = employees.get(employeeIndex);
+      ShiftSlot slot = slotList.get(i);
+      BreakInterval breakInterval = breaks.get(i);
+
+      shiftAssignments.add(
+          new ShiftAssignment(employee, slot, breakInterval.startTime(), breakInterval.endTime()));
+
+      // スコアを計算（◎の個数）
+      int slotIndex = getSlotIndex(slot);
+      if (employee.wishes().get(slotIndex) == Wish.DESIRED) {
         score++;
       }
+
+      used[employeeIndex] = true;
     }
 
     // 未割り当て従業員を計算
     List<Employee> unassigned = new ArrayList<>();
     for (int i = 0; i < employees.size(); i++) {
-      if (!assignment.contains(i)) {
+      if (!used[i]) {
         unassigned.add(employees.get(i));
       }
     }
 
     return new AssignmentResult(shiftAssignments, score, unassigned);
-  }
-
-  /**
-   * 従業員インデックスに対応する枠を返します。
-   *
-   * @param assignment 従業員インデックスの割り当て
-   * @param employeeIndex 従業員のインデックス
-   * @return 割り当てられた枠
-   */
-  private ShiftSlot getSlotForEmployee(List<Integer> assignment, int employeeIndex) {
-    int positionInAssignment = assignment.indexOf(employeeIndex);
-    ShiftSlot[] slots = ShiftSlot.values();
-
-    int position = 0;
-    for (int slotIndex = 0; slotIndex < slots.length; slotIndex++) {
-      int requiredCount = slots[slotIndex].numberOfEmployees();
-      if (positionInAssignment < position + requiredCount) {
-        return slots[slotIndex];
-      }
-      position += requiredCount;
-    }
-
-    throw new IllegalStateException("Slot not found for employee");
   }
 
   /**
