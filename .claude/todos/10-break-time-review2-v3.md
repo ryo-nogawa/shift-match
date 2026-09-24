@@ -35,10 +35,14 @@
     - `</tr>` を越えて一致しない検証に置き換わっている（`.*?` と DOTALL を使う場合でも 1 行の `<tr>...</tr>` に限定して抽出している）
     - 順序検証に `body.indexOf("太郎")` のような氏名の全文検索位置を使っていない
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
-- [ ] **T3. 全体テストと静的解析を確認する**
+- [x] **T3. 全体テストと静的解析を確認する**
   - 依頼事項：`./mvnw spotless:apply` の後、`./mvnw test` を全体で実行し、実行ログに結果を追記する
   - 完了条件：`./mvnw test` で全テストが成功する（Spotless・Checkstyle 違反 0 件）
 
 ## 実行ログ
 
-<!-- implementer が試行結果を追記する欄 -->
+- T3 実行結果：成功
+  - `./mvnw spotless:apply`：成功（1 ファイル変更）
+  - `./mvnw test`：成功（Tests run: 39, Failures: 0, Errors: 0, Skipped: 0）
+  - Spotless 違反：0 件
+  - Checkstyle 違反：0 件
