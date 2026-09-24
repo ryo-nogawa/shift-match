@@ -36,7 +36,7 @@
     - RED（現状の `～`（U+FF5E）で失敗）を確認してから実装した
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
     - `grep -rn "～" src/main src/test` で U+FF5E が休憩表示に残っていない
-- [ ] **T3. 全体テストと静的解析を確認する**
+- [x] **T3. 全体テストと静的解析を確認する**
   - 依頼事項：`./mvnw spotless:apply` の後、`./mvnw test` を全体で実行し、実行ログに結果を追記する
   - 対象ファイル：（整形のみ）
   - 完了条件：
@@ -44,4 +44,8 @@
 
 ## 実行ログ
 
-<!-- implementer が試行結果を追記する欄 -->
+- 2026-09-24 09:58：./mvnw test 実行結果
+  - Tests run: 39, Failures: 0, Errors: 0, Skipped: 0
+  - Spotless：整形対象 0 件、違反 0 件
+  - Checkstyle：違反 0 件
+  - BUILD SUCCESS
