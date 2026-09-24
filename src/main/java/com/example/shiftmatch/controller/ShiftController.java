@@ -76,6 +76,11 @@ public class ShiftController {
       return "index";
     }
 
+    // 常に4行を表示するため、不足分を補充する
+    while (shiftForm.getEmployees().size() < 4) {
+      shiftForm.getEmployees().add(new EmployeeForm());
+    }
+
     List<Employee> employees = convertToEmployees(shiftForm);
 
     List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);

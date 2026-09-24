@@ -35,7 +35,7 @@
     - 3 章の表に `F-6` の行がある
     - 8 章に、削除ボタン・最低 1 行・インデックス振り直しの 3 点が書かれている
     - 既存の F-1〜F-5、V-1〜V-4 の記述が変更されていない（`git diff` で追加行のみである）
-- [ ] **T2. 初期表示の各行に「削除」ボタンが出力される（TDD）**
+- [x] **T2. 初期表示の各行に「削除」ボタンが出力される（TDD）**
   - 依頼事項：`ShiftControllerTest` に、`[F-6] Given: GET / で初期表示するとき, When: 画面を取得すると, Then: 入力行（4 行）と同数の「削除」ボタン（`class="delete-row-btn"`）が含まれる` というテストを先に書き、RED を確認する。その後 `src/main/resources/templates/index.html` にヘッダの空 `<th>` と各行末尾の削除ボタン用 `<td>` を追加して GREEN にする。POST 後の再表示（入力行がエラー表示付きで再描画される場合）でも、行数分の削除ボタンが出力されることを 2 つ目のテストで確認する
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：

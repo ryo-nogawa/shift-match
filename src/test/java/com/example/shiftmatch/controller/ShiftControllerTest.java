@@ -50,6 +50,29 @@ class ShiftControllerTest {
       assertNotNull(shiftForm);
       assertEquals(4, shiftForm.getEmployees().size());
     }
+
+    @Test
+    @DisplayName(
+        "[F-6] Given: GET / で初期表示するとき, When: 画面を取得すると, "
+            + "Then: 入力行（4行）と同数の「削除」ボタン（class=\"delete-row-btn\"）が含まれる")
+    void shouldDisplayDeleteButtonsInInitialForm() throws Exception {
+      MvcResult result =
+          mockMvc
+              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
+              .andReturn();
+
+      assertEquals(200, result.getResponse().getStatus());
+      String body = result.getResponse().getContentAsString();
+
+      Pattern deleteButtonPattern = Pattern.compile("class=\"delete-row-btn\"");
+      Matcher deleteButtonMatcher = deleteButtonPattern.matcher(body);
+      int deleteButtonCount = 0;
+      while (deleteButtonMatcher.find()) {
+        deleteButtonCount++;
+      }
+
+      assertEquals(4, deleteButtonCount, "削除ボタンが4個含まれていること");
+    }
   }
 
   @Nested
@@ -330,6 +353,40 @@ class ShiftControllerTest {
       String body = result.getResponse().getContentAsString();
       assertTrue(body.contains("上限"));
       verify(shiftAssignmentService, never()).assign(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-6] Given: POST /shift で再表示するとき, When: 入力行がエラー表示付きで再描画されると, "
+            + "Then: 行数分の「削除」ボタン（class=\"delete-row-btn\"）が含まれる")
+    void shouldDisplayDeleteButtonsInPostResponse() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.empty());
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+
+      Pattern deleteButtonPattern = Pattern.compile("class=\"delete-row-btn\"");
+      Matcher deleteButtonMatcher = deleteButtonPattern.matcher(body);
+      int deleteButtonCount = 0;
+      while (deleteButtonMatcher.find()) {
+        deleteButtonCount++;
+      }
+
+      assertEquals(4, deleteButtonCount, "POST再表示時も削除ボタンが4個含まれていること（エラーがあっても行数は4）");
     }
 
     @Test
