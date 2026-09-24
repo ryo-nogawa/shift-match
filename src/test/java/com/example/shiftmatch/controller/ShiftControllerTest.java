@@ -266,20 +266,9 @@ class ShiftControllerTest {
 
       String body = result.getResponse().getContentAsString();
 
-      Pattern breakTime1 = Pattern.compile("13:00.*?〜.*?14:00", Pattern.DOTALL);
-      assertTrue(breakTime1.matcher(body).find(), "13:00〜14:00 が見つかりません");
-      Pattern breakTime2 = Pattern.compile("14:00.*?〜.*?15:00", Pattern.DOTALL);
-      assertTrue(breakTime2.matcher(body).find(), "14:00〜15:00 が見つかりません");
-      Pattern breakTime3 = Pattern.compile("15:00.*?〜.*?16:00", Pattern.DOTALL);
-      assertTrue(breakTime3.matcher(body).find(), "15:00〜16:00 が見つかりません");
-      Pattern breakTime4 = Pattern.compile("16:00.*?〜.*?17:00", Pattern.DOTALL);
-      assertTrue(breakTime4.matcher(body).find(), "16:00〜17:00 が見つかりません");
-
-      // 「割当結果」見出し以降のテーブル行を抽出
       int resultSectionStart = body.indexOf("割当結果");
       String resultSection = body.substring(resultSectionStart);
 
-      // <tr>...</tr> を行ごとに抽出（ヘッダー行も含まれるため、後で除外）
       Pattern tableRowPattern = Pattern.compile("<tr>.*?</tr>", Pattern.DOTALL);
       Matcher tableRowMatcher = tableRowPattern.matcher(resultSection);
       List<String> rows = new ArrayList<>();
@@ -287,11 +276,9 @@ class ShiftControllerTest {
         rows.add(tableRowMatcher.group());
       }
 
-      // 最初の行はヘッダー行なので、データ行だけを取得
       List<String> dataRows = rows.subList(1, rows.size());
       assertEquals(4, dataRows.size(), "結果表のデータ行は4行であること");
 
-      // 行0：早番・太郎・13:00〜14:00
       assertTrue(
           dataRows.get(0).contains("早番")
               && dataRows.get(0).contains("太郎")
@@ -300,7 +287,6 @@ class ShiftControllerTest {
                   .find(),
           "行0（早番・太郎・13:00〜14:00）が見つかりません");
 
-      // 行1：早番・花子・14:00〜15:00
       assertTrue(
           dataRows.get(1).contains("早番")
               && dataRows.get(1).contains("花子")
@@ -309,7 +295,6 @@ class ShiftControllerTest {
                   .find(),
           "行1（早番・花子・14:00〜15:00）が見つかりません");
 
-      // 行2：遅番・次郎・15:00〜16:00
       assertTrue(
           dataRows.get(2).contains("遅番")
               && dataRows.get(2).contains("次郎")
@@ -318,7 +303,6 @@ class ShiftControllerTest {
                   .find(),
           "行2（遅番・次郎・15:00〜16:00）が見つかりません");
 
-      // 行3：遅番・美咲・16:00〜17:00
       assertTrue(
           dataRows.get(3).contains("遅番")
               && dataRows.get(3).contains("美咲")
