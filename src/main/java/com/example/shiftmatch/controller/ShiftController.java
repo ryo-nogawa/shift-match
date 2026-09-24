@@ -76,6 +76,11 @@ public class ShiftController {
       return "index";
     }
 
+    // 仕様上、入力表には最低 1 行を残す必要があるため、行が 1 件も送られなかった場合だけ空行を補う
+    if (shiftForm.getEmployees().isEmpty()) {
+      shiftForm.getEmployees().add(new EmployeeForm());
+    }
+
     List<Employee> employees = convertToEmployees(shiftForm);
 
     List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);

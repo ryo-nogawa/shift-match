@@ -50,6 +50,29 @@ class ShiftControllerTest {
       assertNotNull(shiftForm);
       assertEquals(4, shiftForm.getEmployees().size());
     }
+
+    @Test
+    @DisplayName(
+        "[F-6] Given: GET / で初期表示するとき, When: 画面を取得すると, "
+            + "Then: 入力行（4行）と同数の「削除」ボタン（class=\"delete-row-btn\"）が含まれる")
+    void shouldDisplayDeleteButtonsInInitialForm() throws Exception {
+      MvcResult result =
+          mockMvc
+              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
+              .andReturn();
+
+      assertEquals(200, result.getResponse().getStatus());
+      String body = result.getResponse().getContentAsString();
+
+      Pattern deleteButtonPattern = Pattern.compile("class=\"delete-row-btn\"");
+      Matcher deleteButtonMatcher = deleteButtonPattern.matcher(body);
+      int deleteButtonCount = 0;
+      while (deleteButtonMatcher.find()) {
+        deleteButtonCount++;
+      }
+
+      assertEquals(4, deleteButtonCount, "削除ボタンが4個含まれていること");
+    }
   }
 
   @Nested
@@ -333,6 +356,40 @@ class ShiftControllerTest {
     }
 
     @Test
+    @DisplayName(
+        "[F-6] Given: 2行を送信して POST /shift で再表示するとき, When: 入力行が再描画されると, "
+            + "Then: 送信した行数と同じ2個の「削除」ボタンが含まれ、削除した行は復活しない")
+    void shouldDisplayDeleteButtonsInPostResponse() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.empty());
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+
+      Pattern deleteButtonPattern = Pattern.compile("class=\"delete-row-btn\"");
+      Matcher deleteButtonMatcher = deleteButtonPattern.matcher(body);
+      int deleteButtonCount = 0;
+      while (deleteButtonMatcher.find()) {
+        deleteButtonCount++;
+      }
+
+      assertEquals(2, deleteButtonCount, "送信した行数（2行）と同数の削除ボタンが含まれること");
+    }
+
+    @Test
     @DisplayName("[F-5] Given: 条件を満たす組み合わせがないとき, When: POST /shift を実行すると, Then: 不成立メッセージが表示されること")
     void shouldDisplayUnassignableMessageWhenNoValidCombinationExists() throws Exception {
       org.mockito.Mockito.when(
@@ -372,6 +429,34 @@ class ShiftControllerTest {
       assertEquals(200, result.getResponse().getStatus());
       String body = result.getResponse().getContentAsString();
       assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-6] Given: 従業員パラメータが一切送られないとき, When: POST /shift で再表示すると, "
+            + "Then: 入力行が最低1行残り、削除ボタンが1個含まれる")
+    void shouldKeepOneRowWhenNoEmployeeParametersArePosted() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.empty());
+
+      MvcResult result =
+          mockMvc
+              .perform(
+                  MockMvcRequestBuilders.post("/shift")
+                      .params(new LinkedMultiValueMap<String, String>()))
+              .andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("name=\"employees[0].name\""));
+      Matcher matcher = Pattern.compile("class=\"delete-row-btn\"").matcher(body);
+      int count = 0;
+      while (matcher.find()) {
+        count++;
+      }
+      assertEquals(1, count, "削除ボタンが1個含まれること");
     }
   }
 }
