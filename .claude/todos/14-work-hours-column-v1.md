@@ -25,7 +25,7 @@
     - テストを先に書き、アサーションで失敗（RED）することを確認した
     - `<th>` が `枠`・`氏名`・`勤務時間`・`休憩` の順になっていることを検証するテストが存在し成功する
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
-- [ ] **T2. 早番の行に 8:00〜17:00、遅番の行に 12:00〜21:00 が表示される（TDD）**
+- [x] **T2. 早番の行に 8:00〜17:00、遅番の行に 12:00〜21:00 が表示される（TDD）**
   - 依頼事項：`ShiftControllerTest` に `[F-4]` のテストを先に書き、RED を確認する。早番 2 名・遅番 2 名の割当をモックし、結果表の 1〜2 行目（早番）の勤務時間セルが `8:00〜17:00`、3〜4 行目（遅番）が `12:00〜21:00` であることを検証する（行ごとに枠・氏名・勤務時間が同じ `<tr>` 内にあることを確認する）。その後 `index.html` の各行の勤務時間 `<td>` に、枠に応じた文字列を出力して GREEN にする
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：
