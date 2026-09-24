@@ -16,13 +16,12 @@ import org.springframework.stereotype.Service;
 /**
  * シフト割り当てを行うサービス実装。
  *
- * <p>6 種類の枠に 8 名を割り当てます。全組み合わせを総当たりで評価し、条件を満たす案の中で
- * スコアが最大かつ入力順で最初の案を返します。
+ * <p>6 種類の枠に 8 名を割り当てます。動的計画法で最適な案を高速に求め、条件を満たす案の
+ * 中でスコアが最大かつ入力順で最初の案を返します。
  */
 @Service
 public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
-  private static final int TOTAL_EMPLOYEES = 8;
   private static final int MIN_EMPLOYEES = 8;
 
   @Override
@@ -45,166 +44,180 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
     }
 
-    // 最適な案を探す
-    BestAssignment bestAssignment = new BestAssignment();
-    boolean[] used = new boolean[validEmployees.size()];
-    int[] assignment = new int[8];
-    findBestAssignment(validEmployees, wishes, used, assignment, 0, 0, bestAssignment);
+    // 動的計画法で最適スコアを計算
+    int n = validEmployees.size();
+    int[][] memo = new int[7][1 << n];
+    for (int i = 0; i < 7; i++) {
+      for (int j = 0; j < (1 << n); j++) {
+        memo[i][j] = -1; // -1: 未計算
+      }
+    }
 
-    if (bestAssignment.assignment == null) {
+    int maxScore = computeMaxScore(wishes, 0, 0, memo);
+
+    if (maxScore < 0) {
       return Optional.empty();
     }
 
-    return Optional.of(buildResult(validEmployees, bestAssignment.assignment));
+    // 復元：入力順の辞書順で最初の最大スコア案を構築
+    int[] assignment = new int[8];
+    reconstructAssignment(wishes, 0, 0, maxScore, assignment, 0, memo);
+
+    return Optional.of(buildResult(validEmployees, assignment));
   }
 
   /**
-   * 最適な割り当てを保持するクラス。
+   * 動的計画法で最大スコアを計算します。
+   *
+   * @param wishes 従業員 × 枠の希望配列
+   * @param slotIndex 現在の枠インデックス
+   * @param usedMask 使用済み従業員のビットマスク
+   * @param memo メモ化テーブル
+   * @return 枠 slotIndex 以降で得られる最大の追加スコア（割り当て不可なら -1）
    */
-  private static class BestAssignment {
-    int[] assignment;
-    int score;
+  private int computeMaxScore(Wish[][] wishes, int slotIndex, int usedMask, int[][] memo) {
+    if (slotIndex >= ShiftSlot.values().length) {
+      return 0;
+    }
 
-    BestAssignment() {
-      this.assignment = null;
-      this.score = -1;
+    if (memo[slotIndex][usedMask] >= 0) {
+      return memo[slotIndex][usedMask];
+    }
+
+    ShiftSlot slot = ShiftSlot.values()[slotIndex];
+    int requiredCount = slot.numberOfEmployees();
+    int maxScore = -1;
+
+    // この枠に割り当てる従業員の組を列挙（入力順の辞書順）
+    for (int combo : generateCombinations(wishes, slotIndex, usedMask, requiredCount)) {
+      int nextMask = usedMask;
+      int comboScore = 0;
+
+      // 各ビットを処理
+      for (int i = 0, bit = 0; i < wishes.length && i < 32; i++) {
+        if ((combo & (1 << i)) != 0) {
+          nextMask |= (1 << i);
+          if (wishes[i][slotIndex] == Wish.DESIRED) {
+            comboScore++;
+          }
+          bit++;
+          if (bit >= requiredCount) {
+            break;
+          }
+        }
+      }
+
+      int futureScore = computeMaxScore(wishes, slotIndex + 1, nextMask, memo);
+      if (futureScore >= 0) {
+        int totalScore = comboScore + futureScore;
+        if (totalScore > maxScore) {
+          maxScore = totalScore;
+        }
+      }
+    }
+
+    memo[slotIndex][usedMask] = maxScore;
+    return maxScore;
+  }
+
+  /**
+   * 指定された枠に割り当て可能な従業員の組み合わせを列挙します。
+   *
+   * @param wishes 従業員 × 枠の希望配列
+   * @param slotIndex 枠インデックス
+   * @param usedMask 使用済み従業員のビットマスク
+   * @param requiredCount この枠に必要な人数
+   * @return 組み合わせのリスト（各要素は従業員インデックスを示すビットマスク）
+   */
+  private java.util.List<Integer> generateCombinations(
+      Wish[][] wishes, int slotIndex, int usedMask, int requiredCount) {
+    java.util.List<Integer> combinations = new ArrayList<>();
+    combinationHelper(wishes, slotIndex, usedMask, requiredCount, 0, 0, 0, combinations);
+    return combinations;
+  }
+
+  /**
+   * 組み合わせを再帰的に生成します。
+   */
+  private void combinationHelper(
+      Wish[][] wishes,
+      int slotIndex,
+      int usedMask,
+      int requiredCount,
+      int currentIndex,
+      int currentMask,
+      int count,
+      java.util.List<Integer> combinations) {
+    if (count == requiredCount) {
+      combinations.add(currentMask);
+      return;
+    }
+
+    for (int i = currentIndex; i < wishes.length; i++) {
+      if ((usedMask & (1 << i)) == 0 && wishes[i][slotIndex] != Wish.UNAVAILABLE) {
+        combinationHelper(
+            wishes,
+            slotIndex,
+            usedMask,
+            requiredCount,
+            i + 1,
+            currentMask | (1 << i),
+            count + 1,
+            combinations);
+      }
     }
   }
 
   /**
-   * 再帰的に最適な割り当てを探します。
-   *
-   * @param employees 有効な従業員リスト
-   * @param wishes 希望の2次元配列（従業員 × 枠）
-   * @param used 割り当て済みの従業員フラグ
-   * @param assignment 現在の割り当て（長さ8）
-   * @param assignmentIndex 割り当て配列の次の位置
-   * @param slotIndex 次に割り当てる枠のインデックス
-   * @param bestAssignment 最適な割り当て
+   * 復元：入力順の辞書順で最初の最大スコア案を構築します。
    */
-  private void findBestAssignment(
-      List<Employee> employees,
+  private void reconstructAssignment(
       Wish[][] wishes,
-      boolean[] used,
+      int slotIndex,
+      int usedMask,
+      int targetScore,
       int[] assignment,
       int assignmentIndex,
-      int slotIndex,
-      BestAssignment bestAssignment) {
-
+      int[][] memo) {
     if (slotIndex >= ShiftSlot.values().length) {
-      // すべての枠を割り当てた：スコアを計算
-      int score = calculateScore(employees, wishes, assignment);
-      if (score > bestAssignment.score) {
-        bestAssignment.score = score;
-        bestAssignment.assignment = assignment.clone();
-      }
       return;
     }
 
     ShiftSlot slot = ShiftSlot.values()[slotIndex];
     int requiredCount = slot.numberOfEmployees();
 
-    // この枠に割り当てる従業員の組み合わせを探す
-    findCombinationsOptimized(
-        employees,
-        wishes,
-        used,
-        assignment,
-        assignmentIndex,
-        0,
-        requiredCount,
-        slotIndex,
-        bestAssignment);
-  }
+    // 入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選ぶ
+    for (int combo : generateCombinations(wishes, slotIndex, usedMask, requiredCount)) {
+      int nextMask = usedMask;
+      int comboScore = 0;
 
-  /**
-   * 与えられた枠に割り当てる従業員の組み合わせを列挙します（最適化版）。
-   *
-   * @param employees 有効な従業員リスト
-   * @param wishes 希望の2次元配列
-   * @param used 割り当て済みフラグ
-   * @param assignment 現在の割り当て
-   * @param assignmentIndex 割り当て配列の次の位置
-   * @param candidateStart 次にチェックする候補の開始インデックス
-   * @param requiredCount この枠に必要な人数
-   * @param slotIndex 現在の枠のインデックス
-   * @param bestAssignment 最適な割り当て
-   */
-  private void findCombinationsOptimized(
-      List<Employee> employees,
-      Wish[][] wishes,
-      boolean[] used,
-      int[] assignment,
-      int assignmentIndex,
-      int candidateStart,
-      int requiredCount,
-      int slotIndex,
-      BestAssignment bestAssignment) {
-
-    if (requiredCount == 0) {
-      // この枠への割り当てが完成したら、次の枠へ
-      findBestAssignment(
-          employees, wishes, used, assignment, assignmentIndex, slotIndex + 1, bestAssignment);
-      return;
-    }
-
-    for (int i = candidateStart; i < employees.size(); i++) {
-      // この従業員が既に割り当てられていないか確認（H-2）
-      if (used[i]) {
-        continue;
-      }
-
-      // この従業員がこの枠で × でないか確認（H-3）
-      if (wishes[i][slotIndex] == Wish.UNAVAILABLE) {
-        continue;
-      }
-
-      // この従業員を割り当てる
-      used[i] = true;
-      assignment[assignmentIndex] = i;
-
-      findCombinationsOptimized(
-          employees,
-          wishes,
-          used,
-          assignment,
-          assignmentIndex + 1,
-          i + 1,
-          requiredCount - 1,
-          slotIndex,
-          bestAssignment);
-
-      // バックトラック
-      used[i] = false;
-    }
-  }
-
-  /**
-   * 割り当てのスコアを計算します。
-   *
-   * @param employees 有効な従業員リスト
-   * @param wishes 希望の2次元配列
-   * @param assignment 割り当て配列
-   * @return スコア
-   */
-  private int calculateScore(List<Employee> employees, Wish[][] wishes, int[] assignment) {
-    int score = 0;
-    int position = 0;
-
-    for (int slotIndex = 0; slotIndex < ShiftSlot.values().length; slotIndex++) {
-      ShiftSlot slot = ShiftSlot.values()[slotIndex];
-      int requiredCount = slot.numberOfEmployees();
-
-      for (int i = 0; i < requiredCount; i++) {
-        int employeeIndex = assignment[position];
-        if (wishes[employeeIndex][slotIndex] == Wish.DESIRED) {
-          score++;
+      // 組内の従業員を検出して割り当て
+      int assignedCount = 0;
+      for (int i = 0; i < wishes.length && assignedCount < requiredCount; i++) {
+        if ((combo & (1 << i)) != 0) {
+          assignment[assignmentIndex + assignedCount] = i;
+          nextMask |= (1 << i);
+          if (wishes[i][slotIndex] == Wish.DESIRED) {
+            comboScore++;
+          }
+          assignedCount++;
         }
-        position++;
+      }
+
+      int futureScore = computeMaxScore(wishes, slotIndex + 1, nextMask, memo);
+      if (futureScore >= 0 && comboScore + futureScore == targetScore) {
+        // このスロットの割り当てが確定。次のスロットへ
+        reconstructAssignment(
+            wishes,
+            slotIndex + 1,
+            nextMask,
+            futureScore,
+            assignment,
+            assignmentIndex + requiredCount,
+            memo);
+        return; // 最初の最大スコア案を採用（同点では更新しない）
       }
     }
-
-    return score;
   }
 
   /**

@@ -326,19 +326,346 @@ class ShiftAssignmentServiceImplTest {
   class Performance {
 
     @Test
-    @DisplayName("[H-1] Given: 12人全員が全枠◯のとき, When: assignを実行すると, Then: 10秒以内に完了する")
-    void completesWithinTenSecondsForTwelveEmployees() {
+    @DisplayName("[H-1] Given: 12人全員が全枠◯のとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
+    void completesWithin500MillisForAllAvailable() {
       List<Employee> employees = createAllAvailableEmployees(12);
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
 
-      // Use assertTimeout with Duration to measure and enforce time limit
       org.junit.jupiter.api.Assertions.assertTimeout(
-          Duration.ofSeconds(10),
+          Duration.ofMillis(500),
           () -> {
             Optional<AssignmentResult> result = service.assign(employees);
             assertTrue(result.isPresent(), "Assignment should succeed for 12 employees");
           });
     }
+
+    @Test
+    @DisplayName("[H-1] Given: 12人全員が全枠◎のとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
+    void completesWithin500MillisForAllDesired() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 12; i++) {
+        employees.add(
+            new Employee(
+                "Employee" + i,
+                List.of(
+                    Wish.DESIRED,
+                    Wish.DESIRED,
+                    Wish.DESIRED,
+                    Wish.DESIRED,
+                    Wish.DESIRED,
+                    Wish.DESIRED)));
+      }
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      org.junit.jupiter.api.Assertions.assertTimeout(
+          Duration.ofMillis(500),
+          () -> {
+            Optional<AssignmentResult> result = service.assign(employees);
+            assertTrue(result.isPresent(), "Assignment should succeed for 12 employees");
+          });
+    }
+
+    @Test
+    @DisplayName("[H-1] Given: 12人の希望がすべてランダムのとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
+    void completesWithin500MillisForRandomWishes() {
+      java.util.Random random = new java.util.Random(54321L);
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 12; i++) {
+        List<Wish> wishes = new ArrayList<>();
+        for (int j = 0; j < 6; j++) {
+          int val = random.nextInt(3);
+          if (val == 0) {
+            wishes.add(Wish.DESIRED);
+          } else if (val == 1) {
+            wishes.add(Wish.AVAILABLE);
+          } else {
+            wishes.add(Wish.UNAVAILABLE);
+          }
+        }
+        employees.add(new Employee("Employee" + i, wishes));
+      }
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+      org.junit.jupiter.api.Assertions.assertTimeout(
+          Duration.ofMillis(500),
+          () -> {
+            Optional<AssignmentResult> result = service.assign(employees);
+            // Assignment may or may not exist, but should complete quickly
+          });
+    }
+  }
+
+  @Nested
+  @DisplayName("[動的計画法への置き換え検証]")
+  class DynamicProgrammingVerification {
+
+    @Test
+    @DisplayName(
+        "[H-1][H-2][H-3] Given: 9～10人のランダムな希望の入力200通り, When: assignを実行すると, Then: 参照実装の結果と一致する")
+    void dynamicProgrammingMatchesBruteForceReference() {
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      java.util.Random random = new java.util.Random(12345L); // 固定シード
+      int testCases = 200;
+
+      for (int testNum = 0; testNum < testCases; testNum++) {
+        int employeeCount = 9 + random.nextInt(2); // 9 or 10
+        List<Employee> employees = generateRandomEmployees(random, employeeCount);
+
+        Optional<AssignmentResult> actual = service.assign(employees);
+        Optional<AssignmentResult> expected = bruteForceReference(employees);
+
+        assertEquals(
+            expected.isPresent(),
+            actual.isPresent(),
+            "Test case " + testNum + ": presence should match");
+
+        if (expected.isPresent() && actual.isPresent()) {
+          AssignmentResult expectedResult = expected.get();
+          AssignmentResult actualResult = actual.get();
+
+          assertEquals(
+              expectedResult.score(),
+              actualResult.score(),
+              "Test case " + testNum + ": score should match");
+
+          assertEquals(
+              expectedResult.assignments().size(),
+              actualResult.assignments().size(),
+              "Test case " + testNum + ": assignment count should match");
+
+          for (int i = 0; i < expectedResult.assignments().size(); i++) {
+            var expectedAssignment = expectedResult.assignments().get(i);
+            var actualAssignment = actualResult.assignments().get(i);
+
+            assertEquals(
+                expectedAssignment.employee().name(),
+                actualAssignment.employee().name(),
+                "Test case " + testNum + ", position " + i + ": employee name should match");
+
+            assertEquals(
+                expectedAssignment.slot(),
+                actualAssignment.slot(),
+                "Test case " + testNum + ", position " + i + ": slot should match");
+          }
+        }
+      }
+    }
+  }
+
+  private List<Employee> generateRandomEmployees(java.util.Random random, int count) {
+    List<Employee> employees = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      List<Wish> wishes = new ArrayList<>();
+      for (int j = 0; j < 6; j++) {
+        int val = random.nextInt(100);
+        // 70% UNAVAILABLE, 20% AVAILABLE, 10% DESIRED（不成立も含める）
+        if (val < 70) {
+          wishes.add(Wish.UNAVAILABLE);
+        } else if (val < 90) {
+          wishes.add(Wish.AVAILABLE);
+        } else {
+          wishes.add(Wish.DESIRED);
+        }
+      }
+      employees.add(new Employee("Emp" + i, wishes));
+    }
+    return employees;
+  }
+
+  private Optional<AssignmentResult> bruteForceReference(List<Employee> employees) {
+    // V-1: Filter out blank names
+    List<Employee> validEmployees =
+        employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
+
+    // V-4: Check minimum employees
+    if (validEmployees.size() < 8) {
+      return Optional.empty();
+    }
+
+    // Brute force: enumerate all permutations and find the first one with max score
+    Wish[][] wishes = new Wish[validEmployees.size()][6];
+    for (int i = 0; i < validEmployees.size(); i++) {
+      List<Wish> employeeWishes = validEmployees.get(i).wishes();
+      for (int j = 0; j < 6; j++) {
+        wishes[i][j] = employeeWishes.get(j);
+      }
+    }
+
+    BruteForceResult bestResult = new BruteForceResult();
+    boolean[] used = new boolean[validEmployees.size()];
+    int[] assignment = new int[8];
+
+    bruteForceExplore(validEmployees, wishes, used, assignment, 0, 0, bestResult);
+
+    if (bestResult.assignment == null) {
+      return Optional.empty();
+    }
+
+    // Build the result
+    return buildResultFromAssignment(validEmployees, bestResult.assignment);
+  }
+
+  private static class BruteForceResult {
+    int[] assignment;
+    int score;
+
+    BruteForceResult() {
+      this.assignment = null;
+      this.score = -1;
+    }
+  }
+
+  private void bruteForceExplore(
+      List<Employee> employees,
+      Wish[][] wishes,
+      boolean[] used,
+      int[] assignment,
+      int assignmentIndex,
+      int slotIndex,
+      BruteForceResult bestResult) {
+
+    if (slotIndex >= ShiftSlot.values().length) {
+      // Calculate score
+      int score = 0;
+      int pos = 0;
+      for (int s = 0; s < ShiftSlot.values().length; s++) {
+        ShiftSlot slot = ShiftSlot.values()[s];
+        int count = slot.numberOfEmployees();
+        for (int i = 0; i < count; i++) {
+          int idx = assignment[pos];
+          if (wishes[idx][s] == Wish.DESIRED) {
+            score++;
+          }
+          pos++;
+        }
+      }
+
+      // Use > (not >=) to keep the first maximum
+      if (score > bestResult.score) {
+        bestResult.score = score;
+        bestResult.assignment = assignment.clone();
+      }
+      return;
+    }
+
+    ShiftSlot slot = ShiftSlot.values()[slotIndex];
+    int requiredCount = slot.numberOfEmployees();
+
+    bruteForceExploreSlot(
+        employees,
+        wishes,
+        used,
+        assignment,
+        assignmentIndex,
+        0,
+        requiredCount,
+        slotIndex,
+        bestResult);
+  }
+
+  private void bruteForceExploreSlot(
+      List<Employee> employees,
+      Wish[][] wishes,
+      boolean[] used,
+      int[] assignment,
+      int assignmentIndex,
+      int candidateStart,
+      int requiredCount,
+      int slotIndex,
+      BruteForceResult bestResult) {
+
+    if (requiredCount == 0) {
+      bruteForceExplore(
+          employees, wishes, used, assignment, assignmentIndex, slotIndex + 1, bestResult);
+      return;
+    }
+
+    for (int i = candidateStart; i < employees.size(); i++) {
+      if (used[i]) {
+        continue;
+      }
+
+      if (wishes[i][slotIndex] == Wish.UNAVAILABLE) {
+        continue;
+      }
+
+      used[i] = true;
+      assignment[assignmentIndex] = i;
+
+      bruteForceExploreSlot(
+          employees,
+          wishes,
+          used,
+          assignment,
+          assignmentIndex + 1,
+          i + 1,
+          requiredCount - 1,
+          slotIndex,
+          bestResult);
+
+      used[i] = false;
+    }
+  }
+
+  private Optional<com.example.shiftmatch.domain.AssignmentResult> buildResultFromAssignment(
+      List<Employee> employees, int[] assignment) {
+    com.example.shiftmatch.domain.BreakScheduler scheduler =
+        new com.example.shiftmatch.domain.BreakScheduler();
+    ShiftSlot[] slots = ShiftSlot.values();
+    List<ShiftSlot> slotList = new ArrayList<>();
+
+    int position = 0;
+    for (int slotIndex = 0; slotIndex < slots.length; slotIndex++) {
+      ShiftSlot slot = slots[slotIndex];
+      int requiredCount = slot.numberOfEmployees();
+      for (int i = 0; i < requiredCount; i++) {
+        slotList.add(slot);
+        position++;
+      }
+    }
+
+    List<com.example.shiftmatch.domain.BreakInterval> breaks = scheduler.schedule(slotList);
+
+    List<com.example.shiftmatch.domain.ShiftAssignment> shiftAssignments = new ArrayList<>();
+    int score = 0;
+    boolean[] used = new boolean[employees.size()];
+
+    for (int i = 0; i < assignment.length; i++) {
+      int employeeIndex = assignment[i];
+      Employee employee = employees.get(employeeIndex);
+      ShiftSlot slot = slotList.get(i);
+      com.example.shiftmatch.domain.BreakInterval breakInterval = breaks.get(i);
+
+      shiftAssignments.add(
+          new com.example.shiftmatch.domain.ShiftAssignment(
+              employee, slot, breakInterval.startTime(), breakInterval.endTime()));
+
+      int slotIndex = getSlotIndex(slot);
+      if (employee.wishes().get(slotIndex) == Wish.DESIRED) {
+        score++;
+      }
+
+      used[employeeIndex] = true;
+    }
+
+    List<Employee> unassigned = new ArrayList<>();
+    for (int i = 0; i < employees.size(); i++) {
+      if (!used[i]) {
+        unassigned.add(employees.get(i));
+      }
+    }
+
+    return Optional.of(new AssignmentResult(shiftAssignments, score, unassigned));
+  }
+
+  private int getSlotIndex(ShiftSlot slot) {
+    ShiftSlot[] slots = ShiftSlot.values();
+    for (int i = 0; i < slots.length; i++) {
+      if (slots[i] == slot) {
+        return i;
+      }
+    }
+    throw new IllegalStateException("Slot index not found");
   }
 
   private List<Employee> createAllAvailableEmployees(int count) {
