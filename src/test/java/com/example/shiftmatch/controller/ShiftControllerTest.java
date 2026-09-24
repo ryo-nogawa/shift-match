@@ -658,6 +658,64 @@ class ShiftControllerTest {
       assertFalse(resultTableContent.contains("早番"), "Result table should not contain '早番'");
       assertFalse(resultTableContent.contains("遅番"), "Result table should not contain '遅番'");
     }
+
+    @Test
+    @DisplayName("[F-4] Given: タイムラインが表示されるとき, When: 時間軸を確認すると," + " Then: ラベルが8から18の1時間刻みで11個ある")
+    void displaysTimelineAxisLabelsEightToEighteen() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Check time axis labels
+      for (int h = 8; h <= 18; h++) {
+        assertTrue(
+            responseContent.contains("<div class=\"tl-axis\">")
+                && responseContent.contains(String.valueOf(h)),
+            "Timeline should contain hour label " + h);
+      }
+
+      // Verify old "20" is not present
+      assertFalse(
+          responseContent.contains("class=\"tl-axis\">") && responseContent.contains(">20<"),
+          "Timeline should not contain hour 20");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: CSSファイルを確認するとき, When: .tl-workの定義を見ると,"
+            + " Then: backgroundプロパティが定義されており、早番・遅番のセレクターがない")
+    void cssHasWorkBarColorWithoutEarlyLate() throws Exception {
+      String cssFilePath = "src/main/resources/static/css/shift-form.css";
+      java.nio.file.Path path = java.nio.file.Paths.get(cssFilePath);
+      String cssContent = new String(java.nio.file.Files.readAllBytes(path));
+
+      assertTrue(
+          cssContent.contains(".tl-work") && cssContent.contains("background:"),
+          "CSS should have .tl-work with background property");
+      assertFalse(
+          cssContent.contains(".tl-work.early") || cssContent.contains(".tl-work.late"),
+          "CSS should not have .tl-work.early or .tl-work.late");
+    }
   }
 
   @Nested

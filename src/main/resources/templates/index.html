@@ -121,7 +121,7 @@
       </div>
       <div class="timeline">
         <div class="tl-axis">
-          <span th:each="h : ${#numbers.sequence(8, 20, 2)}" th:style="|left:${#numbers.formatDecimal((h - 8) * 100.0 / 13, 1, 2, 'POINT')}%|" th:text="${h}"></span>
+          <span th:each="h : ${#numbers.sequence(8, 18)}" th:style="|left:${#numbers.formatDecimal((h * 60 - 450) * 100.0 / 660, 1, 2, 'POINT')}%|" th:text="${h}"></span>
         </div>
         <div
           class="tl-row"
@@ -139,7 +139,7 @@
             ></div>
           </div>
         </div>
-        <div class="tl-legend"><i class="lg early"></i>勤務<i class="lg brk"></i>休憩</div>
+        <div class="tl-legend"><i class="lg"></i>勤務<i class="lg brk"></i>休憩</div>
       </div>
       <table class="result-table">
         <thead>
