@@ -897,5 +897,87 @@ class ShiftControllerTest {
       assertTrue(body.contains("class=\"alert\""), "本文に class=\"alert\" が含まれること");
       assertTrue(body.contains("role=\"alert\""), "本文に role=\"alert\" が含まれること");
     }
+
+    @Test
+    @DisplayName(
+        "[F-5] Given: 条件を満たす組み合わせがないとき, When: POST /shift を実行すると, "
+            + "Then: class=\"empty\" の中に補足文「希望（×）を見直すか、従業員を追加してください。」が <small> で含まれること")
+    void shouldDisplaySupplementalTextInEmptyMessage() throws Exception {
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.empty());
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(body.contains("class=\"card result\""), "本文に class=\"card result\" が含まれること");
+      assertTrue(body.contains("class=\"empty\""), "本文に class=\"empty\" が含まれること");
+      assertTrue(body.contains("class=\"empty-icon\""), "本文に class=\"empty-icon\" が含まれること");
+      assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"), "本文に既存のメッセージが含まれること");
+      assertTrue(body.contains("希望（×）を見直すか、従業員を追加してください。"), "本文に補足文が含まれること");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: class=\"empty\" が出力されていないこと")
+    void shouldNotDisplayEmptyClassWhenAssignmentSucceeds() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "太郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "花子",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "次郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "美咲",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              4,
+              java.util.List.of());
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+      params.add("employees[2].name", "次郎");
+      params.add("employees[2].earlyWish", "DESIRED");
+      params.add("employees[2].lateWish", "AVAILABLE");
+      params.add("employees[3].name", "美咲");
+      params.add("employees[3].earlyWish", "AVAILABLE");
+      params.add("employees[3].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+      assertTrue(!body.contains("class=\"empty\""), "成立時に class=\"empty\" が含まれていないこと");
+    }
   }
 }

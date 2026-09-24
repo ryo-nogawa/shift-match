@@ -58,7 +58,7 @@
     - 一時的に `class="alert"` を消すと 3 件とも失敗することを確認した（実行ログに記録する）
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T5. 不成立表示に補足文を追加する（TDD）**
+- [x] **T5. 不成立表示に補足文を追加する（TDD）**
   - 依頼事項：`UiDesignTest` に、不成立（`shiftAssignmentService.assign(...)` が `Optional.empty()` を返す）のとき、本文に `class="card result"`、`class="empty"`、`class="empty-icon"`、既存の文言 `条件を満たす組み合わせが見つかりませんでした。`、補足文 `希望（×）を見直すか、従業員を追加してください。`（`<small>` 内）が含まれるテストを追加する。補足文が無いので RED になることを確認してから、`index.html` の `.empty` 内、メッセージ `<p>` の直後に `<small>希望（×）を見直すか、従業員を追加してください。</small>` を追加して GREEN にする。あわせて、成立時には `class="empty"` が出力されないことを検証するテスト（異常系側）も追加する
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：
@@ -125,3 +125,4 @@
 ## 実行ログ
 
 - T4 完了：3つのテスト（上限超過、重複エラー、希望の不正値）を追加し、class="alert" と role="alert" を検証。一時的に class="alert" を削除して3つのテストが失敗することを確認。
+- T5 完了：不成立時の補足文をテストで検証するテストを追加（RED）。補足文がないことを確認。`index.html` に `<small>希望（×）を見直すか、従業員を追加してください。</small>` を追加。成立時に class="empty" が出ないことを検証するテストも追加（GREEN）。
