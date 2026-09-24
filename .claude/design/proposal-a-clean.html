@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>シフト作成 案A クリーン</title>
+<style>
+
+*{box-sizing:border-box}
+body{margin:0;font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+.app{max-width:820px;margin:0 auto;padding:48px 20px 120px}
+h1,h2{margin:0}
+table{border-collapse:collapse;width:100%}
+.input-table thead small{display:block;font-weight:400;font-size:11px;opacity:.65}
+.actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:600;cursor:pointer;border:1px solid transparent;transition:.15s}
+.btn:focus-visible,input:focus-visible,select:focus-visible,.delete-row-btn:focus-visible{outline:3px solid var(--ring);outline-offset:1px}
+.delete-row-btn:disabled{opacity:.3;cursor:not-allowed}
+.wish-legend{font-size:12px;margin:0 0 12px}
+.w{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;margin:0 4px 0 12px;font-size:12px}
+.w:first-child{margin-left:0}
+.pill{display:inline-block;padding:1px 10px;border-radius:999px;font-size:13px;font-weight:600}
+.empty{text-align:center;padding:24px 0}
+.empty p{margin:8px 0 2px;font-weight:600}
+.empty small{opacity:.65}
+.empty-icon{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:50%;font-weight:700;font-size:20px}
+.score{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+.score-num{font-size:44px;font-weight:800;line-height:1}
+.score-num small{font-size:18px;font-weight:600;opacity:.5}
+.score-label{font-size:13px;opacity:.7}
+.unassigned{margin-top:16px;font-size:14px;display:flex;gap:10px;align-items:center}
+.chip{padding:2px 12px;border-radius:999px;font-size:13px}
+.alert h2{font-size:15px;margin-bottom:4px}
+.alert ul{margin:0;padding-left:1.2em;font-size:14px}
+.hero .lead{margin:6px 0 0;font-size:14px}
+.eyebrow{margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card-head h2{font-size:17px}
+.count{font-size:13px}
+.result-table th,.result-table td{text-align:left;padding:10px 12px}
+.input-table th{text-align:left;padding:8px 8px;font-size:12px}
+.input-table td{padding:6px 6px}
+input[type=text],select{width:100%;font:inherit;font-size:15px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--text)}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+select[data-value=DESIRED]{background-color:var(--d-bg);color:var(--d-fg);border-color:var(--d-fg)}
+select[data-value=AVAILABLE]{background-color:var(--a-bg);color:var(--a-fg);border-color:var(--a-fg)}
+select[data-value=UNAVAILABLE]{background-color:var(--u-bg);color:var(--u-fg);border-color:var(--u-fg)}
+.w.d{background:var(--d-bg);color:var(--d-fg)}.w.a{background:var(--a-bg);color:var(--a-fg)}.w.u{background:var(--u-bg);color:var(--u-fg)}
+.delete-row-btn{font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--sub);cursor:pointer}
+.delete-row-btn:hover:not(:disabled){color:var(--u-fg);border-color:var(--u-fg)}
+.pill.early{background:var(--early-bg);color:var(--early-fg)}.pill.late{background:var(--late-bg);color:var(--late-fg)}
+/* スマホ：1 行を 1 枚のカードに */
+@media (max-width:640px){
+  .input-table thead{display:none}
+  .input-table,.input-table tbody{display:block}
+  .input-table tr{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px;margin-bottom:10px;border:1px solid var(--line);border-radius:14px}
+  .input-table td{padding:0;display:block}
+  .input-table td:first-child{grid-column:1/-1}
+  .input-table td[data-label]::before{content:attr(data-label);display:block;font-size:11px;margin-bottom:2px;color:var(--sub)}
+  .input-table td:last-child{grid-column:1/-1;text-align:right}
+  .actions .btn{flex:1}
+}
+
+:root{--bg:#f6f7fb;--card:#fff;--text:#1c2033;--sub:#6b7185;--line:#e2e5ef;--field:#fff;--accent:#4f46e5;--ring:#c7d2fe;
+--d-bg:#e6f7ee;--d-fg:#0f7a45;--a-bg:#eef2ff;--a-fg:#4338ca;--u-bg:#fdecec;--u-fg:#c0392b;
+--early-bg:#fff4dc;--early-fg:#9a6400;--late-bg:#e8edff;--late-fg:#3b45b5}
+body{background:var(--bg);color:var(--text)}
+.eyebrow{color:var(--accent)}
+h1{font-size:30px;letter-spacing:-.02em}
+.hero{margin-bottom:24px}.hero .lead{color:var(--sub)}
+.card{background:var(--card);border-radius:20px;padding:24px;margin-bottom:20px;box-shadow:0 1px 2px rgba(20,25,60,.05),0 8px 30px rgba(20,25,60,.05)}
+.count{color:var(--sub)}.count b{color:var(--text);font-size:18px}
+.input-table th{color:var(--sub)}
+input[type=text]:focus,select:focus{border-color:var(--accent)}
+.actions{margin-top:16px}
+.btn{padding:12px 22px;border-radius:12px}
+.btn.primary{background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(79,70,229,.35)}.btn.primary:hover{background:#4338ca;transform:translateY(-1px)}
+.btn.ghost{background:transparent;color:var(--accent);border-color:var(--line)}.btn.ghost:hover{background:#eef2ff}
+.alert{background:#fff5f5;border:1px solid #f5c2c2;color:#a02c2c;border-radius:14px;padding:14px 18px;margin-bottom:20px}
+.score-num{color:var(--accent)}
+.result-table thead th{font-size:12px;color:var(--sub);border-bottom:1px solid var(--line)}
+.result-table td{border-bottom:1px solid var(--line)}.result-table tr:last-child td{border-bottom:0}
+.chip{background:#f0f1f7;color:var(--sub)}
+.empty-icon{background:#fff4dc;color:#9a6400}
+@media (prefers-color-scheme:dark){:root{--bg:#12141f;--card:#1b1e2d;--text:#eceef8;--sub:#9aa0b8;--line:#2c3043;--field:#151726;--ring:#3b3f7a;--accent:#818cf8;
+--d-bg:#12301f;--d-fg:#5fd394;--a-bg:#1f2350;--a-fg:#a5b4fc;--u-bg:#3a1a1a;--u-fg:#ff8a80;--early-bg:#3a2d10;--early-fg:#f5c065;--late-bg:#1f2350;--late-fg:#a5b4fc}
+.btn.primary{color:#0e1020}.btn.ghost:hover{background:#232744}.alert{background:#2a1618;border-color:#5a2a2e;color:#ffb4b4}.chip{background:#252940}.empty-icon{background:#3a2d10;color:#f5c065}}
+
+/* ---- デモ用の状態切替バー ---- */
+.demo-bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:4px;padding:6px;border-radius:999px;background:rgba(20,20,30,.88);z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.demo-bar span{color:#aab;font:600 11px/28px system-ui;padding:0 8px}
+.demo-bar button{border:0;border-radius:999px;padding:6px 12px;font:600 12px system-ui;color:#dde;background:transparent;cursor:pointer}
+.demo-bar button[aria-pressed="true"]{background:#fff;color:#111}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="demo-bar" role="group" aria-label="デモ用の状態切替"><span>状態</span>
+<button data-state="input">入力</button><button data-state="result">結果</button><button data-state="unassignable">不成立</button><button data-state="error">エラー</button></div>
+
+<main class="app">
+<header class="hero">
+  <p class="eyebrow">Shift Match</p>
+  <h1>シフト作成</h1>
+  <p class="lead">従業員の希望を入力すると、早番 2 名・遅番 2 名の最適な割り当て案を提案します。</p>
+</header>
+
+<!-- th:if="${limitExceededError != null}" / duplicateErrors / wishErrors -->
+<section class="alert" role="alert" data-show="error">
+  <h2>入力エラー</h2>
+  <ul><li>氏名「佐藤」が重複しています（該当行：1, 4行目）</li><li>3行目 早番希望: 不正な値です</li></ul>
+</section>
+
+<form id="shift-form" method="post" class="card" novalidate>
+  <div class="card-head"><h2>従業員の希望</h2><span class="count"><b id="row-count">0</b> 名</span></div>
+  <p class="wish-legend"><b class="w d">◎</b>希望 <b class="w a">○</b>可能 <b class="w u">×</b>不可</p>
+  <table class="input-table">
+    <thead><tr><th>氏名</th><th>早番希望<small>8:00〜17:00</small></th><th>遅番希望<small>12:00〜21:00</small></th><th></th></tr></thead>
+    <tbody id="employee-rows"><tr><td data-label="氏名"><input type="text" name="employees[0].name" value="佐藤" placeholder="氏名を入力" /></td><td data-label="早番希望"><select name="employees[0].earlyWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED" selected>◎ 希望</option><option value="AVAILABLE">○ 可能</option><option value="UNAVAILABLE">× 不可</option></select></td><td data-label="遅番希望"><select name="employees[0].lateWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED">◎ 希望</option><option value="AVAILABLE" selected>○ 可能</option><option value="UNAVAILABLE">× 不可</option></select></td><td><button type="button" class="delete-row-btn" aria-label="行を削除">削除</button></td></tr><tr><td data-label="氏名"><input type="text" name="employees[1].name" value="鈴木" placeholder="氏名を入力" /></td><td data-label="早番希望"><select name="employees[1].earlyWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED">◎ 希望</option><option value="AVAILABLE" selected>○ 可能</option><option value="UNAVAILABLE">× 不可</option></select></td><td data-label="遅番希望"><select name="employees[1].lateWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED" selected>◎ 希望</option><option value="AVAILABLE">○ 可能</option><option value="UNAVAILABLE">× 不可</option></select></td><td><button type="button" class="delete-row-btn" aria-label="行を削除">削除</button></td></tr><tr><td data-label="氏名"><input type="text" name="employees[2].name" value="高橋" placeholder="氏名を入力" /></td><td data-label="早番希望"><select name="employees[2].earlyWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED">◎ 希望</option><option value="AVAILABLE">○ 可能</option><option value="UNAVAILABLE" selected>× 不可</option></select></td><td data-label="遅番希望"><select name="employees[2].lateWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED" selected>◎ 希望</option><option value="AVAILABLE">○ 可能</option><option value="UNAVAILABLE">× 不可</option></select></td><td><button type="button" class="delete-row-btn" aria-label="行を削除">削除</button></td></tr><tr><td data-label="氏名"><input type="text" name="employees[3].name" value="田中" placeholder="氏名を入力" /></td><td data-label="早番希望"><select name="employees[3].earlyWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED" selected>◎ 希望</option><option value="AVAILABLE">○ 可能</option><option value="UNAVAILABLE">× 不可</option></select></td><td data-label="遅番希望"><select name="employees[3].lateWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED">◎ 希望</option><option value="AVAILABLE">○ 可能</option><option value="UNAVAILABLE" selected>× 不可</option></select></td><td><button type="button" class="delete-row-btn" aria-label="行を削除">削除</button></td></tr><tr><td data-label="氏名"><input type="text" name="employees[4].name" value="伊藤" placeholder="氏名を入力" /></td><td data-label="早番希望"><select name="employees[4].earlyWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED">◎ 希望</option><option value="AVAILABLE" selected>○ 可能</option><option value="UNAVAILABLE">× 不可</option></select></td><td data-label="遅番希望"><select name="employees[4].lateWish" data-wish><option value="">-- 未選択 --</option><option value="DESIRED">◎ 希望</option><option value="AVAILABLE" selected>○ 可能</option><option value="UNAVAILABLE">× 不可</option></select></td><td><button type="button" class="delete-row-btn" aria-label="行を削除">削除</button></td></tr></tbody>
+  </table>
+  <div class="actions">
+    <button type="button" id="add-row-btn" class="btn ghost">＋ 行を追加</button>
+    <button type="submit" class="btn primary">シフトを作成</button>
+  </div>
+</form>
+
+<section id="results" class="card result" data-show="result unassignable">
+  <div class="card-head"><h2>割当結果</h2></div>
+  <div data-show="unassignable" class="empty"><span class="empty-icon">！</span><p>条件を満たす組み合わせが見つかりませんでした。</p><small>希望（×）を見直すか、従業員を追加してください。</small></div>
+  <div data-show="result">
+    <div class="score"><span class="score-num">3<small> / 4</small></span><span class="score-label">スコア（◎ が反映された人数）</span></div>
+    
+    <table class="result-table"><thead><tr><th>氏名</th><th>勤務時間</th><th>休憩時間</th></tr></thead><tbody><tr><td>佐藤</td><td><span class="pill early">08:00〜17:00</span></td><td>12:00〜13:00</td></tr><tr><td>田中</td><td><span class="pill early">08:00〜17:00</span></td><td>13:00〜14:00</td></tr><tr><td>鈴木</td><td><span class="pill late">12:00〜21:00</span></td><td>15:00〜16:00</td></tr><tr><td>高橋</td><td><span class="pill late">12:00〜21:00</span></td><td>16:00〜17:00</td></tr></tbody></table>
+    <div class="unassigned"><b>未出勤者</b><span class="chip">伊藤</span></div>
+  </div>
+</section>
+</main>
+<script>
+document.addEventListener("DOMContentLoaded",function(){
+  const rows=document.getElementById("employee-rows");
+  const OPTS='<option value="">-- 未選択 --</option><option value="DESIRED">◎ 希望</option><option value="AVAILABLE">○ 可能</option><option value="UNAVAILABLE">× 不可</option>';
+  function refresh(){
+    const trs=rows.querySelectorAll("tr");
+    trs.forEach(function(tr,i){
+      tr.querySelectorAll("input,select").forEach(function(el){el.name=el.name.replace(/employees\[\d+\]/,"employees["+i+"]");});
+    });
+    rows.querySelectorAll(".delete-row-btn").forEach(function(b){b.disabled=trs.length===1;});
+    document.getElementById("row-count").textContent=trs.length;
+    rows.querySelectorAll("select").forEach(tint);
+  }
+  function tint(s){s.dataset.value=s.value;}
+  document.getElementById("add-row-btn").addEventListener("click",function(){
+    const i=rows.querySelectorAll("tr").length;
+    const tr=document.createElement("tr");
+    tr.innerHTML='<td data-label="氏名"><input type="text" name="employees['+i+'].name" placeholder="氏名を入力" /></td><td data-label="早番希望"><select name="employees['+i+'].earlyWish" data-wish>'+OPTS+'</select></td><td data-label="遅番希望"><select name="employees['+i+'].lateWish" data-wish>'+OPTS+'</select></td><td><button type="button" class="delete-row-btn" aria-label="行を削除">削除</button></td>';
+    rows.appendChild(tr);refresh();tr.querySelector("input").focus();
+  });
+  rows.addEventListener("click",function(e){
+    const b=e.target.closest(".delete-row-btn");
+    if(b&&!b.disabled){b.closest("tr").remove();refresh();}
+  });
+  rows.addEventListener("change",function(e){if(e.target.matches("select"))tint(e.target);});
+  // ---- デモ用：状態の切替（実装では Thymeleaf の th:if に置き換わる） ----
+  const states=document.querySelectorAll("[data-state]");
+  function show(name){
+    document.querySelectorAll("[data-show]").forEach(function(el){
+      el.hidden=!el.dataset.show.split(" ").includes(name);
+    });
+    states.forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.state===name));});
+  }
+  states.forEach(function(b){b.addEventListener("click",function(){show(b.dataset.state);});});
+  document.getElementById("shift-form").addEventListener("submit",function(e){e.preventDefault();show("result");document.getElementById("results").scrollIntoView({behavior:"smooth",block:"start"});});
+  show("input");refresh();
+});
+</script>
+</body>
+</html>
