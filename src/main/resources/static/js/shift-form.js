@@ -1,10 +1,41 @@
 /**
- * シフト入力フォームの行を動的に追加する機能を提供します。
+ * シフト入力フォームの行を動的に追加・削除する機能を提供します。
  */
 document.addEventListener("DOMContentLoaded", function () {
   const addRowBtn = document.getElementById("add-row-btn");
   const employeeRows = document.getElementById("employee-rows");
 
+  /**
+   * 削除ボタンの状態を更新します。行数が1の場合は削除ボタンを無効にします。
+   */
+  function updateDeleteButtonState() {
+    const rows = employeeRows.querySelectorAll("tr");
+    const deleteButtons = employeeRows.querySelectorAll(".delete-row-btn");
+
+    deleteButtons.forEach((btn) => {
+      btn.disabled = rows.length === 1;
+    });
+  }
+
+  /**
+   * 全行のname属性インデックスを0から連番に振り直します。
+   */
+  function renumberInputIndices() {
+    const rows = employeeRows.querySelectorAll("tr");
+
+    rows.forEach((row, index) => {
+      const inputs = row.querySelectorAll("input, select");
+
+      inputs.forEach((input) => {
+        input.name = input.name.replace(
+          /employees\[\d+\]/,
+          "employees[" + index + "]"
+        );
+      });
+    });
+  }
+
+  // 行追加ボタンのイベントリスナー
   addRowBtn.addEventListener("click", function () {
     const currentRowCount = employeeRows.querySelectorAll("tr").length;
     const newRow = document.createElement("tr");
@@ -70,10 +101,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
     lateCell.appendChild(lateSelect);
 
+    const deleteCell = document.createElement("td");
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "delete-row-btn";
+    deleteBtn.textContent = "削除";
+    deleteCell.appendChild(deleteBtn);
+
     newRow.appendChild(nameCell);
     newRow.appendChild(earlyCell);
     newRow.appendChild(lateCell);
+    newRow.appendChild(deleteCell);
 
     employeeRows.appendChild(newRow);
+
+    updateDeleteButtonState();
   });
+
+  // 行削除のイベント委譲
+  employeeRows.addEventListener("click", function (event) {
+    if (event.target.classList.contains("delete-row-btn")) {
+      const row = event.target.closest("tr");
+      if (row) {
+        row.remove();
+        renumberInputIndices();
+        updateDeleteButtonState();
+      }
+    }
+  });
+
+  // 初期状態で削除ボタンの状態を更新
+  updateDeleteButtonState();
 });
