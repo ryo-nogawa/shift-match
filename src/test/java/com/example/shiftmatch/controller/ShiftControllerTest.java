@@ -303,42 +303,42 @@ class ShiftControllerTest {
       assertEquals(4, dataRows.size(), "結果表のデータ行は4行であること");
 
       assertTrue(
-          dataRows.get(0).contains("早番")
+          dataRows.get(0).contains("08:00〜17:00")
               && dataRows.get(0).contains("太郎")
               && Pattern.compile("13:00.*?〜.*?14:00", Pattern.DOTALL)
                   .matcher(dataRows.get(0))
                   .find(),
-          "行0（早番・太郎・13:00〜14:00）が見つかりません");
+          "行0（08:00〜17:00・太郎・13:00〜14:00）が見つかりません");
 
       assertTrue(
-          dataRows.get(1).contains("早番")
+          dataRows.get(1).contains("08:00〜17:00")
               && dataRows.get(1).contains("花子")
               && Pattern.compile("14:00.*?〜.*?15:00", Pattern.DOTALL)
                   .matcher(dataRows.get(1))
                   .find(),
-          "行1（早番・花子・14:00〜15:00）が見つかりません");
+          "行1（08:00〜17:00・花子・14:00〜15:00）が見つかりません");
 
       assertTrue(
-          dataRows.get(2).contains("遅番")
+          dataRows.get(2).contains("12:00〜21:00")
               && dataRows.get(2).contains("次郎")
               && Pattern.compile("15:00.*?〜.*?16:00", Pattern.DOTALL)
                   .matcher(dataRows.get(2))
                   .find(),
-          "行2（遅番・次郎・15:00〜16:00）が見つかりません");
+          "行2（12:00〜21:00・次郎・15:00〜16:00）が見つかりません");
 
       assertTrue(
-          dataRows.get(3).contains("遅番")
+          dataRows.get(3).contains("12:00〜21:00")
               && dataRows.get(3).contains("美咲")
               && Pattern.compile("16:00.*?〜.*?17:00", Pattern.DOTALL)
                   .matcher(dataRows.get(3))
                   .find(),
-          "行3（遅番・美咲・16:00〜17:00）が見つかりません");
+          "行3（12:00〜21:00・美咲・16:00〜17:00）が見つかりません");
     }
 
     @Test
     @DisplayName(
         "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: 割当結果の表ヘッダが「枠」・「氏名」・「勤務時間」・「休憩」の順で出力されること")
+            + "Then: 割当結果の表ヘッダが「勤務時間」・「氏名」・「休憩」の順で出力され、「枠」を含まないこと")
     void shouldDisplayWorkHoursHeaderInResultTable() throws Exception {
       com.example.shiftmatch.domain.AssignmentResult assignmentResult =
           new com.example.shiftmatch.domain.AssignmentResult(
@@ -402,17 +402,15 @@ class ShiftControllerTest {
       int workHoursPos = headerRow.indexOf("勤務時間");
       int breakPos = headerRow.indexOf("休憩");
 
-      assertTrue(
-          framePos > -1 && namePos > -1 && workHoursPos > -1 && breakPos > -1, "全てのヘッダが含まれていること");
-      assertTrue(
-          framePos < namePos && namePos < workHoursPos && workHoursPos < breakPos,
-          "ヘッダが「枠」・「氏名」・「勤務時間」・「休憩」の順で出力されていること");
+      assertTrue(framePos == -1, "ヘッダに「枠」が含まれていないこと");
+      assertTrue(namePos > -1 && workHoursPos > -1 && breakPos > -1, "「勤務時間」・「氏名」・「休憩」が含まれていること");
+      assertTrue(workHoursPos < namePos && namePos < breakPos, "ヘッダが「勤務時間」・「氏名」・「休憩」の順で出力されていること");
     }
 
     @Test
     @DisplayName(
         "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: 早番の行に8:00〜17:00、遅番の行に12:00〜21:00が表示されること")
+            + "Then: 早番の行に08:00〜17:00、遅番の行に12:00〜21:00が表示され、「早番」「遅番」は表示されないこと")
     void shouldDisplayWorkHoursForEachShift() throws Exception {
       com.example.shiftmatch.domain.AssignmentResult assignmentResult =
           new com.example.shiftmatch.domain.AssignmentResult(
@@ -476,28 +474,28 @@ class ShiftControllerTest {
       assertEquals(4, dataRows.size(), "結果表のデータ行は4行であること");
 
       assertTrue(
-          dataRows.get(0).contains("早番")
+          dataRows.get(0).contains("08:00〜17:00")
               && dataRows.get(0).contains("太郎")
-              && dataRows.get(0).contains("8:00〜17:00"),
-          "行0（早番・太郎・8:00〜17:00）が同一行内に含まれていること");
+              && !dataRows.get(0).contains("早番"),
+          "行0（08:00〜17:00・太郎）が同一行内に含まれ、「早番」は含まれていないこと");
 
       assertTrue(
-          dataRows.get(1).contains("早番")
+          dataRows.get(1).contains("08:00〜17:00")
               && dataRows.get(1).contains("花子")
-              && dataRows.get(1).contains("8:00〜17:00"),
-          "行1（早番・花子・8:00〜17:00）が同一行内に含まれていること");
+              && !dataRows.get(1).contains("早番"),
+          "行1（08:00〜17:00・花子）が同一行内に含まれ、「早番」は含まれていないこと");
 
       assertTrue(
-          dataRows.get(2).contains("遅番")
+          dataRows.get(2).contains("12:00〜21:00")
               && dataRows.get(2).contains("次郎")
-              && dataRows.get(2).contains("12:00〜21:00"),
-          "行2（遅番・次郎・12:00〜21:00）が同一行内に含まれていること");
+              && !dataRows.get(2).contains("遅番"),
+          "行2（12:00〜21:00・次郎）が同一行内に含まれ、「遅番」は含まれていないこと");
 
       assertTrue(
-          dataRows.get(3).contains("遅番")
+          dataRows.get(3).contains("12:00〜21:00")
               && dataRows.get(3).contains("美咲")
-              && dataRows.get(3).contains("12:00〜21:00"),
-          "行3（遅番・美咲・12:00〜21:00）が同一行内に含まれていること");
+              && !dataRows.get(3).contains("遅番"),
+          "行3（12:00〜21:00・美咲）が同一行内に含まれ、「遅番」は含まれていないこと");
     }
 
     @Test
