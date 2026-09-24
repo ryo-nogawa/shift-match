@@ -1121,16 +1121,7 @@ class ShiftControllerTest {
           createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
       stubAssignSuccess(assignmentResult);
 
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
+      MultiValueMap<String, String> params = createValidParams();
 
       MvcResult result =
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
@@ -1179,16 +1170,7 @@ class ShiftControllerTest {
           createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
       stubAssignSuccess(assignmentResult);
 
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
+      MultiValueMap<String, String> params = createValidParams();
 
       MvcResult result =
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
@@ -1221,16 +1203,7 @@ class ShiftControllerTest {
           createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
       stubAssignSuccess(assignmentResult);
 
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
+      MultiValueMap<String, String> params = createValidParams();
 
       MvcResult result =
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
@@ -1277,16 +1250,7 @@ class ShiftControllerTest {
           createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
       stubAssignSuccess(assignmentResult);
 
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
+      MultiValueMap<String, String> params = createValidParams();
 
       MvcResult result =
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
@@ -1322,16 +1286,7 @@ class ShiftControllerTest {
           createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
       stubAssignSuccess(assignmentResult);
 
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
+      MultiValueMap<String, String> params = createValidParams();
 
       MvcResult result =
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
@@ -1355,16 +1310,7 @@ class ShiftControllerTest {
           createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
       stubAssignSuccess(assignmentResult);
 
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
+      MultiValueMap<String, String> params = createValidParams();
 
       MvcResult result =
           mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();

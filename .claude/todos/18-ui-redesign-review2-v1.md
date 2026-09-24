@@ -27,7 +27,7 @@
     - `node --check src/main/resources/static/js/shift-form.js` が成功する
     - `./mvnw test -Dtest=ShiftControllerTest` が成功し、件数が変わらない
 
-- [ ] **T2. タイムライン関連テストの重複したパラメータ構築を `createValidParams()` に置き換える（リファクタリング）**
+- [x] **T2. タイムライン関連テストの重複したパラメータ構築を `createValidParams()` に置き換える（リファクタリング）**
   - 依頼事項：`ShiftControllerTest` の `UiDesignTest` 内で、`createValidParamsSingleEmployee()` の後に残り 3 名分の同一パラメータを毎回追加しているテスト（タイムライン関連の 6 件。`grep -n "createValidParamsSingleEmployee" src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java` で探す）を、4 名分を返す既存の `createValidParams()` の呼び出しに置き換える。置き換え前に `createValidParams()` の中身が、各テストで追加している 4 名分の内容と同じであることを確認する（違いがある場合は置き換えず、実行ログに理由を書く）。置き換え後、`createValidParamsSingleEmployee()` が使われなくなれば削除する。各テストの `@DisplayName`・期待値は変えない
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -53,3 +53,4 @@
 ## 実行ログ
 
 - T1 完了：削除したコメント「現在の value に設定」「data-value を更新」「ヘルパーメソッド」「要素の範囲を特定」を grep で確認（0件）。残したコメント「結果表にも同じ氏名が出るため、タイムラインの範囲に限定して抽出する」は「なぜ」を説明。node --check 成功、./mvnw test -Dtest=ShiftControllerTest 成功（41件）
+- T2 完了：6 つのタイムライン関連テスト（shouldDisplayTimelineWithCorrectRows, shouldDisplayTimelineWorkBarsWithCorrectStyles, shouldDisplayTimelineBreakBarsWithCorrectStyles, shouldDisplayTimelineAxisWithCorrectScales, shouldDisplayTimelineLegend, shouldNotDisplayEarlyLateTextInResultTable）で createValidParamsSingleEmployee() を createValidParams() に置き換え、3 名分の重複パラメータ追加コード（各テスト 9 行 x 6 テスト）を削除。./mvnw test -Dtest=ShiftControllerTest 成功（41件、前回と同数）
