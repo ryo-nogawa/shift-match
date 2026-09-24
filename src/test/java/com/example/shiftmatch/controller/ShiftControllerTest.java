@@ -8,6 +8,10 @@ import static org.mockito.Mockito.verify;
 
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.service.ShiftAssignmentService;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -207,6 +211,105 @@ class ShiftControllerTest {
       assertTrue(body.contains("美咲"));
       assertTrue(body.contains("五郎"));
       assertTrue(body.contains("3"));
+    }
+
+    @Test
+    @DisplayName(
+        "[T-1][F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, "
+            + "Then: レスポンス本文に4つの休憩時刻（13:00~14:00、14:00~15:00、15:00~16:00、16:00~17:00）が含まれること")
+    void shouldDisplayBreakTimesInResultWhenAssignmentSucceeds() throws Exception {
+      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
+          new com.example.shiftmatch.domain.AssignmentResult(
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "太郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "花子",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              java.util.List.of(
+                  new com.example.shiftmatch.domain.Employee(
+                      "次郎",
+                      com.example.shiftmatch.domain.Wish.DESIRED,
+                      com.example.shiftmatch.domain.Wish.AVAILABLE),
+                  new com.example.shiftmatch.domain.Employee(
+                      "美咲",
+                      com.example.shiftmatch.domain.Wish.AVAILABLE,
+                      com.example.shiftmatch.domain.Wish.DESIRED)),
+              4,
+              java.util.List.of());
+
+      org.mockito.Mockito.when(
+              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.List.of());
+      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
+          .thenReturn(java.util.Optional.of(assignmentResult));
+
+      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+      params.add("employees[0].name", "太郎");
+      params.add("employees[0].earlyWish", "DESIRED");
+      params.add("employees[0].lateWish", "AVAILABLE");
+      params.add("employees[1].name", "花子");
+      params.add("employees[1].earlyWish", "AVAILABLE");
+      params.add("employees[1].lateWish", "DESIRED");
+      params.add("employees[2].name", "次郎");
+      params.add("employees[2].earlyWish", "DESIRED");
+      params.add("employees[2].lateWish", "AVAILABLE");
+      params.add("employees[3].name", "美咲");
+      params.add("employees[3].earlyWish", "AVAILABLE");
+      params.add("employees[3].lateWish", "DESIRED");
+
+      MvcResult result =
+          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+
+      String body = result.getResponse().getContentAsString();
+
+      int resultSectionStart = body.indexOf("割当結果");
+      String resultSection = body.substring(resultSectionStart);
+
+      Pattern tableRowPattern = Pattern.compile("<tr>.*?</tr>", Pattern.DOTALL);
+      Matcher tableRowMatcher = tableRowPattern.matcher(resultSection);
+      List<String> rows = new ArrayList<>();
+      while (tableRowMatcher.find()) {
+        rows.add(tableRowMatcher.group());
+      }
+
+      List<String> dataRows = rows.subList(1, rows.size());
+      assertEquals(4, dataRows.size(), "結果表のデータ行は4行であること");
+
+      assertTrue(
+          dataRows.get(0).contains("早番")
+              && dataRows.get(0).contains("太郎")
+              && Pattern.compile("13:00.*?〜.*?14:00", Pattern.DOTALL)
+                  .matcher(dataRows.get(0))
+                  .find(),
+          "行0（早番・太郎・13:00〜14:00）が見つかりません");
+
+      assertTrue(
+          dataRows.get(1).contains("早番")
+              && dataRows.get(1).contains("花子")
+              && Pattern.compile("14:00.*?〜.*?15:00", Pattern.DOTALL)
+                  .matcher(dataRows.get(1))
+                  .find(),
+          "行1（早番・花子・14:00〜15:00）が見つかりません");
+
+      assertTrue(
+          dataRows.get(2).contains("遅番")
+              && dataRows.get(2).contains("次郎")
+              && Pattern.compile("15:00.*?〜.*?16:00", Pattern.DOTALL)
+                  .matcher(dataRows.get(2))
+                  .find(),
+          "行2（遅番・次郎・15:00〜16:00）が見つかりません");
+
+      assertTrue(
+          dataRows.get(3).contains("遅番")
+              && dataRows.get(3).contains("美咲")
+              && Pattern.compile("16:00.*?〜.*?17:00", Pattern.DOTALL)
+                  .matcher(dataRows.get(3))
+                  .find(),
+          "行3（遅番・美咲・16:00〜17:00）が見つかりません");
     }
 
     @Test

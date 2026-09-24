@@ -83,14 +83,16 @@
       <tr>
         <th>枠</th>
         <th>氏名</th>
+        <th>休憩</th>
       </tr>
-      <tr th:each="employee : ${assignmentResult.earlyEmployees()}">
-        <td>早番</td>
-        <td th:text="${employee.name()}"></td>
-      </tr>
-      <tr th:each="employee : ${assignmentResult.lateEmployees()}">
-        <td>遅番</td>
-        <td th:text="${employee.name()}"></td>
+      <tr th:each="breakTime, stat : ${assignmentResult.breakTimes()}">
+        <td th:text="${stat.index < 2 ? '早番' : '遅番'}"></td>
+        <td th:text="${breakTime.employee().name()}"></td>
+        <td>
+          <span th:text="${#temporals.format(breakTime.start(), 'HH:mm')}"></span>〜<span
+            th:text="${#temporals.format(breakTime.end(), 'HH:mm')}"
+          ></span>
+        </td>
       </tr>
     </table>
     <p th:text="|スコア: ${assignmentResult.score()}|"></p>
