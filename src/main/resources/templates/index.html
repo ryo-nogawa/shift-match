@@ -111,6 +111,22 @@
         >
         <span class="score-label">スコア（◎ が反映された人数）</span>
       </div>
+      <div class="timeline">
+        <div class="tl-row" th:each="breakTime, stat : ${assignmentResult.breakTimes()}">
+          <span class="tl-name" th:text="${breakTime.employee().name()}"></span>
+          <div class="tl-track">
+            <div
+              class="tl-work"
+              th:classappend="${stat.index < 2 ? 'early' : 'late'}"
+              th:style="|left:${#numbers.formatDecimal(((stat.index < 2 ? 480 : 720) - 480) * 100.0 / 780, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(((stat.index < 2 ? 1020 : 1260) - (stat.index < 2 ? 480 : 720)) * 100.0 / 780, 1, 2, 'POINT')}%|"
+            ></div>
+            <div
+              class="tl-break"
+              th:style="|left:${#numbers.formatDecimal((breakTime.start().getHour() * 60 + breakTime.start().getMinute() - 480) * 100.0 / 780, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal((breakTime.end().getHour() * 60 + breakTime.end().getMinute() - (breakTime.start().getHour() * 60 + breakTime.start().getMinute())) * 100.0 / 780, 1, 2, 'POINT')}%|"
+            ></div>
+          </div>
+        </div>
+      </div>
       <table class="result-table">
         <thead>
           <tr>

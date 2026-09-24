@@ -76,7 +76,7 @@
     - 既存の `[F-4]` テスト（表ヘッダ・勤務時間・「早番」「遅番」が行に含まれないこと）が変更なしで成功する
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T7. 時間軸バー本体（勤務バー・休憩バー）を表示する（TDD）**
+- [x] **T7. 時間軸バー本体（勤務バー・休憩バー）を表示する（TDD）**
   - 依頼事項：`UiDesignTest` に、T6 と同じ成立時のモックで、次を検証するテストを追加する。①本文に `class="timeline"` が 1 つ、`class="tl-row"` がちょうど 4 つ、②各 `tl-name` に `太郎`・`花子`・`次郎`・`美咲` が順に含まれる、③`tl-work early` のスタイルが `left:0.00%;width:69.23%`（2 件）、`tl-work late` のスタイルが `left:30.77%;width:69.23%`（2 件）、④`tl-break` のスタイルが `left:38.46%;width:7.69%`・`left:46.15%;width:7.69%`・`left:53.85%;width:7.69%`・`left:61.54%;width:7.69%` の 4 件、⑤不成立のとき `class="timeline"` が含まれない。RED を確認してから、`src/main/resources/templates/index.html` の成立時カード内、`<table class="result-table">` の**直前**に `<div class="timeline">` を出力する。構造は見本 `.claude/design/proposal-c-timeline.html` の `.tl-row`（`tl-name` の `<span>`、`tl-track` の `<div>`、その中に `tl-work` と `tl-break` の `<div>`）と同じ。ループは `th:each="breakTime, stat : ${assignmentResult.breakTimes()}"`。割合は `${#numbers.formatDecimal(式, 1, 2, 'POINT')}` で小数 2 桁・小数点 `.` に固定する（`th:style="|left:${...}%;width:${...}%|"`）。式は、勤務の開始分・終了分を `stat.index < 2 ? 480 : 720` / `stat.index < 2 ? 1020 : 1260`（8:00・12:00 / 17:00・21:00 の分換算）とし、`left = (開始分 - 480) * 100.0 / 780`、`width = (終了分 - 開始分) * 100.0 / 780`。休憩は `breakTime.start().getHour() * 60 + breakTime.start().getMinute()`。**`<tr>` は使わず `<div>` で作る**（表の行に「早番」「遅番」を入れないため）。この Todo では目盛り・凡例は作らない
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`、`src/main/resources/templates/index.html`
   - 完了条件：
@@ -127,3 +127,4 @@
 - T4 完了：3つのテスト（上限超過、重複エラー、希望の不正値）を追加し、class="alert" と role="alert" を検証。一時的に class="alert" を削除して3つのテストが失敗することを確認。
 - T5 完了：不成立時の補足文をテストで検証するテストを追加（RED）。補足文がないことを確認。`index.html` に `<small>希望（×）を見直すか、従業員を追加してください。</small>` を追加。成立時に class="empty" が出ないことを検証するテストも追加（GREEN）。
 - T6 完了：成立時の結果カード要素をテストで固定する。5つのテストを追加：①score-num のスコア表示、②result-table、③pill early/late の個数、④unassigned と chip と従業員名、⑤未出勤者0名時は unassigned が出ない。一時的に class="score-num" を削除して検出力を確認。
+- T7 完了：時間軸バーの本体（勤務バー・休憩バー）をテストで検証。5つのテストを追加（RED）：①timeline が 1 つ、tl-row が 4 つ、②tl-name に 4 名の従業員、③tl-work early/late の style、④tl-break の style（4 つの休憩時刻）、⑤不成立時は timeline なし。index.html に `.timeline` 構造を追加し、Thymeleaf で style 属性を生成（GREEN）。
