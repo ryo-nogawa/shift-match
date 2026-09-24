@@ -5,6 +5,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const addRowBtn = document.getElementById("add-row-btn");
   const employeeRows = document.getElementById("employee-rows");
 
+  function updateDataValue(select) {
+    select.setAttribute("data-value", select.value);
+  }
+
   function updateDeleteButtonState() {
     const rows = employeeRows.querySelectorAll("tr");
     const deleteButtons = employeeRows.querySelectorAll(".delete-row-btn");
@@ -13,6 +17,40 @@ document.addEventListener("DOMContentLoaded", function () {
       btn.disabled = rows.length === 1;
     });
   }
+
+  function updateRowCount() {
+    const rowCount = employeeRows.querySelectorAll("tr").length;
+    const rowCountElement = document.getElementById("row-count");
+    if (rowCountElement) {
+      rowCountElement.textContent = rowCount;
+    }
+  }
+
+  function createWishSelect(name) {
+    const select = document.createElement("select");
+    select.name = name;
+    select.setAttribute("data-value", "");
+
+    const options = [
+      { value: "", text: "-- 未選択 --" },
+      { value: "DESIRED", text: "◎ 希望" },
+      { value: "AVAILABLE", text: "○ 可能" },
+      { value: "UNAVAILABLE", text: "× 不可" },
+    ];
+
+    options.forEach((optionData) => {
+      const option = document.createElement("option");
+      option.value = optionData.value;
+      option.textContent = optionData.text;
+      select.appendChild(option);
+    });
+
+    return select;
+  }
+
+  employeeRows.querySelectorAll("select").forEach((select) => {
+    updateDataValue(select);
+  });
 
   // インデックスに欠番があると Spring MVC でリストをバインドできないため、削除後に振り直す
   function renumberInputIndices() {
@@ -35,6 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const newRow = document.createElement("tr");
 
     const nameCell = document.createElement("td");
+    nameCell.setAttribute("data-label", "氏名");
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.name = "employees[" + currentRowCount + "].name";
@@ -42,57 +81,17 @@ document.addEventListener("DOMContentLoaded", function () {
     nameCell.appendChild(nameInput);
 
     const earlyCell = document.createElement("td");
-    const earlySelect = document.createElement("select");
-    earlySelect.name = "employees[" + currentRowCount + "].earlyWish";
-
-    const emptyOption1 = document.createElement("option");
-    emptyOption1.value = "";
-    emptyOption1.textContent = "-- 未選択 --";
-
-    const desiredOption1 = document.createElement("option");
-    desiredOption1.value = "DESIRED";
-    desiredOption1.textContent = "◎ 希望";
-
-    const availableOption1 = document.createElement("option");
-    availableOption1.value = "AVAILABLE";
-    availableOption1.textContent = "○ 可能";
-
-    const unavailableOption1 = document.createElement("option");
-    unavailableOption1.value = "UNAVAILABLE";
-    unavailableOption1.textContent = "× 不可";
-
-    earlySelect.appendChild(emptyOption1);
-    earlySelect.appendChild(desiredOption1);
-    earlySelect.appendChild(availableOption1);
-    earlySelect.appendChild(unavailableOption1);
-
+    earlyCell.setAttribute("data-label", "早番希望");
+    const earlySelect = createWishSelect(
+      "employees[" + currentRowCount + "].earlyWish"
+    );
     earlyCell.appendChild(earlySelect);
 
     const lateCell = document.createElement("td");
-    const lateSelect = document.createElement("select");
-    lateSelect.name = "employees[" + currentRowCount + "].lateWish";
-
-    const emptyOption2 = document.createElement("option");
-    emptyOption2.value = "";
-    emptyOption2.textContent = "-- 未選択 --";
-
-    const desiredOption2 = document.createElement("option");
-    desiredOption2.value = "DESIRED";
-    desiredOption2.textContent = "◎ 希望";
-
-    const availableOption2 = document.createElement("option");
-    availableOption2.value = "AVAILABLE";
-    availableOption2.textContent = "○ 可能";
-
-    const unavailableOption2 = document.createElement("option");
-    unavailableOption2.value = "UNAVAILABLE";
-    unavailableOption2.textContent = "× 不可";
-
-    lateSelect.appendChild(emptyOption2);
-    lateSelect.appendChild(desiredOption2);
-    lateSelect.appendChild(availableOption2);
-    lateSelect.appendChild(unavailableOption2);
-
+    lateCell.setAttribute("data-label", "遅番希望");
+    const lateSelect = createWishSelect(
+      "employees[" + currentRowCount + "].lateWish"
+    );
     lateCell.appendChild(lateSelect);
 
     const deleteCell = document.createElement("td");
@@ -110,6 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
     employeeRows.appendChild(newRow);
 
     updateDeleteButtonState();
+    updateRowCount();
   });
 
   employeeRows.addEventListener("click", function (event) {
@@ -119,9 +119,17 @@ document.addEventListener("DOMContentLoaded", function () {
         row.remove();
         renumberInputIndices();
         updateDeleteButtonState();
+        updateRowCount();
       }
     }
   });
 
+  employeeRows.addEventListener("change", function (event) {
+    if (event.target.tagName === "SELECT") {
+      updateDataValue(event.target);
+    }
+  });
+
   updateDeleteButtonState();
+  updateRowCount();
 });
