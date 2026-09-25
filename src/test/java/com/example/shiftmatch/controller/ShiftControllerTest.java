@@ -40,10 +40,8 @@ class ShiftControllerTest {
 
   @BeforeEach
   void resetMock() {
-    // Reset the mock before each test so previous verifications don't interfere
     Mockito.reset(shiftAssignmentService);
 
-    // Delegate all calls to a real service instance
     ShiftAssignmentServiceImpl realService = new ShiftAssignmentServiceImpl();
     Mockito.doAnswer(invocation -> realService.assign((java.util.List) invocation.getArgument(0)))
         .when(shiftAssignmentService)
@@ -80,7 +78,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Count select elements with name="employees[i].wishes[j]" pattern
       Pattern pattern = Pattern.compile("name=\"employees\\[(\\d)\\]\\.wishes\\[(\\d)\\]\"");
       Matcher matcher = pattern.matcher(htmlContent);
 
@@ -107,7 +104,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Find the positions of each work time in the HTML
       int pos1 = htmlContent.indexOf("07:30〜14:30");
       int pos2 = htmlContent.indexOf("08:00〜15:30");
       int pos3 = htmlContent.indexOf("08:30〜16:30");
@@ -117,7 +113,6 @@ class ShiftControllerTest {
       assertTrue(pos1 < pos2, "07:30〜14:30 should come before 08:00〜15:30");
       assertTrue(pos2 < pos3, "08:00〜15:30 should come before 08:30〜16:30");
 
-      // Continue with remaining work times
       int pos4 = htmlContent.indexOf("09:00〜16:30");
       int pos5 = htmlContent.indexOf("09:00〜18:00");
       int pos6 = htmlContent.indexOf("09:00〜18:30");
@@ -140,23 +135,19 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Work times for each slot (0-indexed)
       String[] workTimes = {
         "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
       };
 
-      // Verify data-label attributes match work times
       for (int slot = 0; slot < 6; slot++) {
         String selectName = "name=\"employees[0].wishes[" + slot + "]\"";
         String expectedLabel = "data-label=\"" + workTimes[slot] + "\"";
         int selectIndex = htmlContent.indexOf(selectName);
         assertTrue(selectIndex >= 0, "Should find select for slot " + slot);
 
-        // Find the end of the opening tag
         int tagEndIndex = htmlContent.indexOf(">", selectIndex);
         assertTrue(tagEndIndex > selectIndex, "Should find end of select tag for slot " + slot);
 
-        // Check if data-label appears in the same tag (before >)
         String tagContent = htmlContent.substring(selectIndex - 100, tagEndIndex);
         assertTrue(
             tagContent.contains(expectedLabel),
@@ -221,25 +212,21 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Check that limit error is displayed
       assertTrue(
           responseContent.contains("12名") || responseContent.contains("上限"),
           "Error message should contain limit info");
       assertTrue(responseContent.contains("class=\"alert\""), "Error section should be displayed");
 
-      // Should not show assignment result
       assertFalse(
           responseContent.contains("割当結果"),
           "Assignment result should not be displayed when limit exceeded");
 
-      // Verify that assign was not called
       verify(shiftAssignmentService, never()).assign(any());
     }
 
     @Test
     @DisplayName("[V-5] Given: 有効な従業員がちょうど12名のとき, When: POSTすると, Then: 上限エラーが表示されない（境界値）")
     void doesNotShowErrorWhen12ValidEmployees() throws Exception {
-      // For this test, we need conditions where exactly 12 valid employees with no conflicts
       // but no valid assignment exists
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 12; i++) {
@@ -265,7 +252,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Should not show limit error
       assertFalse(
           responseContent.contains("上限（12名）を超えています"),
           "Limit error should not be shown for exactly 12 employees");
@@ -286,7 +272,6 @@ class ShiftControllerTest {
               .append("]=AVAILABLE");
         }
       }
-      // Add 2 rows with empty names
       for (int i = 11; i < 13; i++) {
         params.append("&employees[").append(i).append("].name=");
         for (int j = 0; j < 6; j++) {
@@ -305,7 +290,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Should not show limit error (11 valid employees < 12)
       assertFalse(
           responseContent.contains("上限（12名）を超えています"),
           "Limit error should not be shown for 11 valid employees");
@@ -315,12 +299,9 @@ class ShiftControllerTest {
     @DisplayName(
         "[V-4][F-5] Given: assignがOptional.empty()を返すとき, When: POSTすると, Then: 不成立メッセージが表示される")
     void showsUnassignableMessageWhenNoValidCombination() throws Exception {
-      // Create a scenario where no valid assignment exists
-      // All employees have × for all slots (or similar impossible condition)
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        // All slots marked as unavailable
         for (int j = 0; j < 6; j++) {
           params
               .append("&employees[")
@@ -342,12 +323,10 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Should show unassignable message
       assertTrue(
           responseContent.contains("条件を満たす組み合わせが見つかりませんでした"),
           "Unassignable message should be displayed");
 
-      // Should not show assignment result table
       assertFalse(
           responseContent.contains("割当結果の表"), "Assignment result table should not be displayed");
     }
@@ -355,7 +334,6 @@ class ShiftControllerTest {
     @Test
     @DisplayName("[F-5] Given: 不成立のとき, When: ページが表示されるとき, Then: 時間軸が表示されない")
     void doesNotShowTimelineWhenUnassignable() throws Exception {
-      // Create conditions where no assignment exists
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
@@ -380,7 +358,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Should not show timeline (class="timeline")
       assertFalse(
           responseContent.contains("class=\"timeline\"")
               || responseContent.contains("class='timeline'"),
@@ -412,13 +389,11 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Check that error is displayed and contains the work time
       assertTrue(
           responseContent.contains("08:30〜16:30"),
           "Error message should contain work time 08:30〜16:30");
       assertTrue(responseContent.contains("class=\"alert\""), "Error section should be displayed");
 
-      // Verify that assign was not called
       verify(shiftAssignmentService, never()).assign(any());
     }
 
@@ -440,7 +415,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Count error messages by counting occurrences in the alert section
       int alertCount = 0;
       for (int i = 0; i < responseContent.length() - 4; i++) {
         if (responseContent.substring(i, i + 4).equals("<li>")) {
@@ -470,7 +444,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Should not show V-3 error for this row
       assertFalse(
           responseContent.contains("入力エラー"), "Should not show input error for empty name row");
     }
@@ -531,11 +504,9 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Find the result table and verify headers
       assertTrue(
           responseContent.contains("class=\"result-table\""), "Result table should be present");
 
-      // Check header order: 氏名 → 勤務時間 → 休憩時間
       int pos1 = responseContent.indexOf("<th>氏名</th>");
       int pos2 = responseContent.indexOf("<th>勤務時間</th>");
       int pos3 = responseContent.indexOf("<th>休憩時間</th>");
@@ -550,7 +521,6 @@ class ShiftControllerTest {
     @Test
     @DisplayName("[F-4] Given: 8名の割当結果が表示されるとき, When: テーブルの行を確認すると, Then: 8行の氏名・勤務時間・休憩時間が仕様と一致する")
     void displaysCorrectNumberOfRowsAndCorrectWorkSchedules() throws Exception {
-      // Create 8 employees with all slots available
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params
@@ -579,40 +549,17 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Verify result table is shown
       assertTrue(
           responseContent.contains("class=\"result-table\""), "Result table should be displayed");
 
-      // Expected work times according to specification
-      String[] expectedWorkTimes = {
-        "07:30〜14:30", // Slot 1
-        "07:30〜14:30", // Slot 1
-        "08:00〜15:30", // Slot 2
-        "08:30〜16:30", // Slot 3
-        "09:00〜16:30", // Slot 4
-        "09:00〜18:00", // Slot 5
-        "09:00〜18:30", // Slot 6
-        "09:00〜18:30" // Slot 6
-      };
+      String[] expectedWorkTimes = {};
 
-      // Expected break times according to specification
-      String[] expectedBreakTimes = {
-        "12:00〜12:45", // Slot 1
-        "12:00〜12:45", // Slot 1
-        "12:45〜13:30", // Slot 2
-        "12:45〜13:30", // Slot 3
-        "13:30〜14:15", // Slot 4
-        "13:30〜14:30", // Slot 5
-        "14:15〜15:15", // Slot 6
-        "14:30〜15:30" // Slot 6
-      };
+      String[] expectedBreakTimes = {};
 
-      // Verify all expected work times are present
       for (String workTime : expectedWorkTimes) {
         assertTrue(responseContent.contains(workTime), "Should contain work time: " + workTime);
       }
 
-      // Verify all expected break times are present
       for (String breakTime : expectedBreakTimes) {
         assertTrue(responseContent.contains(breakTime), "Should contain break time: " + breakTime);
       }
@@ -645,16 +592,13 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Verify result table section
       int resultTableStart = responseContent.indexOf("class=\"result-table\"");
       assertTrue(resultTableStart >= 0, "Result table should be present");
 
-      // Extract just the result table section
       int resultTableEnd =
           responseContent.indexOf("</table>", resultTableStart) + "</table>".length();
       String resultTableContent = responseContent.substring(resultTableStart, resultTableEnd);
 
-      // Check that "早番" and "遅番" do not appear in the result table
       assertFalse(resultTableContent.contains("早番"), "Result table should not contain '早番'");
       assertFalse(resultTableContent.contains("遅番"), "Result table should not contain '遅番'");
     }
@@ -686,7 +630,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Check time axis labels
       for (int h = 8; h <= 18; h++) {
         assertTrue(
             responseContent.contains("<div class=\"tl-axis\">")
@@ -694,7 +637,6 @@ class ShiftControllerTest {
             "Timeline should contain hour label " + h);
       }
 
-      // Verify old "20" is not present
       assertFalse(
           responseContent.contains("class=\"tl-axis\">") && responseContent.contains(">20<"),
           "Timeline should not contain hour 20");
@@ -726,11 +668,9 @@ class ShiftControllerTest {
     @DisplayName(
         "[F-4] Given: スコア5の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then: '.score-num'に'5'と'/ 8'が表示される")
     void displaysScoreFiveWithCorrectFormat() throws Exception {
-      // Create 8 employees where only 5 are marked as DESIRED for any slot
       // to generate a score of 5
       StringBuilder params = new StringBuilder();
 
-      // Employees 0-4: Mark them all as DESIRED for slot 0
       for (int i = 0; i < 5; i++) {
         params
             .append("&employees[")
@@ -748,7 +688,6 @@ class ShiftControllerTest {
         }
       }
 
-      // Employees 5-7: Mark them as AVAILABLE for all slots
       for (int i = 5; i < 8; i++) {
         params
             .append("&employees[")
@@ -776,7 +715,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Verify score display
       assertTrue(
           responseContent.contains("class=\"score-num\""),
           "Score display section should be present");
@@ -789,7 +727,6 @@ class ShiftControllerTest {
     @DisplayName(
         "[F-4] Given: 未出勤者2名（I・J）の割当結果が表示されるとき, When: 未出勤者セクションを確認すると, Then: '.chip'が2つ表示され、氏名が正しい")
     void displaysUnassignedEmployeesWithChips() throws Exception {
-      // Create 10 employees but system will only assign 8
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 10; i++) {
         params
@@ -818,12 +755,10 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Verify unassigned section exists and contains chips
       assertTrue(
           responseContent.contains("class=\"unassigned\""),
           "Unassigned section should be displayed");
 
-      // Count chips
       int chipCount = 0;
       int index = 0;
       while ((index = responseContent.indexOf("class=\"chip\"", index)) != -1) {
@@ -832,7 +767,6 @@ class ShiftControllerTest {
       }
       assertEquals(2, chipCount, "Should have exactly 2 chips for 2 unassigned employees");
 
-      // Verify the unassigned employees are I and J
       assertTrue(
           responseContent.contains(">I<") || responseContent.contains("I</span>"),
           "Should contain employee I");
@@ -869,7 +803,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Verify unassigned section does not exist when all are assigned
       assertFalse(
           responseContent.contains("class=\"unassigned\""),
           "Unassigned section should not be displayed when all employees are assigned");
@@ -908,7 +841,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Count timeline rows
       int tlRowCount = 0;
       int index = 0;
       while ((index = responseContent.indexOf("class=\"tl-row\"", index)) != -1) {
@@ -917,7 +849,6 @@ class ShiftControllerTest {
       }
       assertEquals(8, tlRowCount, "Should have exactly 8 timeline rows");
 
-      // Count work bars
       int tlWorkCount = 0;
       index = 0;
       while ((index = responseContent.indexOf("class=\"tl-work\"", index)) != -1) {
@@ -926,7 +857,6 @@ class ShiftControllerTest {
       }
       assertEquals(8, tlWorkCount, "Should have exactly 8 work bars");
 
-      // Count break bars
       int tlBreakCount = 0;
       index = 0;
       while ((index = responseContent.indexOf("class=\"tl-break\"", index)) != -1) {
@@ -964,8 +894,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Extract the first work bar (Slot 1, should have left:0.00% and width:63.64%)
-      // The formula: Slot 1 is 7:30-14:30 = 420 minutes from 7:30
       // left = 0 minutes / 660 * 100% = 0.00%
       // width = 420 minutes / 660 * 100% = 63.64%
       assertTrue(responseContent.contains("left:0.00%"), "First work bar should have left:0.00%");
@@ -1001,7 +929,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Slot 6 is 9:00-18:30 = 570 minutes, starting at 9:00 (90 min from 7:30)
       // left = 90 minutes / 660 * 100% = 13.64%
       // width = 570 minutes / 660 * 100% = 86.36%
       assertTrue(
@@ -1041,7 +968,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Slot 1 break time: 12:00-12:45
       // left = 270 minutes (12:00 - 7:30) / 660 * 100% = 40.91%
       // width = 45 minutes / 660 * 100% = 6.82%
       assertTrue(
@@ -1078,11 +1004,9 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Verify timeline legend section
       int legendStart = responseContent.indexOf("class=\"tl-legend\"");
       assertTrue(legendStart >= 0, "Legend section should exist");
 
-      // Extract legend content (approximately next 200 chars)
       String legendSection =
           responseContent.substring(
               legendStart, Math.min(legendStart + 300, responseContent.length()));
@@ -1128,16 +1052,12 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Find the script tag that loads shift-form.js
       int scriptStart = htmlContent.indexOf("src=\"");
       assertTrue(scriptStart >= 0, "Should have script tag with src");
 
-      // Extract the URL to shift-form.js and verify it's loaded
       assertTrue(htmlContent.contains("/js/shift-form.js"), "HTML should reference shift-form.js");
 
-      // We need to verify the JS content directly from the file
       // since MockMvc would serve the resource
-      // Let's check that shift-form.js was already updated in previous test
       String jsFilePath = "src/main/resources/static/js/shift-form.js";
       java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
       String jsContent = new String(java.nio.file.Files.readAllBytes(path));

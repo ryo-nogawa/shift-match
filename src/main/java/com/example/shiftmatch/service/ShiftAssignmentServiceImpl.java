@@ -35,7 +35,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       return Optional.empty();
     }
 
-    // 希望を事前に展開（Wish[][]：従業員 × 枠）
     Wish[][] wishes = new Wish[validEmployees.size()][6];
     for (int i = 0; i < validEmployees.size(); i++) {
       List<Wish> employeeWishes = validEmployees.get(i).wishes();
@@ -44,12 +43,11 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
     }
 
-    // 動的計画法で最適スコアを計算
     int n = validEmployees.size();
     int[][] memo = new int[7][1 << n];
     for (int i = 0; i < 7; i++) {
       for (int j = 0; j < (1 << n); j++) {
-        memo[i][j] = -1; // -1: 未計算
+        memo[i][j] = -1;
       }
     }
 
@@ -170,6 +168,9 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   /**
    * 復元：入力順の辞書順で最初の最大スコア案を構築します。
+   *
+   * <p>総当たり時代から、同点の場合は「最初に最大スコアに到達した案」を採用する履歴を保つため、
+   * 入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選びます。
    */
   private void reconstructAssignment(
       Wish[][] wishes,
@@ -186,12 +187,10 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     ShiftSlot slot = ShiftSlot.values()[slotIndex];
     int requiredCount = slot.numberOfEmployees();
 
-    // 入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選ぶ
     for (int combo : generateCombinations(wishes, slotIndex, usedMask, requiredCount)) {
       int nextMask = usedMask;
       int comboScore = 0;
 
-      // 組内の従業員を検出して割り当て
       int assignedCount = 0;
       for (int i = 0; i < wishes.length && assignedCount < requiredCount; i++) {
         if ((combo & (1 << i)) != 0) {
@@ -231,7 +230,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     ShiftSlot[] slots = ShiftSlot.values();
     List<ShiftSlot> slotList = new ArrayList<>();
 
-    // 割り当てから枠のリストを構築
     int position = 0;
     for (int slotIndex = 0; slotIndex < slots.length; slotIndex++) {
       ShiftSlot slot = slots[slotIndex];
@@ -242,11 +240,9 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
     }
 
-    // BreakScheduler で休憩時刻を割り当て
     BreakScheduler scheduler = new BreakScheduler();
     List<BreakInterval> breaks = scheduler.schedule(slotList);
 
-    // ShiftAssignment のリストを構築
     List<ShiftAssignment> shiftAssignments = new ArrayList<>();
     int score = 0;
     boolean[] used = new boolean[employees.size()];
@@ -260,7 +256,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       shiftAssignments.add(
           new ShiftAssignment(employee, slot, breakInterval.startTime(), breakInterval.endTime()));
 
-      // スコアを計算（◎の個数）
       int slotIndex = getSlotIndex(slot);
       if (employee.wishes().get(slotIndex) == Wish.DESIRED) {
         score++;
@@ -269,7 +264,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       used[employeeIndex] = true;
     }
 
-    // 未割り当て従業員を計算
     List<Employee> unassigned = new ArrayList<>();
     for (int i = 0; i < employees.size(); i++) {
       if (!used[i]) {

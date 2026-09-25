@@ -104,7 +104,6 @@ public class ShiftController {
           "limitExceededError", "従業員の入力行数が上限（" + MAX_EMPLOYEE_COUNT + "名）を超えています。入力行を減らしてください。");
     }
 
-    // V-2・V-3・V-5 のいずれのエラーもない場合のみ assign を呼び出す
     if (!duplicateErrors.isEmpty() || !wishErrors.isEmpty() || limitExceeded) {
       model.addAttribute("wishErrors", wishErrors);
       model.addAttribute("duplicateErrors", duplicateErrors);
@@ -112,12 +111,10 @@ public class ShiftController {
       return "index";
     }
 
-    // assign を呼び出し、割当案を算出
     var result = shiftAssignmentService.assign(validEmployees);
     if (result.isPresent()) {
       model.addAttribute("assignmentResult", result.get());
     } else {
-      // V-4: 有効な従業員が8名未満、または条件を満たす案がない場合は不成立
       model.addAttribute("unassignable", true);
     }
 

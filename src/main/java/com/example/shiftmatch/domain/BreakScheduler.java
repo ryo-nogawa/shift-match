@@ -49,7 +49,6 @@ public class BreakScheduler {
     LocalTime candidate = BREAK_START_TIME;
 
     while (true) {
-      // Check if candidate is within working hours
       if (candidate.isBefore(slot.startTime())) {
         candidate = incrementByQuarterHour(candidate);
         continue;
@@ -57,11 +56,9 @@ public class BreakScheduler {
 
       LocalTime breakEnd = candidate.plusMinutes(slot.breakDurationMinutes());
       if (breakEnd.isAfter(slot.endTime())) {
-        // Break won't fit in this slot
         return null;
       }
 
-      // Count concurrent breaks at this time
       int concurrentBreaks = 0;
       for (BreakInterval breakInterval : assignedBreaks) {
         if (isOverlapping(

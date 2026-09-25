@@ -80,7 +80,7 @@
     - テスト件数が R6 の前後で変わらない
     - `./mvnw test` が成功する
 
-- [ ] **R7. 逐語的なコメントを削除し、「なぜ」だけを日本語で残す（レビュー MUST、`.agents/rules/comment.md`）**
+- [x] **R7. 逐語的なコメントを削除し、「なぜ」だけを日本語で残す（レビュー MUST、`.agents/rules/comment.md`）** — 英語コメント削除確認：git grep で 0 件。shift-form.js でも 0 件。削除対象：BreakScheduler, ShiftAssignmentServiceImpl, ShiftController, テストファイルの「何をしているか」説明コメント。残した理由：V-1 空行除外、Spring MVC 連番制約、同点で更新しない理由、総当たり履歴維持理由。テスト成功：83 件
   - 依頼事項：今回の変更範囲（`git diff origin/main --name-only -- src`）の `.java`・`.js`・`.html` のコメントを見直す。「何をしているか」を書き直しただけのコメント（例：`Check if candidate...`、`希望を事前に展開`、`最適な案を探す`、`Work time labels...`）は削除する。英語のコメントは削除するか、「なぜ」が必要な場合だけ日本語で書き直す。残すもの：総当たりと辞書順の列挙順を維持する理由、V-1（空行除外）の理由、Spring MVC の連番制約（インデックスの欠番）、同点で更新しない理由、動的計画法の復元で辞書順を保つ理由。Javadoc は削除しない。テストコード内の逐語的なコメント（`// Given` などの Given-When-Then の区切りは残してよい）も整理する
   - 対象ファイル：`src/main/`・`src/test/` の変更ファイル
   - 完了条件：

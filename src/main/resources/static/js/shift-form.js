@@ -75,7 +75,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   addRowBtn.addEventListener("click", function () {
-    // ガード: 上限に達していれば行を追加しない
     const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows") || "12", 10);
     const currentRowCount = employeeRows.querySelectorAll("tr").length;
     if (currentRowCount >= maxRows) {
@@ -93,7 +92,6 @@ document.addEventListener("DOMContentLoaded", function () {
     nameCell.appendChild(nameInput);
     newRow.appendChild(nameCell);
 
-    // Work time labels for each slot
     const workTimes = [
       "07:30〜14:30",
       "08:00〜15:30",
@@ -103,7 +101,6 @@ document.addEventListener("DOMContentLoaded", function () {
       "09:00〜18:30",
     ];
 
-    // Create select elements for each of the 6 slots
     for (let slotIndex = 0; slotIndex < 6; slotIndex++) {
       const slotCell = document.createElement("td");
       slotCell.setAttribute("data-label", workTimes[slotIndex]);
