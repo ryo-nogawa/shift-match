@@ -6,13 +6,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.shiftmatch.domain.AssignmentResult;
+import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.ShiftAssignment;
+import com.example.shiftmatch.domain.ShiftSlot;
+import com.example.shiftmatch.domain.Wish;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
+import java.time.LocalTime;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,17 +44,119 @@ class ShiftControllerTest {
 
   @MockitoBean private ShiftAssignmentService shiftAssignmentService;
 
-  @BeforeEach
-  void setupDefaultStubs() {
-    ShiftAssignmentServiceImpl realService = new ShiftAssignmentServiceImpl();
-    Mockito.doAnswer(invocation -> realService.assign((java.util.List) invocation.getArgument(0)))
-        .when(shiftAssignmentService)
-        .assign(Mockito.any());
-    Mockito.doAnswer(
-            invocation ->
-                realService.findDuplicateNames((java.util.List) invocation.getArgument(0)))
-        .when(shiftAssignmentService)
-        .findDuplicateNames(Mockito.any());
+  /**
+   * テスト用の割当結果を作成します（A-H の 8 名、各枠に割り当て）。
+   *
+   * @return 標準的な割当結果
+   */
+  private AssignmentResult createStandardResult() {
+    List<ShiftAssignment> assignments =
+        List.of(
+            new ShiftAssignment(
+                new Employee(
+                    "A",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_1,
+                LocalTime.of(12, 0),
+                LocalTime.of(12, 45)),
+            new ShiftAssignment(
+                new Employee(
+                    "B",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_1,
+                LocalTime.of(12, 0),
+                LocalTime.of(12, 45)),
+            new ShiftAssignment(
+                new Employee(
+                    "C",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_2,
+                LocalTime.of(12, 45),
+                LocalTime.of(13, 30)),
+            new ShiftAssignment(
+                new Employee(
+                    "D",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_3,
+                LocalTime.of(12, 45),
+                LocalTime.of(13, 30)),
+            new ShiftAssignment(
+                new Employee(
+                    "E",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_4,
+                LocalTime.of(13, 30),
+                LocalTime.of(14, 15)),
+            new ShiftAssignment(
+                new Employee(
+                    "F",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_5,
+                LocalTime.of(13, 30),
+                LocalTime.of(14, 30)),
+            new ShiftAssignment(
+                new Employee(
+                    "G",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_6,
+                LocalTime.of(14, 15),
+                LocalTime.of(15, 15)),
+            new ShiftAssignment(
+                new Employee(
+                    "H",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_6,
+                LocalTime.of(14, 30),
+                LocalTime.of(15, 30)));
+    return new AssignmentResult(assignments, 8, List.of());
   }
 
   @Nested
@@ -743,6 +853,12 @@ class ShiftControllerTest {
   @DisplayName("[F-4] 割当結果の表表示")
   class ResultTableDisplay {
 
+    @BeforeEach
+    void setupAssignmentResult() {
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(createStandardResult()));
+    }
+
     @Test
     @DisplayName("[F-4] Given: 割当結果が表示されるとき, When: テーブルの見出しを確認すると, Then: 「氏名」「勤務時間」「休憩時間」の順である")
     void displaysResultTableHeadersInCorrectOrder() throws Exception {
@@ -988,6 +1104,12 @@ class ShiftControllerTest {
   @DisplayName("[F-4] スコアと未出勤者の表示")
   class ScoreAndUnassignedDisplay {
 
+    @BeforeEach
+    void setupAssignmentResult() {
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(createStandardResult()));
+    }
+
     @Test
     @DisplayName(
         "[F-4] Given: スコア5の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then: '.score-num'に'5'と'/ 8'が表示される")
@@ -1050,6 +1172,32 @@ class ShiftControllerTest {
     @DisplayName(
         "[F-4] Given: 未出勤者2名（I・J）の割当結果が表示されるとき, When: 未出勤者セクションを確認すると, Then: '.chip'が2つ表示され、氏名が正しい")
     void displaysUnassignedEmployeesWithChips() throws Exception {
+      // 未出勤者2名を含む結果をスタブ
+      List<Employee> unassignedEmployees =
+          List.of(
+              new Employee(
+                  "I",
+                  List.of(
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED)),
+              new Employee(
+                  "J",
+                  List.of(
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED)));
+      AssignmentResult resultWithUnassigned =
+          new AssignmentResult(createStandardResult().assignments(), 5, unassignedEmployees);
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(resultWithUnassigned));
+
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 10; i++) {
         params
@@ -1135,6 +1283,12 @@ class ShiftControllerTest {
   @Nested
   @DisplayName("[F-4] 時間軸バーの表示")
   class TimelineDisplay {
+
+    @BeforeEach
+    void setupAssignmentResult() {
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(createStandardResult()));
+    }
 
     @Test
     @DisplayName(
