@@ -287,22 +287,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     return new AssignmentResult(shiftAssignments, score, unassigned);
   }
 
-  /**
-   * ShiftSlot に対応するインデックスを返します（0-5）。
-   *
-   * @param slot 枠
-   * @return インデックス
-   */
-  private int getSlotIndex(ShiftSlot slot) {
-    ShiftSlot[] slots = ShiftSlot.values();
-    for (int i = 0; i < slots.length; i++) {
-      if (slots[i] == slot) {
-        return i;
-      }
-    }
-    throw new IllegalStateException("Slot index not found");
-  }
-
   @Override
   public List<DuplicateNameError> findDuplicateNames(List<Employee> employees) {
     // V-2 の重複行番号を返すため、元のインデックスと氏名を対応させる
