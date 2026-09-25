@@ -36,7 +36,7 @@
     - `[V-1]` 空行だけの行があっても、V-3 のエラーが出ない（既存テストを維持する）
     - `./mvnw test` が成功する
 
-- [ ] **Q3. 結果表のテストの期待値を仕様どおりに設定する（F-4、レビュー SHOULD）**
+- [x] **Q3. 結果表のテストの期待値を仕様どおりに設定する（F-4、レビュー SHOULD）**
   - 依頼事項：`ShiftControllerTest` の、8 行の氏名・勤務時間・休憩時間を検証するテスト（`expectedWorkTimes` と `expectedBreakTimes` が空配列になっているもの）を直す。期待値は、仕様書 2 章の表のとおり：枠 1（2 名）`07:30〜14:30`＋`12:00〜12:45`、`07:30〜14:30`＋`12:00〜12:45`／枠 2 `08:00〜15:30`＋`12:45〜13:30`／枠 3 `08:30〜16:30`＋`12:45〜13:30`／枠 4 `09:00〜16:30`＋`13:30〜14:15`／枠 5 `09:00〜18:00`＋`13:30〜14:30`／枠 6（2 名）`09:00〜18:30`＋`14:15〜15:15`、`09:00〜18:30`＋`14:30〜15:30`
   - 依頼事項（差し戻し・追記）：現在のテスト `displaysCorrectNumberOfRowsAndCorrectWorkSchedules` は、次の 3 点で完了条件を満たしていない。直すこと
     1. 勤務時間・休憩時間の検証が、レスポンス全体への `contains` になっている。入力表の見出しにも同じ勤務時間（`07:30〜14:30` など）が出るため、結果表が壊れても通ってしまう。**結果表（`class="result-table"` の `<table>`）の `<tbody>` だけ**を取り出して検証する
@@ -71,16 +71,27 @@
   - `displaysDuplicateLineNumbersCorrectlyWithBlankRowBefore`：1 行目が空、2・3 行目が同名の場合、「2, 3 行目」が表示されることを検証
   - `displaysDuplicateLineNumbersCorrectlyWithBlankRowBetween`：1 行目 A、2 行目が空、3 行目 A の場合、「1, 3 行目」が表示されることを検証
 
-### Q3：結果表のテストの期待値を仕様どおりに設定（完了）
+### Q3：結果表のテストの期待値を仕様どおりに設定（完了・変異確認済み）
 - 実装：テストの期待値配列を 8 件分設定（仕様書 2 章のとおり）
+- テスト修正内容：
+  1. 結果表（`class="result-table"`）の `<tbody>` だけを取り出し、入力表の tbody と区別
+  2. 8 行すべてを個別に検証。各行について氏名・勤務時間・休憩時間が含まれ、順序（名前 < 勤務時間 < 休憩時間）が正しいことを確認
 - テスト件数：変更なし（既存テストを修正）
 - テストメソッド：
   - `displaysCorrectNumberOfRowsAndCorrectWorkSchedules`：
     - 期待値：勤務時間 8 件（07:30〜14:30 x2, 08:00〜15:30, 08:30〜16:30, 09:00〜16:30, 09:00〜18:00, 09:00〜18:30 x2）
     - 期待値：休憩時間 8 件（12:00〜12:45 x2, 12:45〜13:30 x2, 13:30〜14:15, 13:30〜14:30, 14:15〜15:15, 14:30〜15:30）
     - 結果表の tbody が 8 行であることを検証
-    - すべての期待値が HTML に含まれることを検証
+    - 各行が名前・勤務時間・休憩時間を含むことを 8 行すべてで検証
+- 変異確認：
+  1. `index.html` の結果表の休憩時間の出力（157 行目の `th:text="|${#temporals.format(assignment.breakStart(), 'HH:mm')}〜${#temporals.format(assignment.breakEnd(), 'HH:mm')}|"`）を `th:text="''"` に変更してテスト実行 → 失敗を確認（`Row 0 should contain break time 12:00〜12:45 ==> expected: <true> but was: <false>`）
+  2. `index.html` の結果表の勤務時間の出力（152 行目の `th:text="|${#temporals.format(assignment.slot().startTime(), 'HH:mm')}〜${#temporals.format(assignment.slot().endTime(), 'HH:mm')}|"`）を `th:text="''"` に変更してテスト実行 → 失敗を確認（`Row 0 should contain work time 07:30〜14:30 ==> expected: <true> but was: <false>`）
+  3. 両方とも元に戻す → `git diff` で差分がないことを確認
 
 ### テスト結果
-- 全テスト：90 件成功（初期 84 件 + 6 件新規追加）
+- 全テスト：90 件成功（初期 84 件 + Q1 で 4 件新規追加 + Q2 で 2 件新規追加）
 - Spotless・Checkstyle：合格
+- Q3 変異確認：合格
+  - 休憩時間の出力を壊す → テスト失敗
+  - 勤務時間の出力を壊す → テスト失敗
+  - 両方元に戻す → テスト成功

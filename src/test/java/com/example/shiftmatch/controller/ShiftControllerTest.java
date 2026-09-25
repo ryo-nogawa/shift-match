@@ -861,31 +861,61 @@ class ShiftControllerTest {
         "14:30〜15:30" // Slot 6-2
       };
 
-      // Verify expected work times
+      // Verify expected arrays have 8 elements each
       assertEquals(8, expectedWorkTimes.length, "Should have 8 expected work times");
-      for (String workTime : expectedWorkTimes) {
-        assertTrue(responseContent.contains(workTime), "Should contain work time: " + workTime);
-      }
-
-      // Verify expected break times
       assertEquals(8, expectedBreakTimes.length, "Should have 8 expected break times");
-      for (String breakTime : expectedBreakTimes) {
-        assertTrue(responseContent.contains(breakTime), "Should contain break time: " + breakTime);
-      }
 
-      // Verify result table has exactly 8 rows (in tbody)
-      Pattern tablePattern = Pattern.compile("<tbody[^>]*>.*?</tbody>", Pattern.DOTALL);
-      Matcher tableMatcher = tablePattern.matcher(responseContent);
-      assertTrue(tableMatcher.find(), "Result table tbody should be present");
-      String tbody = tableMatcher.group();
+      // Extract result table tbody only (not input table)
+      Pattern resultTablePattern =
+          Pattern.compile("class=\"result-table\">.*?<tbody[^>]*>(.*?)</tbody>", Pattern.DOTALL);
+      Matcher resultTableMatcher = resultTablePattern.matcher(responseContent);
+      assertTrue(resultTableMatcher.find(), "Result table tbody should be present");
+      String resultTableTbody = resultTableMatcher.group(1);
 
+      // Verify result table tbody has exactly 8 rows
       Pattern rowPattern = Pattern.compile("<tr[^>]*>.*?</tr>", Pattern.DOTALL);
-      Matcher rowMatcher = rowPattern.matcher(tbody);
+      Matcher rowMatcher = rowPattern.matcher(resultTableTbody);
+
       int rowCount = 0;
       while (rowMatcher.find()) {
         rowCount++;
       }
       assertEquals(8, rowCount, "Result table should have exactly 8 rows");
+
+      // Verify each row's content (name, work time, break time in order)
+      rowMatcher = rowPattern.matcher(resultTableTbody);
+      int currentRow = 0;
+      while (rowMatcher.find() && currentRow < 8) {
+        String rowHtml = rowMatcher.group();
+        String expectedName = String.valueOf((char) ('A' + currentRow));
+        String expectedWorkTime = expectedWorkTimes[currentRow];
+        String expectedBreakTime = expectedBreakTimes[currentRow];
+
+        // Verify name is present in this row
+        assertTrue(
+            rowHtml.contains(expectedName),
+            "Row " + currentRow + " should contain name " + expectedName);
+
+        // Verify work time is present in this row
+        assertTrue(
+            rowHtml.contains(expectedWorkTime),
+            "Row " + currentRow + " should contain work time " + expectedWorkTime);
+
+        // Verify break time is present in this row
+        assertTrue(
+            rowHtml.contains(expectedBreakTime),
+            "Row " + currentRow + " should contain break time " + expectedBreakTime);
+
+        // Verify the order: name appears before work time, work time before break time
+        int namePos = rowHtml.indexOf(expectedName);
+        int workTimePos = rowHtml.indexOf(expectedWorkTime);
+        int breakTimePos = rowHtml.indexOf(expectedBreakTime);
+        assertTrue(
+            namePos < workTimePos && workTimePos < breakTimePos,
+            "Row " + currentRow + " should have name, work time, break time in correct order");
+
+        currentRow++;
+      }
     }
 
     @Test
