@@ -92,16 +92,11 @@ document.addEventListener("DOMContentLoaded", function () {
     nameCell.appendChild(nameInput);
     newRow.appendChild(nameCell);
 
-    const workTimes = [
-      "07:30〜14:30",
-      "08:00〜15:30",
-      "08:30〜16:30",
-      "09:00〜16:30",
-      "09:00〜18:00",
-      "09:00〜18:30",
-    ];
+    const table = document.querySelector("table.input-table");
+    const slotLabelsAttr = table.getAttribute("data-slot-labels") || "";
+    const workTimes = slotLabelsAttr ? slotLabelsAttr.split("|") : [];
 
-    for (let slotIndex = 0; slotIndex < 6; slotIndex++) {
+    for (let slotIndex = 0; slotIndex < workTimes.length; slotIndex++) {
       const slotCell = document.createElement("td");
       slotCell.setAttribute("data-label", workTimes[slotIndex]);
       const slotSelect = createWishSelect(

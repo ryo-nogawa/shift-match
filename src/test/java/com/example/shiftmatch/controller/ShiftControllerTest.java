@@ -162,6 +162,33 @@ class ShiftControllerTest {
     }
 
     @Test
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: data-slot-labels属性が6つの勤務時間を含む")
+    void tableHasDataSlotLabelsWithAllWorkTimes() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      Pattern pattern = Pattern.compile("data-slot-labels=\"([^\"]+)\"");
+      Matcher matcher = pattern.matcher(htmlContent);
+      assertTrue(matcher.find(), "Should have data-slot-labels attribute");
+
+      String slotLabels = matcher.group(1);
+      String[] workTimes = {
+        "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
+      };
+
+      for (String workTime : workTimes) {
+        assertTrue(
+            slotLabels.contains(workTime), "data-slot-labels should contain work time " + workTime);
+      }
+    }
+
+    @Test
     @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 旧earlyWish・lateWishは存在しない")
     void doesNotContainOldEarlyOrLateWish() throws Exception {
       String htmlContent =

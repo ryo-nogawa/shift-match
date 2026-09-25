@@ -3,8 +3,11 @@ package com.example.shiftmatch.controller;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.InvalidWishError;
+import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.domain.Wish;
 import com.example.shiftmatch.service.ShiftAssignmentService;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -50,6 +53,16 @@ public class ShiftController {
     }
     shiftForm.setEmployees(employees);
     model.addAttribute("shiftForm", shiftForm);
+
+    List<String> slotLabels = new ArrayList<>();
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+    for (ShiftSlot slot : ShiftSlot.values()) {
+      LocalTime start = slot.startTime();
+      LocalTime end = slot.endTime();
+      slotLabels.add(start.format(formatter) + "〜" + end.format(formatter));
+    }
+    model.addAttribute("slotLabels", slotLabels);
+
     return "index";
   }
 
@@ -73,12 +86,21 @@ public class ShiftController {
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
+    List<String> slotLabelsForError = new ArrayList<>();
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+    for (ShiftSlot slot : ShiftSlot.values()) {
+      LocalTime start = slot.startTime();
+      LocalTime end = slot.endTime();
+      slotLabelsForError.add(start.format(formatter) + "〜" + end.format(formatter));
+    }
+
     // V-2: 重複チェック
     List<DuplicateNameError> duplicateErrors =
         shiftAssignmentService.findDuplicateNames(validEmployees);
 
     // V-3: 希望の有効性チェック
     List<InvalidWishError> wishErrors = new ArrayList<>();
+
     for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
       EmployeeForm employee = shiftForm.getEmployees().get(i);
       if (employee.getName() == null || employee.getName().isBlank()) {
@@ -86,13 +108,10 @@ public class ShiftController {
       }
 
       List<String> wishes = employee.getWishes();
-      String[] workTimes = {
-        "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
-      };
-      for (int j = 0; j < 6; j++) {
+      for (int j = 0; j < slotLabelsForError.size(); j++) {
         String wish = (wishes != null && j < wishes.size()) ? wishes.get(j) : null;
         if (!isValidWish(wish)) {
-          wishErrors.add(new InvalidWishError(i, workTimes[j]));
+          wishErrors.add(new InvalidWishError(i, slotLabelsForError.get(j)));
         }
       }
     }

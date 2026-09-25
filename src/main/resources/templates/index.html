@@ -49,16 +49,11 @@
         <span class="count"><b id="row-count" th:text="${shiftForm.employees.size()}">0</b> 名</span>
       </div>
       <p class="wish-legend"><b class="w d">◎</b>希望 <b class="w a">○</b>可能 <b class="w u">×</b>不可</p>
-      <table class="input-table">
+      <table class="input-table" th:attr="data-slot-labels=${#strings.listJoin(slotLabels, '|')}">
         <thead>
           <tr>
             <th>氏名</th>
-            <th>枠1<small>07:30〜14:30</small></th>
-            <th>枠2<small>08:00〜15:30</small></th>
-            <th>枠3<small>08:30〜16:30</small></th>
-            <th>枠4<small>09:00〜16:30</small></th>
-            <th>枠5<small>09:00〜18:00</small></th>
-            <th>枠6<small>09:00〜18:30</small></th>
+            <th th:each="label, stat : ${slotLabels}">枠<span th:text="${stat.index + 1}">1</span><small th:text="${label}">時刻</small></th>
             <th></th>
           </tr>
         </thead>
@@ -72,13 +67,13 @@
               />
             </td>
             <td
-              th:each="j : ${#numbers.sequence(0, 5)}"
-              th:attr="data-label=${j == 0 ? '07:30〜14:30' : j == 1 ? '08:00〜15:30' : j == 2 ? '08:30〜16:30' : j == 3 ? '09:00〜16:30' : j == 4 ? '09:00〜18:00' : '09:00〜18:30'}"
+              th:each="label, slotStat : ${slotLabels}"
+              th:attr="data-label=${label}"
             >
               <select
-                th:field="*{employees[__${stat.index}__].wishes[__${j}__]}"
+                th:field="*{employees[__${stat.index}__].wishes[__${slotStat.index}__]}"
                 data-value=""
-                th:attr="data-label=${j == 0 ? '07:30〜14:30' : j == 1 ? '08:00〜15:30' : j == 2 ? '08:30〜16:30' : j == 3 ? '09:00〜16:30' : j == 4 ? '09:00〜18:00' : '09:00〜18:30'}"
+                th:attr="data-label=${label}"
               >
                 <option value="">-- 未選択 --</option>
                 <option value="DESIRED">◎ 希望</option>

@@ -97,7 +97,7 @@
     - `shift-form.css` に `.early`・`.late` を含むセレクターが存在しないことを `grep` で確認した
     - `./mvnw test` が成功する
 
-- [ ] **R9. 枠の勤務時間の定義を `ShiftSlot` に一本化する（レビュー SHOULD）**
+- [x] **R9. 枠の勤務時間の定義を `ShiftSlot` に一本化する（レビュー SHOULD）** — テスト: tableHasDataSlotLabelsWithAllWorkTimes（data-slot-labels に 6 つの勤務時間）。実装：ShiftController で ShiftSlot.values() から slotLabels を生成、index.html で th:each で表示・data-label に割り当て、shift-form.js で data-slot-labels から読込。時刻固定値削除完了。テスト成功：84 件
   - 依頼事項：`ShiftController` が `ShiftSlot.values()` から、枠ごとの表示文字列（`07:30〜14:30` 形式）のリストを作り、モデル属性（例：`slotLabels`）として渡す。`ShiftController` 内の `6` などの枠数のリテラルは `ShiftSlot.values().length` に置き換える。`index.html` は、列見出し・各 `select` の `data-label`・`data-slot-labels`（JS が読む属性）を、`slotLabels` から出力する（枠の時刻を HTML に直接書かない）。`shift-form.js` は `data-slot-labels` を読んで行を生成し、6 という固定値・時刻の固定文字列を持たない（`data-slot-labels` の値は `|` 区切りなど、テンプレートで組み立てやすい形式にしてよい）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/main/resources/templates/index.html`、`src/main/resources/static/js/shift-form.js`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
