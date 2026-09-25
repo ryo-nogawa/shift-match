@@ -169,8 +169,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
   /**
    * 復元：入力順の辞書順で最初の最大スコア案を構築します。
    *
-   * <p>総当たり時代から、同点の場合は「最初に最大スコアに到達した案」を採用する履歴を保つため、
-   * 入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選びます。
+   * <p>仕様 5.3 節の「列挙順で最初に最大スコアへ到達する案」と同じ案を得るため、 入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選びます。
    */
   private void reconstructAssignment(
       Wish[][] wishes,
