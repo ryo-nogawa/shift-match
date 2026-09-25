@@ -48,11 +48,13 @@
         <span class="count"><b id="row-count" th:text="${shiftForm.employees.size()}">0</b> 名</span>
       </div>
       <p class="wish-legend"><b class="w d">◎</b>希望 <b class="w a">○</b>可能 <b class="w u">×</b>不可</p>
-      <table class="input-table" th:attr="data-slot-labels=${#strings.listJoin(slotLabels, '|')}">
+      <table class="input-table">
         <thead>
           <tr>
             <th>氏名</th>
-            <th th:each="label, stat : ${slotLabels}">枠<span th:text="${stat.index + 1}">1</span><small th:text="${label}">時刻</small></th>
+            <th>休み</th>
+            <th>開始</th>
+            <th>終了</th>
             <th></th>
           </tr>
         </thead>

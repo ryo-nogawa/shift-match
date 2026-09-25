@@ -55,21 +55,15 @@ public class ShiftController {
   }
 
   /**
-   * 枠ラベルをモデルに設定します。
+   * 開始・終了の選択肢（07:30〜18:30 の 30 分刻み、HH:mm）をモデルに設定します。
    *
    * <p>GET と POST の全経路でモデルに含まれるよう、{@code @ModelAttribute} を使用します。
    *
-   * @return 枠ラベルのリスト
+   * @return 時刻の選択肢のリスト
    */
-  @ModelAttribute("slotLabels")
-  public List<String> slotLabels() {
-    List<String> labels = new ArrayList<>();
-    for (ShiftSlot slot : ShiftSlot.values()) {
-      LocalTime start = slot.startTime();
-      LocalTime end = slot.endTime();
-      labels.add(start.format(TIME_FORMATTER) + "〜" + end.format(TIME_FORMATTER));
-    }
-    return labels;
+  @ModelAttribute("timeOptions")
+  public List<String> timeOptions() {
+    return TIME_OPTIONS;
   }
 
   /**

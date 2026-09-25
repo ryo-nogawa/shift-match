@@ -2,6 +2,7 @@ package com.example.shiftmatch.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * ShiftControllerのテスト。
@@ -176,64 +178,6 @@ class ShiftControllerTest {
   @Nested
   @DisplayName("[F-1] 希望入力フォーム")
   class InputForm {
-
-    @Test
-    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 見出しに6つの勤務時間がこの順で表示される")
-    void displaysHeadersWithWorkTimesInOrder() throws Exception {
-      String htmlContent =
-          mockMvc
-              .perform(get("/"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      int pos1 = htmlContent.indexOf("07:30〜14:30");
-      int pos2 = htmlContent.indexOf("08:00〜15:30");
-      int pos3 = htmlContent.indexOf("08:30〜16:30");
-      assertTrue(pos1 >= 0, "Should contain work time 07:30〜14:30");
-      assertTrue(pos2 >= 0, "Should contain work time 08:00〜15:30");
-      assertTrue(pos3 >= 0, "Should contain work time 08:30〜16:30");
-      assertTrue(pos1 < pos2, "07:30〜14:30 should come before 08:00〜15:30");
-      assertTrue(pos2 < pos3, "08:00〜15:30 should come before 08:30〜16:30");
-
-      int pos4 = htmlContent.indexOf("09:00〜16:30");
-      int pos5 = htmlContent.indexOf("09:00〜18:00");
-      int pos6 = htmlContent.indexOf("09:00〜18:30");
-      assertTrue(pos4 >= 0, "Should contain work time 09:00〜16:30");
-      assertTrue(pos5 >= 0, "Should contain work time 09:00〜18:00");
-      assertTrue(pos6 >= 0, "Should contain work time 09:00〜18:30");
-      assertTrue(pos3 < pos4, "08:30〜16:30 should come before 09:00〜16:30");
-      assertTrue(pos4 < pos5, "09:00〜16:30 should come before 09:00〜18:00");
-      assertTrue(pos5 < pos6, "09:00〜18:00 should come before 09:00〜18:30");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: data-slot-labels属性が6つの勤務時間を含む")
-    void tableHasDataSlotLabelsWithAllWorkTimes() throws Exception {
-      String htmlContent =
-          mockMvc
-              .perform(get("/"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      Pattern pattern = Pattern.compile("data-slot-labels=\"([^\"]+)\"");
-      Matcher matcher = pattern.matcher(htmlContent);
-      assertTrue(matcher.find(), "Should have data-slot-labels attribute");
-
-      String slotLabels = matcher.group(1);
-      String[] workTimes = {
-        "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
-      };
-
-      for (String workTime : workTimes) {
-        assertTrue(
-            slotLabels.contains(workTime), "data-slot-labels should contain work time " + workTime);
-      }
-    }
 
     @Test
     @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 旧earlyWish・lateWishは存在しない")
@@ -670,48 +614,74 @@ class ShiftControllerTest {
   }
 
   @Nested
-  @DisplayName("[F-1] POST の全戻り経路で slotLabels をモデルに設定")
-  class PostReturnPathsIncludeSlotLabels {
+  @DisplayName("[F-1] GET・POST の全戻り経路で timeOptions をモデルに設定")
+  class TimeOptionsInModel {
 
-    @Test
-    @DisplayName("[F-1] Given: POSTで成立するとき, When: レスポンスHTMLを確認すると, Then: 6つの勤務時間がある")
-    void includesSlotLabelsWhenAssignmentSucceeds() throws Exception {
+    @SuppressWarnings("unchecked")
+    private void assertTimeOptions(MvcResult result) {
+      List<String> timeOptions =
+          (List<String>) result.getModelAndView().getModel().get("timeOptions");
+      assertNotNull(timeOptions, "Model should contain timeOptions");
+      assertEquals(23, timeOptions.size(), "timeOptions should have 23 items");
+      assertEquals("07:30", timeOptions.get(0), "First option should be 07:30");
+      assertEquals("08:00", timeOptions.get(1), "Second option should be 08:00");
+      assertEquals("18:30", timeOptions.get(22), "Last option should be 18:30");
+    }
+
+    private MvcResult postEmployees(int count) throws Exception {
       StringBuilder params = new StringBuilder();
-      for (int i = 0; i < 8; i++) {
-        params
-            .append("&employees[")
-            .append(i)
-            .append("].name=")
-            .append(String.valueOf((char) ('A' + i)));
+      for (int i = 0; i < count; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
-
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .contentType("application/x-www-form-urlencoded")
-                      .content(params.toString().substring(1)))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
-      assertTrue(responseContent.contains("08:00〜15:30"), "Should contain work time 08:00〜15:30");
-      assertTrue(responseContent.contains("08:30〜16:30"), "Should contain work time 08:30〜16:30");
-      assertTrue(responseContent.contains("09:00〜16:30"), "Should contain work time 09:00〜16:30");
-      assertTrue(responseContent.contains("09:00〜18:00"), "Should contain work time 09:00〜18:00");
-      assertTrue(responseContent.contains("09:00〜18:30"), "Should contain work time 09:00〜18:30");
-
-      assertTrue(
-          responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
+      return mockMvc
+          .perform(
+              post("/shift")
+                  .contentType("application/x-www-form-urlencoded")
+                  .content(params.substring(1)))
+          .andExpect(status().isOk())
+          .andReturn();
     }
 
     @Test
-    @DisplayName("[F-1] Given: POSTでV-3エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
-    void includesSlotLabelsWhenV3Error() throws Exception {
-      String responseContent =
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
+            + " Then: timeOptionsが07:30〜18:30の30分刻み23件である")
+    void includesTimeOptionsOnGet() throws Exception {
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+
+      assertTimeOptions(result);
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: POSTで成立するとき, When: モデルを確認すると, Then: timeOptionsが07:30〜18:30の23件である")
+    void includesTimeOptionsWhenAssignmentSucceeds() throws Exception {
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(createStandardResult()));
+
+      MvcResult result = postEmployees(8);
+
+      assertNotNull(result.getModelAndView().getModel().get("assignmentResult"));
+      assertTimeOptions(result);
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: POSTで不成立のとき, When: モデルを確認すると, Then: timeOptionsが07:30〜18:30の23件である")
+    void includesTimeOptionsWhenUnassignable() throws Exception {
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.empty());
+
+      MvcResult result = postEmployees(8);
+
+      assertEquals(true, result.getModelAndView().getModel().get("unassignable"));
+      assertTimeOptions(result);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: POSTでV-3の入力エラーのとき, When: モデルを確認すると,"
+            + " Then: timeOptionsが07:30〜18:30の23件である")
+    void includesTimeOptionsWhenV3Error() throws Exception {
+      MvcResult result =
           mockMvc
               .perform(
                   post("/shift")
@@ -719,69 +689,21 @@ class ShiftControllerTest {
                       .param("employees[0].start", "")
                       .param("employees[0].end", "17:00"))
               .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
+              .andReturn();
 
-      assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
-      assertTrue(
-          responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
+      assertTrue(result.getResponse().getContentAsString().contains("開始が未選択です"));
+      assertTimeOptions(result);
     }
 
     @Test
-    @DisplayName("[F-1] Given: POSTでV-5エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
-    void includesSlotLabelsWhenV5Error() throws Exception {
-      StringBuilder params = new StringBuilder();
-      for (int i = 0; i < 13; i++) {
-        params.append("&employees[").append(i).append("].name=Employee").append(i);
-        appendTimeRange(params, i, "07:30", "18:30");
-      }
+    @DisplayName(
+        "[F-1] Given: POSTでV-5の入力エラーのとき, When: モデルを確認すると,"
+            + " Then: timeOptionsが07:30〜18:30の23件である")
+    void includesTimeOptionsWhenV5Error() throws Exception {
+      MvcResult result = postEmployees(13);
 
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .contentType("application/x-www-form-urlencoded")
-                      .content(params.toString().substring(1)))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      assertTrue(
-          responseContent.contains("07:30〜14:30"),
-          "Should contain work time 07:30〜14:30 even with V-5 error");
-      assertTrue(
-          responseContent.contains("data-slot-labels"),
-          "Should have data-slot-labels attribute even with V-5 error");
-    }
-
-    @Test
-    @DisplayName("[F-1] Given: POSTで不成立のとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
-    void includesSlotLabelsWhenUnassignable() throws Exception {
-      StringBuilder params = new StringBuilder();
-      for (int i = 0; i < 8; i++) {
-        params.append("&employees[").append(i).append("].name=Employee").append(i);
-        appendTimeRange(params, i, "07:30", "18:30");
-      }
-
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .contentType("application/x-www-form-urlencoded")
-                      .content(params.toString().substring(1)))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      assertTrue(
-          responseContent.contains("07:30〜14:30"),
-          "Should contain work time 07:30〜14:30 even when unassignable");
-      assertTrue(
-          responseContent.contains("data-slot-labels"),
-          "Should have data-slot-labels attribute even when unassignable");
+      assertNotNull(result.getModelAndView().getModel().get("limitExceededError"));
+      assertTimeOptions(result);
     }
   }
 
