@@ -175,4 +175,40 @@ class EmployeeTest {
       assertEquals(false, employee.canWork(ShiftSlot.SLOT_1));
     }
   }
+
+  @Nested
+  @DisplayName("[5.2] 「ずれ」（入力時間帯と枠の勤務時間の差）を計算")
+  class GapMinutes {
+
+    @Test
+    @DisplayName(
+        "[5.2] Given: 8:00〜17:00（540分）の従業員が枠2（450分）に入るとき, When: gapMinutesを呼ぶと," + " Then: 90が返る")
+    void gapMinutesCalculatesCorrectly() {
+      Employee employee = Employee.working("太郎", LocalTime.of(8, 0), LocalTime.of(17, 0));
+
+      int gap = employee.gapMinutes(ShiftSlot.SLOT_2);
+
+      assertEquals(90, gap);
+    }
+
+    @Test
+    @DisplayName(
+        "[5.2] Given: 入力時間帯と枠がちょうど一致（例：9:00〜18:30と枠6）のとき, When: gapMinutesを呼ぶと, Then:" + " 0が返る")
+    void gapMinutesIsZeroWhenExactMatch() {
+      Employee employee = Employee.working("太郎", LocalTime.of(9, 0), LocalTime.of(18, 30));
+
+      int gap = employee.gapMinutes(ShiftSlot.SLOT_6);
+
+      assertEquals(0, gap);
+    }
+
+    @Test
+    @DisplayName(
+        "[5.2] Given: 入れない枠を指定するとき, When: gapMinutesを呼ぶと, Then: IllegalStateExceptionがスローされる")
+    void gapMinutesThrowsExceptionWhenCannotWork() {
+      Employee employee = Employee.working("太郎", LocalTime.of(8, 0), LocalTime.of(17, 0));
+
+      assertThrows(IllegalStateException.class, () -> employee.gapMinutes(ShiftSlot.SLOT_5));
+    }
+  }
 }

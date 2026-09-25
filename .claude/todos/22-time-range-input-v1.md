@@ -54,7 +54,7 @@
     - 開始または終了が null（旧コンストラクタ生成を含む）のとき false のテストが存在する
     - `./mvnw test -Dtest=EmployeeTest` が成功する
 
-- [ ] **T4. `Employee.gapMinutes(ShiftSlot)` で「ずれ」（分）を計算する**
+- [x] **T4. `Employee.gapMinutes(ShiftSlot)` で「ずれ」（分）を計算する**
   - 依頼事項：`public int gapMinutes(ShiftSlot slot)` を追加する。戻り値は「入力時間帯の長さ（分）− `slot.workMinutes()`」。`canWork(slot)` が false のときは `IllegalStateException` を投げる（Javadoc の `@throws` に書く）。関係仕様：5.2
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/Employee.java`、`src/test/java/com/example/shiftmatch/domain/EmployeeTest.java`
   - 完了条件：

@@ -90,4 +90,21 @@ public record Employee(
     }
     return !slot.startTime().isBefore(start) && !slot.endTime().isAfter(end);
   }
+
+  /**
+   * 入力した時間帯と枠の勤務時間のずれ（分）を計算します。
+   *
+   * <p>ずれ = 入力時間帯の長さ（分） − 枠の勤務時間（分）
+   *
+   * @param slot 対象の枠
+   * @return ずれ（分）
+   * @throws IllegalStateException {@link #canWork(ShiftSlot)} が false の場合
+   */
+  public int gapMinutes(ShiftSlot slot) {
+    if (!canWork(slot)) {
+      throw new IllegalStateException("この従業員はこの枠に割り当てられません");
+    }
+    int inputMinutes = (int) java.time.temporal.ChronoUnit.MINUTES.between(start, end);
+    return inputMinutes - slot.workMinutes();
+  }
 }
