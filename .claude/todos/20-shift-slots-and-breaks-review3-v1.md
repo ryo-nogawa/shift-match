@@ -54,8 +54,18 @@
     - `node --check src/main/resources/static/js/shift-form.js` が成功する（Node が使えない場合は、その旨を実行ログに記録する）
     - `./mvnw test` が成功する
 
-- [x] **S5. `ShiftControllerTest` のサービスのスタブを明示的にする（レビュー SHOULD）**
+- [ ] **S5. `ShiftControllerTest` のサービスのスタブを明示的にする（レビュー SHOULD）**
   - 依頼事項：`@WebMvcTest` で `ShiftAssignmentService` を `@MockitoBean` にしているのに、全テストの `@BeforeEach` で実サービスへ委譲し、さらに未使用の `ServiceConfiguration`（同じ型の Bean 定義）がある。Spring Framework 7.1 では、この構成クラスが無視されなくなり、実行ログにも警告が出ている。`ServiceConfiguration` を削除し、`@BeforeEach` の実サービスへの一括委譲をやめる。各テストで必要な戻り値を、テストごとに明示的にスタブする（`assign` は `when(...).thenReturn(...)`、`findDuplicateNames` は、重複エラーの行番号を検証するテストだけ `thenAnswer` で `new ShiftAssignmentServiceImpl().findDuplicateNames(...)` に委譲し、それ以外は空リストを返すスタブにする）
+  - 依頼事項（差し戻し・追記）：Codex の 4 ラウンド目のレビューで、S5 が完了していないことが指摘された。現在の `ShiftControllerTest` は、外側の `@BeforeEach setupDefaultStubs()`（39 行目付近）が、`assign` と `findDuplicateNames` の両方を、**全テストに対して**実サービス（`new ShiftAssignmentServiceImpl()`）へ委譲している。これは完了条件の「`@BeforeEach` で一括して実サービスに委譲するコードが存在しない」に反している（実行ログの「移動・明示化」は、条件を満たしていない）。次のとおりに直すこと
+    1. 外側の `setupDefaultStubs()` を**削除**する（`@BeforeEach` で実サービスに委譲しない）。`findDuplicateNames` は、スタブしなければ空リストを返し、`assign` は `Optional.empty()` を返す（Mockito の既定値）ので、通常のテストではスタブ不要
+    2. 成立した結果を表示するテスト（結果表・スコア・時間軸・未出勤者など）は、そのテストの中で `when(shiftAssignmentService.assign(any())).thenReturn(Optional.of(結果))` を書き、期待する `AssignmentResult` を組み立てて渡す（結果を組み立てる共通のヘルパーメソッド `private AssignmentResult createResult(...)` を 1 つ作ってよい）
+    3. 実サービスへの委譲（`thenAnswer`）は、V-2 の行番号を検証する 2 テスト（空行が前にあるケース、空行が間にあるケース）だけに限定し、そのテストの中、またはその `@Nested` クラスの `@BeforeEach` に置く。それ以外では使わない
+    4. 直す過程でテストが失敗した場合は、テストの期待値を変えず、スタブを正しく設定して直す（テストの期待値は仕様どおり）
+  - 追加の完了条件（`grep` で確認できるもの。結果を実行ログに書く）：
+    - `grep -n "new ShiftAssignmentServiceImpl" src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java` の行が、V-2 の行番号を検証する 2 テスト（またはその `@Nested` クラス）の内側だけにある
+    - `grep -n "setupDefaultStubs" src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java` が 0 件
+    - `grep -n "realService" src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java` が、外側のクラス直下（`@Nested` の外）に存在しない
+    - テスト件数が減っていない（93 件以上）
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
     - `git grep -n "ServiceConfiguration" src/test` が 0 件
@@ -73,6 +83,14 @@
     - `shift-form.css` に `.pill` のスタイルが 1 つだけ定義されており、`index.html` の `class="pill"` に対応している（`grep` の結果を実行ログに書く）
     - `ShiftAssignmentServiceImpl` に、参照されない変数が残っていない（`./mvnw compile` の警告と目視で確認した結果を書く）
     - `./mvnw test` が成功する
+
+- [ ] **S7. 希望数と総必要人数を `ShiftSlot` から導出する（レビュー WANT）**
+  - 依頼事項：`ShiftController`（155 行目付近）と `ShiftAssignmentServiceImpl`（38 行目付近）に固定の `6`（枠数・希望数）と `8`（総必要人数）が重複している。希望数は `ShiftSlot.values().length`、総必要人数は各枠の `numberOfEmployees()` の合計から導出する（必要なら `ShiftSlot` に、総人数を返す `static` メソッド（例：`totalEmployees()`）を追加し、そのテストを `ShiftSlotTest` に足す）。`Employee` や `AssignmentResult` の検証（件数が 6 や 8 でなければ例外）にも、同じ値を使う。振る舞いは変えない
+  - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java`、`src/main/java/com/example/shiftmatch/domain/`、`src/test/java/com/example/shiftmatch/domain/ShiftSlotTest.java`
+  - 完了条件：
+    - 追加した `static` メソッド（あれば）が、`8` を返すことをテストで検証している
+    - `git grep -n -E "\b(6|8)\b" -- src/main/java` に、枠数・希望数・総人数を意味する固定のリテラル（`< 6`・`== 8` など）が残っていない（残る場合は、その理由を実行ログに書く）
+    - 既存テストがすべて成功している（`./mvnw test` が成功する）
 
 ## 実行ログ
 
