@@ -88,7 +88,7 @@
     - `shift-form.js` の英語コメントが 0 件
     - 振る舞いが変わっていない（`./mvnw test` が成功する）
 
-- [ ] **R8. 未使用コードと旧仕様の CSS を削除する（レビュー SHOULD）**
+- [x] **R8. 未使用コードと旧仕様の CSS を削除する（レビュー SHOULD）** — 削除：BreakTime.java（参照 0 件）、.pill セレクター（HTML/JS で未使用）。確認結果：BreakTime、TOTAL_EMPLOYEES 残り 0 件。.early/.late セレクターなし。テスト成功：83 件
   - 依頼事項：参照のない `BreakTime`（`src/main/java/.../domain/BreakTime.java`）と、その専用テストがあれば削除する。`ShiftAssignmentServiceImpl` の未使用定数（`TOTAL_EMPLOYEES` など）を削除する。`shift-form.css` の、HTML から使われていない旧早番・遅番用の定義（`.early`・`.late`・`.pill.early`・`.pill.late`・`.tl-work.early`・`.tl-work.late` など）を削除する。CSS の削除では、`index.html`・`shift-form.js` で使われているクラス名（`grep` で確認）を消さないこと
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/BreakTime.java`、`src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java`、`src/main/resources/static/css/shift-form.css`
   - 完了条件：
