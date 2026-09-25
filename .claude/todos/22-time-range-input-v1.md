@@ -25,7 +25,7 @@
 
 ## Todo
 
-- [ ] **T1. `ShiftSlot` に勤務時間の分数を返す `workMinutes()` を追加する**
+- [x] **T1. `ShiftSlot` に勤務時間の分数を返す `workMinutes()` を追加する**
   - 依頼事項：`ShiftSlot` に `public int workMinutes()`（`startTime` から `endTime` までの分数）を追加する。Javadoc を書く（`.agents/rules/javadoc.md`）。関係仕様：5.2
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/ShiftSlot.java`、`src/test/java/com/example/shiftmatch/domain/ShiftSlotTest.java`
   - 完了条件：
