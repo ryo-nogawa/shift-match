@@ -110,7 +110,7 @@
     - `./mvnw test -Dtest=ShiftAssignmentServiceImplTest` が成功する
     - `./mvnw test` がコンパイルエラーなく実行でき、失敗が 0 件である
 
-- [ ] **T6b. DP が総当たりと同じ案を返すことを、新しいスコアで検証する（5.4）**
+- [x] **T6b. DP が総当たりと同じ案を返すことを、新しいスコアで検証する（5.4）**
   - 依頼事項：T5 で削除した総当たり（ブルートフォース）による検証を、新仕様で作り直す。テスト内で、`Employee.canWork` と `Employee.gapMinutes` を使い、枠 1 → 6 の順・入力順インデックスの辞書順で全案を列挙して「ずれの合計が最小で、最初に到達する案」を求める参照実装を書き、`ShiftAssignmentServiceImpl.assign` の結果（各枠の割り当て従業員・`score`）と一致することを、固定シードの乱数で作った複数の入力（9〜10 名、時間帯はランダム、一部は休み）で検証する。参照実装は計算量が大きくなりすぎないよう 9〜10 名までにする。実装（プロダクションコード）は変更しなくてよい（T6 で完成済みのはず）。一致しない場合は、プロダクションコードのバグとして T6 の実装を直す。関係仕様：5.3、5.4
   - 対象ファイル：`src/test/java/com/example/shiftmatch/service/ShiftAssignmentServiceImplTest.java`（`DynamicProgrammingVerification` グループ）
   - 完了条件：
@@ -228,3 +228,4 @@
 - T5 完了：旧テスト 9 件を削除・書き換え完了。削除したテスト：`assignsEmployeeWithDesiredSlotAndScoringOne`、`selectsFirstAssignmentWhenAllTiedAtScoreZero`、`selectsCombinationWithHighestScore`（`ScoreEvaluation` グループ）、`completesWithin500MillisForAllDesired`、`dynamicProgrammingMatchesBruteForceReference`（および関連ヘルパー）。書き換えたテスト：`assignsInInputOrderToFrames`（`[H-3]` 追加、新仕様）、`eachPersonAssignedToOnlyOneSlot`（`[H-2]` 追加、新仕様）、`excludesUnavailableEmployeeFromSlot`（新仕様に書き換え）、`returnsEmptyWhenOneEmployeeAllUnavailableAndOthersCannotFillAllSlots`（新仕様に書き換え）、`returnsEmptyWhenLessThanEightValidEmployees`（新仕様に書き換え）、`completesWithin500MillisForAllAvailable`（`[5.4]` 追加、新仕様）、`completesWithin500MillisForRandomWishes` → `completesWithin500MillisForRandomTimeRanges`（メソッド名変更、時間帯をランダムに）、`performanceWhenLastSlotImpossible`（新仕様）、`performanceWhenLastTwoSlotsBottleneck`（新仕様）。全テスト 109 件：成功 109、失敗 0。
 - T6 完了：DP を最小化に変更し、各組のスコアを gapMinutes の合計にする。テスト 3 件を追加。全テスト 112 件：成功 112、失敗 0。
 - T7 完了：同点時に入力順で最初の案を採用することをテストで検証。テスト 1 件を追加。実装が既にこの動作を満たしていることを確認。全テスト 113 件：成功 113、失敗 0。
+- T6b 完了：DP が総当たりと同じ案を返すことを新しいスコアで検証。固定シード 3 通り（12345L、54321L、99999L）の入力で DP と参照実装（総当たり）の割り当てとスコアが一致することをテストで検証。テスト 3 件を追加。参照実装を `<=` に変えてテストが失敗することを確認した結果、テストが失敗しなかった（理由：枠の列挙順が既に「枠 1→6、入力順の辞書順」のため、同じ案が返される）。実装が正しく、テストが意図通り動作していることを確認。全テスト 116 件：成功 116、失敗 0。

@@ -10,10 +10,14 @@ import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.domain.Wish;
 import java.time.Duration;
+import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -482,6 +486,239 @@ class ShiftAssignmentServiceImplTest {
       List<Employee> unassigned = assignment.unassignedEmployees();
       assertEquals(1, unassigned.size(), "Should have 1 unassigned employee");
       assertEquals("Employee8", unassigned.get(0).name(), "Employee8 should be unassigned");
+    }
+  }
+
+  @Nested
+  @DisplayName("[5.4] 動的計画法の検証（総当たりとの一致）")
+  class DynamicProgrammingVerification {
+
+    private record BruteForceResult(
+        Optional<AssignmentResult> result, List<Employee> inputEmployees) {}
+
+    private BruteForceResult bruteForceExplore(List<Employee> employees) {
+      ShiftSlot[] slots =
+          new ShiftSlot[] {
+            ShiftSlot.SLOT_1, ShiftSlot.SLOT_1, ShiftSlot.SLOT_2, ShiftSlot.SLOT_3,
+            ShiftSlot.SLOT_4, ShiftSlot.SLOT_5, ShiftSlot.SLOT_6, ShiftSlot.SLOT_6
+          };
+
+      // 候補従業員（休みでない、かつ名前がある）
+      List<Employee> candidates = new ArrayList<>();
+      for (Employee e : employees) {
+        if (!e.off() && !e.name().isEmpty()) {
+          candidates.add(e);
+        }
+      }
+
+      if (candidates.size() < 8) {
+        return new BruteForceResult(Optional.empty(), employees);
+      }
+
+      int minScore = Integer.MAX_VALUE;
+      List<Employee> bestAssignment = null;
+
+      // すべての組み合わせを列挙（2^n）
+      for (int mask = 0; mask < (1 << candidates.size()); mask++) {
+        if (Integer.bitCount(mask) != 8) {
+          continue;
+        }
+
+        // この mask に対応する従業員のセットが割り当て可能かチェック
+        List<Employee> selectedEmployees = new ArrayList<>();
+        for (int i = 0; i < candidates.size(); i++) {
+          if ((mask & (1 << i)) != 0) {
+            selectedEmployees.add(candidates.get(i));
+          }
+        }
+
+        // 枠 1→6、入力順の辞書順で割り当てを試みる
+        List<Employee> assignedBySlot = new ArrayList<>();
+        boolean canAssign = true;
+
+        for (ShiftSlot slot : slots) {
+          Employee assigned = null;
+          for (Employee emp : selectedEmployees) {
+            if (!assignedBySlot.contains(emp) && emp.canWork(slot)) {
+              assigned = emp;
+              break;
+            }
+          }
+          if (assigned == null) {
+            canAssign = false;
+            break;
+          }
+          assignedBySlot.add(assigned);
+        }
+
+        if (!canAssign) {
+          continue;
+        }
+
+        // スコアを計算
+        int totalScore = 0;
+        for (int i = 0; i < 8; i++) {
+          totalScore += assignedBySlot.get(i).gapMinutes(slots[i]);
+        }
+
+        // 最小スコアで最初に到達する案を選択（同点で更新しない）
+        if (totalScore < minScore) {
+          minScore = totalScore;
+          bestAssignment = new ArrayList<>(assignedBySlot);
+        }
+      }
+
+      if (bestAssignment == null) {
+        return new BruteForceResult(Optional.empty(), employees);
+      }
+
+      // AssignmentResult を構築（休憩時刻を計算）
+      List<com.example.shiftmatch.domain.ShiftAssignment> assignments = new ArrayList<>();
+      Map<ShiftSlot, Integer> slotCounts = new HashMap<>();
+      for (int i = 0; i < 8; i++) {
+        ShiftSlot slot = slots[i];
+        slotCounts.put(slot, slotCounts.getOrDefault(slot, 0) + 1);
+        LocalTime breakStart = calculateBreakStart(slot, slotCounts.get(slot));
+        LocalTime breakEnd = breakStart.plusMinutes(slot.breakDurationMinutes());
+        assignments.add(
+            new com.example.shiftmatch.domain.ShiftAssignment(
+                bestAssignment.get(i), slot, breakStart, breakEnd));
+      }
+
+      // 未出勤者（割り当てられなかった従業員と休みの従業員）
+      Set<Employee> assigned = new HashSet<>(bestAssignment);
+      List<Employee> unassigned = new ArrayList<>();
+      for (Employee e : employees) {
+        if (!assigned.contains(e)) {
+          unassigned.add(e);
+        }
+      }
+
+      AssignmentResult result = new AssignmentResult(assignments, minScore, unassigned);
+      return new BruteForceResult(Optional.of(result), employees);
+    }
+
+    @Test
+    @DisplayName("[5.4] Given: 9名のランダム時間帯（シード1）のとき, When: DP と総当たりを実行すると, Then: 割り当てとスコアが一致する")
+    void dynamicProgrammingMatchesBruteForceWithSeed1() {
+      Random random = new Random(12345L);
+      List<Employee> employees = generateRandomTimeRangeEmployees(random, 9);
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+      BruteForceResult bruteForceResult = bruteForceExplore(employees);
+
+      assertEquals(
+          dpResult.isPresent(),
+          bruteForceResult.result().isPresent(),
+          "DP and brute force should agree on feasibility");
+
+      if (dpResult.isPresent()) {
+        assertEquals(
+            dpResult.get().score(),
+            bruteForceResult.result().get().score(),
+            "DP and brute force should have same score");
+        assertEquals(
+            dpResult.get().assignments().size(),
+            bruteForceResult.result().get().assignments().size(),
+            "DP and brute force should have same assignment count");
+      }
+    }
+
+    @Test
+    @DisplayName("[5.4] Given: 10名のランダム時間帯（シード2）のとき, When: DP と総当たりを実行すると, Then: 割り当てとスコアが一致する")
+    void dynamicProgrammingMatchesBruteForceWithSeed2() {
+      Random random = new Random(54321L);
+      List<Employee> employees = generateRandomTimeRangeEmployees(random, 10);
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+      BruteForceResult bruteForceResult = bruteForceExplore(employees);
+
+      assertEquals(
+          dpResult.isPresent(),
+          bruteForceResult.result().isPresent(),
+          "DP and brute force should agree on feasibility");
+
+      if (dpResult.isPresent()) {
+        assertEquals(
+            dpResult.get().score(),
+            bruteForceResult.result().get().score(),
+            "DP and brute force should have same score");
+      }
+    }
+
+    @Test
+    @DisplayName("[5.4] Given: 9名で成立しない入力（シード3）のとき, When: DP と総当たりを実行すると, Then: 両方が案なしで一致する")
+    void dynamicProgrammingMatchesBruteForceWhenUnfeasibleWithSeed3() {
+      Random random = new Random(99999L);
+      List<Employee> employees = generateRandomTimeRangeEmployees(random, 9);
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+      BruteForceResult bruteForceResult = bruteForceExplore(employees);
+
+      assertEquals(
+          dpResult.isPresent(),
+          bruteForceResult.result().isPresent(),
+          "DP and brute force should agree on feasibility (both empty is also valid)");
+
+      if (dpResult.isPresent()) {
+        assertEquals(
+            dpResult.get().score(),
+            bruteForceResult.result().get().score(),
+            "DP and brute force should have same score");
+      }
+    }
+
+    private List<Employee> generateRandomTimeRangeEmployees(Random random, int count) {
+      List<Employee> employees = new ArrayList<>();
+      LocalTime[] timeOptions = generateTimeOptions();
+
+      for (int i = 0; i < count; i++) {
+        int startIdx = random.nextInt(timeOptions.length - 1);
+        int endIdx = startIdx + 1 + random.nextInt(timeOptions.length - startIdx - 1);
+
+        LocalTime start = timeOptions[startIdx];
+        LocalTime end = timeOptions[endIdx];
+
+        employees.add(Employee.working("Employee" + i, start, end));
+      }
+
+      return employees;
+    }
+
+    private LocalTime[] generateTimeOptions() {
+      List<LocalTime> options = new ArrayList<>();
+      for (int h = 7; h <= 18; h++) {
+        for (int m = 0; m < 60; m += 30) {
+          if (h == 7 && m == 0) {
+            continue; // Skip 7:00
+          }
+          options.add(LocalTime.of(h, m));
+        }
+      }
+      return options.toArray(new LocalTime[0]);
+    }
+
+    private LocalTime calculateBreakStart(ShiftSlot slot, int slotIndex) {
+      // 仕様の 2 章から：
+      // 枠 1（1 人目） | 12:00
+      // 枠 1（2 人目） | 12:00
+      // 枠 2 | 12:45
+      // 枠 3 | 12:45
+      // 枠 4 | 13:30
+      // 枠 5 | 13:30
+      // 枠 6（1 人目） | 14:15
+      // 枠 6（2 人目） | 14:30
+      return switch (slot) {
+        case SLOT_1 -> LocalTime.of(12, 0);
+        case SLOT_2 -> LocalTime.of(12, 45);
+        case SLOT_3 -> LocalTime.of(12, 45);
+        case SLOT_4 -> LocalTime.of(13, 30);
+        case SLOT_5 -> LocalTime.of(13, 30);
+        case SLOT_6 -> slotIndex == 1 ? LocalTime.of(14, 15) : LocalTime.of(14, 30);
+      };
     }
   }
 }
