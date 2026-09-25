@@ -2,7 +2,7 @@
 
 - Issue: #22
 - ブランチ: feature/22-time-range-input
-- 版: v1
+- 版: v2
 - 対象仕様: F-1, F-4, V-3, V-4, V-5, H-3, 5.2, 5.3, 5.4, 7 章, 8 章
 - 作成日: 2026-09-25
 
@@ -20,6 +20,10 @@
   - `Employee`（`src/main/java/com/example/shiftmatch/domain/Employee.java`）は現在 `(String name, List<Wish> wishes)`。T2 で新しい要素を**追加**し、旧 2 引数コンストラクタ `Employee(String name, List<Wish> wishes)` を**移行用として残します**。これにより既存テストがコンパイルできます。T14 で旧要素を削除します
   - 旧仕様（◎／○／×・スコア最大）を検証していた既存テストは、仕様変更により期待値が無効になります。それらは、対応する新テストへ**書き換えるか、対応する Todo の中で削除**して構いません（仕様外の値への書き換えや `@Disabled` は禁止）。削除・書き換えしたテスト名は `## 実行ログ` に記録します
   - 各 Todo の終わりで `./mvnw test` がコンパイルエラーなく実行できる状態にします（Spotless 違反は `./mvnw spotless:apply` で直します）
+- 前回（v1）の失敗理由と今回の変更点
+  - 失敗理由：T5 の新仕様の実装と新テスト 4 件は完成したが、旧仕様（◎／○／×）の旧テスト 9 件が旧コンストラクタ生成の従業員（`start`/`end` が null で誰も入れない）で失敗し、`./mvnw test` が赤のまま先に進めなかった。旧テストの書き換え・削除は v1 でも許可していたが、実行されなかった
+  - 変更点：T5 を「実装は作業ツリーに完成済み。残るのは旧テスト 9 件の処置と T5 のコミット」と明示し、旧テスト 1 件ごとに「書き換える／削除する」を指定した。旧 DP 検証（ブルートフォース比較）は T6 の後に新スコアで作り直す Todo（T6b）に分けた。**旧仕様の期待値が無効になったテストの削除は、仕様変更（`docs/specifications.md` 5.2 節でスコアの定義を変更）による正当な措置であり、禁止事項（失敗テストの回避）には当たらない**
+  - 作業ツリーの状態：T1〜T4 はコミット済み（`eea0c19`, `5239e9b`, `67ffbab`, `93bb6aa`）。T5 の実装（`ShiftAssignmentServiceImpl.java`）と新テストは未コミットで作業ツリーに残っている。捨てずにそのまま使うこと
 - テストは Given-When-Then の `@DisplayName`（先頭に `[H-3]` 形式の仕様 ID）、`@Nested` でグルーピング、AssertJ 等は使わず `org.junit.jupiter.api.Assertions` のみ（`.agents/rules/test.md`）
 - 新しい依存ライブラリは追加しない。DB・セッションを使わない
 
@@ -64,22 +68,31 @@
     - 入れない枠を指定すると `IllegalStateException` になるテストが存在する
     - `./mvnw test -Dtest=EmployeeTest` が成功する
 
-- [ ] **T5. サービスの割り当てを H-3 と「休み」に対応させる（V-4 を含む）**
-  - 依頼事項：`ShiftAssignmentServiceImpl.assign` を次のとおり変更する。（1）候補は「氏名が空でなく、かつ `off` が false」の従業員のみ。候補が 8 名（`ShiftSlot.totalEmployees()`）未満なら `Optional.empty()`（V-4）。（2）組の列挙（`combinationHelper` 内の `wishes[i][slotIndex] != Wish.UNAVAILABLE` 判定）を `employee.canWork(slot)` に置き換える。希望配列 `Wish[][]` は使わず、候補の `List<Employee>` を渡す形に整理してよい。（3）未出勤者（`unassignedEmployees`）は、割り当てられなかった有効な従業員と「休み」の従業員の**両方を入力順**で返す。スコアの計算方式（◎ の数・最大化）はこの Todo では変更せず、T6 で変更する（この Todo では `buildResult` の score は当面 0 を返してよい）。旧テスト `ShiftAssignmentServiceImplTest` は、旧仕様（◎／○／×）を前提としたものを新仕様の `Employee.working(...)`／`Employee.onLeave(...)` を使うテストへ書き換える。関係仕様：H-3、V-4、7 章（未出勤者）
-  - 対象ファイル：`src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java`、`src/test/java/com/example/shiftmatch/service/ShiftAssignmentServiceImplTest.java`
+- [ ] **T5. サービスの割り当てを H-3 と「休み」に対応させる（V-4 を含む）— 実装は作業ツリーに完成済み。旧テスト 9 件の処置とコミットが残り**
+  - 依頼事項：`ShiftAssignmentServiceImpl.assign` の新仕様の実装（候補＝氏名あり＆休みでない従業員、候補 8 名未満は `Optional.empty()`、組の列挙は `canWork`、未出勤者は余った従業員と休みの従業員を入力順で返す）と、`TimeRangeAssignment` グループの新テスト 4 件は作業ツリーに存在する。`git diff` で確認し、作り直さずそのまま使う。残る作業は、`ShiftAssignmentServiceImplTest` の旧テストを次のとおり処置し、全体を緑にしてコミットすること。旧コンストラクタ `Employee(String, List<Wish>)` は使わない（`start`/`end` が null で誰も入れないため）。関係仕様：H-3、V-4、7 章
+    - 書き換える（`Employee.working(name, start, end)` を使い、`@DisplayName` の先頭に仕様 ID を付ける）
+      1. `assignsInInputOrderToFrames`：全員 7:30〜18:30 の 8 名。`[H-3]`。枠 1（2 名）→ 6（2 名）の順に入力順で割り当たること（スコアは検証しない）
+      2. `eachPersonAssignedToOnlyOneSlot`：全員 7:30〜18:30 の 8 名。`[H-2]`
+      3. `excludesUnavailableEmployeeFromSlot`：ある 1 名が枠 5 に入れない時間帯（例：9:00〜16:30）だけを入力し、他は 7:30〜18:30 の 9 名。`[H-3]`。その 1 名が枠 5 に割り当てられていないこと
+      4. `returnsEmptyWhenOneEmployeeAllUnavailableAndOthersCannotFillAllSlots`：現状成功しているなら書き換え不要。旧コンストラクタを使っているなら `Employee.working`／`Employee.onLeave` に書き換える
+      5. `completesWithin500MillisForAllAvailable`：全員 7:30〜18:30 の 12 名で 500 ミリ秒以内。`[5.4]`
+      6. `completesWithin500MillisForRandomWishes`：固定シードの乱数で各人の時間帯（開始は 7:30〜9:00 の 30 分刻み、終了は 16:30〜18:30 の 30 分刻み）を作る 12 名。メソッド名は `completesWithin500MillisForRandomTimeRanges` に変える。`[5.4]`
+      7. `MemoizationPerformance` グループの 2 テスト（`performanceWhenLastSlotImpossible`、`performanceWhenLastTwoSlotsBottleneck`）：最後の枠（枠 6）に入れる人が居ない／少ない状況を、時間帯（例：全員が 9:00〜16:30 → 枠 6 に入れない）で再現する。`[5.4]`
+    - 削除する（旧スコアの定義が変更されたため。T6・T7・T6b で新スコアのテストに置き換える）
+      - `ScoreEvaluation` グループの 3 テスト（`assignsEmployeeWithDesiredSlotAndScoringOne`、`selectsFirstAssignmentWhenAllTiedAtScoreZero`、`selectsCombinationWithHighestScore`）
+      - `completesWithin500MillisForAllDesired`（◎ の希望に依存）
+      - `DynamicProgrammingVerification` グループの `dynamicProgrammingMatchesBruteForceReference` と、その専用ヘルパー（`BruteForceResult`、`bruteForceExplore`、`bruteForceExploreSlot`。T6b で新スコアで作り直すため、この Todo では削除してよい。未使用のヘルパーが残って Checkstyle・コンパイル警告を出さないようにする）
+    - 削除・書き換えしたテスト名を `## 実行ログ` に記録する
+  - 対象ファイル：`src/test/java/com/example/shiftmatch/service/ShiftAssignmentServiceImplTest.java`（実装 `ShiftAssignmentServiceImpl.java` は完成済み。必要な場合のみ修正）
   - 完了条件：
-    - テストを先に書き、アサーションで失敗（RED）することを確認した
-    - 次のテストが存在し、`@DisplayName` の先頭に仕様 ID がある：
-      - `[H-3]` 全員が 7:30〜18:30 の 8 名 → 割り当てが成立し、8 名分の割り当てが枠 1（2 名）・2・3・4・5・6（2 名）の順で返る
-      - `[H-3]` 8 名のうち 1 名が 9:00〜18:30 だけを入力（枠 1〜3 に入れない）→ 枠 6 など入れる枠にだけ割り当てられる、または入れる枠がなく不成立になる（入力例で期待値を決めて検証する）
-      - `[H-3]` 誰も入れない枠が 1 つでもある（例：全員 9:00〜16:30 で枠 1 と枠 6 に入れる人がいない）→ `Optional.empty()`
-      - `[V-4]` 8 名のうち 1 名が休み（休みでない人が 7 名）→ `Optional.empty()`
-      - `[V-4]` 9 名のうち 1 名が休み（休みでない人が 8 名）→ 成立し、休みの人は割り当てに含まれない
-      - `[F-4]` 未出勤者に、余った従業員と休みの従業員の両方が入力順で入る
-    - 氏名が空の行は従来どおり処理対象から除外される（既存の該当テストが成功、または `Employee.working(" ", ...)` で書き換え済み）
-    - 旧仕様（◎ の数）を検証していたテストのうち、新仕様で期待値が無効になったものを削除・書き換えした場合、`## 実行ログ` にテスト名を記録した
+    - `[H-3]` 全員が 7:30〜18:30 の 8 名 → 成立し、枠 1（2 名）・2・3・4・5・6（2 名）の順の 8 割り当てが返るテストが存在する
+    - `[H-3]` 誰も入れない枠がある（例：全員 9:00〜16:30 で枠 1・枠 6 に入れる人がいない）→ `Optional.empty()` のテストが存在する
+    - `[V-4]` 休みでない人が 7 名 → `Optional.empty()`、休みでない人が 8 名（9 名のうち 1 名が休み）→ 成立し休みの人は割り当てに含まれないテストが存在する
+    - `[F-4]` 未出勤者に余った従業員と休みの従業員の両方が入力順で入るテストが存在する
+    - `ShiftAssignmentServiceImplTest.java` が旧コンストラクタ（`new Employee("...", List.of(Wish...))`）を使っていない（`grep -n "Wish" ` が 0 件）
     - `./mvnw test -Dtest=ShiftAssignmentServiceImplTest` が成功する
-    - `./mvnw test` がコンパイルエラーなく実行でき、失敗が 0 件である（ControllerTest 等が旧コンストラクタで従来どおり成功している）
+    - `./mvnw test` の失敗が 0 件である（他のテストクラスは旧コンストラクタのままで成功していること）
+    - T5 の変更（実装・テスト・Todo ファイル）を 1 コミットにした（`feat: [H-3] ...`）
 
 - [ ] **T6. スコアを「ずれの合計（分）」の最小化に変更する（DP と復元）**
   - 依頼事項：DP を最小化に変更する。`computeMaxScore` → `computeMinScore` などへ改名し、各組のスコアを `employee.gapMinutes(slot)` の合計にする。更新条件は `maxScore == IMPOSSIBLE || totalScore < minScore`（同点で更新しない）。復元（`reconstructAssignment`）は「その組のスコア＋次の状態の最小スコア＝目標スコア」を満たす最初の組を選ぶ現行ロジックのまま。`buildResult` の `score` は選ばれた 8 名の `gapMinutes` の合計にする。`AssignmentResult.score` の意味が変わるため、`AssignmentResult` の Javadoc（「スコア」）を「ずれの合計（分）」に直す。関係仕様：5.2、5.4
@@ -91,6 +104,14 @@
     - `[5.2]` ずれの合計が小さい案が採用される、上記以外の 1 ケース（入力例と期待値を Todo の実装者が自分で計算し、`@DisplayName` に書く）が存在する
     - `./mvnw test -Dtest=ShiftAssignmentServiceImplTest` が成功する
     - `./mvnw test` がコンパイルエラーなく実行でき、失敗が 0 件である
+
+- [ ] **T6b. DP が総当たりと同じ案を返すことを、新しいスコアで検証する（5.4）**
+  - 依頼事項：T5 で削除した総当たり（ブルートフォース）による検証を、新仕様で作り直す。テスト内で、`Employee.canWork` と `Employee.gapMinutes` を使い、枠 1 → 6 の順・入力順インデックスの辞書順で全案を列挙して「ずれの合計が最小で、最初に到達する案」を求める参照実装を書き、`ShiftAssignmentServiceImpl.assign` の結果（各枠の割り当て従業員・`score`）と一致することを、固定シードの乱数で作った複数の入力（9〜10 名、時間帯はランダム、一部は休み）で検証する。参照実装は計算量が大きくなりすぎないよう 9〜10 名までにする。実装（プロダクションコード）は変更しなくてよい（T6 で完成済みのはず）。一致しない場合は、プロダクションコードのバグとして T6 の実装を直す。関係仕様：5.3、5.4
+  - 対象ファイル：`src/test/java/com/example/shiftmatch/service/ShiftAssignmentServiceImplTest.java`（`DynamicProgrammingVerification` グループ）
+  - 完了条件：
+    - `[5.4]` 固定シード 3 通り以上の入力で、DP の割り当てとスコアが総当たりと一致するテストが存在する（成立しない入力では両方が「案なし」で一致することも 1 通り以上含める）
+    - 参照実装を故意に `<=` 更新へ変えるとテストが失敗することを一度確認し、元に戻した（実行ログに記録）
+    - `./mvnw test -Dtest=ShiftAssignmentServiceImplTest` が成功する
 
 - [ ] **T7. 同点時は入力順で最初の案を採用することを検証する（5.3）**
   - 依頼事項：ずれの合計が同じ案が複数ある入力で、5.3 節の列挙順（枠 1 → 6、入力順インデックスの辞書順）で最初の案が返ることをテストで固定する。実装が既に満たす場合はテストだけの追加でよい（その場合、Red を確認できないため、追加したテストが **実装を意図的に `<=` に変えると失敗する** ことを一度確認してから元に戻す）。関係仕様：5.3
@@ -190,4 +211,4 @@
 
 ## 実行ログ
 
-- T5 試行 1/4：失敗 — `./mvnw test` で旧仕様のテストが 9 件失敗（assignsInInputOrderToFrames、eachPersonAssignedToOnlyOneSlot、excludesUnavailableEmployeeFromSlot、assignsEmployeeWithDesiredSlotAndScoringOne、selectsFirstAssignmentWhenAllTiedAtScoreZero、selectsCombinationWithHighestScore、completesWithin500MillisForAllAvailable、completesWithin500MillisForAllDesired、dynamicProgrammingMatchesBruteForceReference）／新仕様の実装は完了したが、旧仕様のテストが新仕様では対応不可能／旧テストを削除または新仕様に書き換える
+<!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
