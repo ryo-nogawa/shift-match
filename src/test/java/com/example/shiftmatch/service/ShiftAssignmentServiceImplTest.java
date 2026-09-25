@@ -475,6 +475,50 @@ class ShiftAssignmentServiceImplTest {
     private record BruteForceResult(
         Optional<AssignmentResult> result, List<Employee> inputEmployees) {}
 
+    // DP の正しさを独立に確かめるため、5.3 節の列挙順（枠 1→6、枠ごとの人数分の組を入力順の辞書順）で
+    // H-1〜H-3 を満たす割り当て案をすべて調べる
+    private static final class BruteForceSearch {
+      private final List<Employee> candidates;
+      private final ShiftSlot[] slots;
+      private int minScore = Integer.MAX_VALUE;
+      private List<Employee> bestAssignment;
+
+      BruteForceSearch(List<Employee> candidates, ShiftSlot[] slots) {
+        this.candidates = candidates;
+        this.slots = slots;
+      }
+
+      void explore(int position, int previousIndex, List<Employee> assignedBySlot, boolean[] used) {
+        if (position == slots.length) {
+          int totalScore = 0;
+          for (int i = 0; i < slots.length; i++) {
+            totalScore += assignedBySlot.get(i).gapMinutes(slots[i]);
+          }
+          // 同点で更新しない（最初に最小スコアへ到達した案を採用する）
+          if (totalScore < minScore) {
+            minScore = totalScore;
+            bestAssignment = new ArrayList<>(assignedBySlot);
+          }
+          return;
+        }
+        // 同じ枠の 2 人目は 1 人目より後ろのインデックスから選び、組を辞書順で 1 回ずつ列挙する
+        int from = 0;
+        if (position > 0 && slots[position - 1] == slots[position]) {
+          from = previousIndex + 1;
+        }
+        for (int i = from; i < candidates.size(); i++) {
+          if (used[i] || !candidates.get(i).canWork(slots[position])) {
+            continue;
+          }
+          used[i] = true;
+          assignedBySlot.add(candidates.get(i));
+          explore(position + 1, i, assignedBySlot, used);
+          assignedBySlot.remove(assignedBySlot.size() - 1);
+          used[i] = false;
+        }
+      }
+    }
+
     private BruteForceResult bruteForceExplore(List<Employee> employees) {
       ShiftSlot[] slots =
           new ShiftSlot[] {
@@ -494,58 +538,9 @@ class ShiftAssignmentServiceImplTest {
         return new BruteForceResult(Optional.empty(), employees);
       }
 
-      int minScore = Integer.MAX_VALUE;
-      List<Employee> bestAssignment = null;
-
-      // すべての組み合わせを列挙（2^n）
-      for (int mask = 0; mask < (1 << candidates.size()); mask++) {
-        if (Integer.bitCount(mask) != 8) {
-          continue;
-        }
-
-        // この mask に対応する従業員のセットが割り当て可能かチェック
-        List<Employee> selectedEmployees = new ArrayList<>();
-        for (int i = 0; i < candidates.size(); i++) {
-          if ((mask & (1 << i)) != 0) {
-            selectedEmployees.add(candidates.get(i));
-          }
-        }
-
-        // 枠 1→6、入力順の辞書順で割り当てを試みる
-        List<Employee> assignedBySlot = new ArrayList<>();
-        boolean canAssign = true;
-
-        for (ShiftSlot slot : slots) {
-          Employee assigned = null;
-          for (Employee emp : selectedEmployees) {
-            if (!assignedBySlot.contains(emp) && emp.canWork(slot)) {
-              assigned = emp;
-              break;
-            }
-          }
-          if (assigned == null) {
-            canAssign = false;
-            break;
-          }
-          assignedBySlot.add(assigned);
-        }
-
-        if (!canAssign) {
-          continue;
-        }
-
-        // スコアを計算
-        int totalScore = 0;
-        for (int i = 0; i < 8; i++) {
-          totalScore += assignedBySlot.get(i).gapMinutes(slots[i]);
-        }
-
-        // 最小スコアで最初に到達する案を選択（同点で更新しない）
-        if (totalScore < minScore) {
-          minScore = totalScore;
-          bestAssignment = new ArrayList<>(assignedBySlot);
-        }
-      }
+      BruteForceSearch search = new BruteForceSearch(candidates, slots);
+      search.explore(0, -1, new ArrayList<>(), new boolean[candidates.size()]);
+      List<Employee> bestAssignment = search.bestAssignment;
 
       if (bestAssignment == null) {
         return new BruteForceResult(Optional.empty(), employees);
@@ -573,7 +568,7 @@ class ShiftAssignmentServiceImplTest {
         }
       }
 
-      AssignmentResult result = new AssignmentResult(assignments, minScore, unassigned);
+      AssignmentResult result = new AssignmentResult(assignments, search.minScore, unassigned);
       return new BruteForceResult(Optional.of(result), employees);
     }
 
@@ -587,21 +582,7 @@ class ShiftAssignmentServiceImplTest {
       Optional<AssignmentResult> dpResult = service.assign(employees);
       BruteForceResult bruteForceResult = bruteForceExplore(employees);
 
-      assertEquals(
-          dpResult.isPresent(),
-          bruteForceResult.result().isPresent(),
-          "DP and brute force should agree on feasibility");
-
-      if (dpResult.isPresent()) {
-        assertEquals(
-            dpResult.get().score(),
-            bruteForceResult.result().get().score(),
-            "DP and brute force should have same score");
-        assertEquals(
-            dpResult.get().assignments().size(),
-            bruteForceResult.result().get().assignments().size(),
-            "DP and brute force should have same assignment count");
-      }
+      assertSameResult(dpResult, bruteForceResult.result());
     }
 
     @Test
@@ -614,17 +595,7 @@ class ShiftAssignmentServiceImplTest {
       Optional<AssignmentResult> dpResult = service.assign(employees);
       BruteForceResult bruteForceResult = bruteForceExplore(employees);
 
-      assertEquals(
-          dpResult.isPresent(),
-          bruteForceResult.result().isPresent(),
-          "DP and brute force should agree on feasibility");
-
-      if (dpResult.isPresent()) {
-        assertEquals(
-            dpResult.get().score(),
-            bruteForceResult.result().get().score(),
-            "DP and brute force should have same score");
-      }
+      assertSameResult(dpResult, bruteForceResult.result());
     }
 
     @Test
@@ -637,17 +608,73 @@ class ShiftAssignmentServiceImplTest {
       Optional<AssignmentResult> dpResult = service.assign(employees);
       BruteForceResult bruteForceResult = bruteForceExplore(employees);
 
+      assertSameResult(dpResult, bruteForceResult.result());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 全員が7:30〜18:30の9名（すべての案が同点）のとき, When: DP と総当たりを実行すると,"
+            + " Then: 列挙順で最初の同じ案を選ぶ")
+    void dynamicProgrammingMatchesBruteForceWhenAllAssignmentsAreTied() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 9; i++) {
+        employees.add(Employee.working("Employee" + i, LocalTime.of(7, 30), LocalTime.of(18, 30)));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+      BruteForceResult bruteForceResult = bruteForceExplore(employees);
+
+      assertSameResult(dpResult, bruteForceResult.result());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 全枠に入れる2名、枠1だけに入れる1名、枠2〜6を1名ずつ満たす5名の順のとき,"
+            + " When: DP と総当たりを実行すると, Then: どちらも枠1専任者を使った同じ案で成立する")
+    void dynamicProgrammingMatchesBruteForceWhenGreedyAssignmentFails() {
+      List<Employee> employees =
+          List.of(
+              Employee.working("AllDay0", LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              Employee.working("AllDay1", LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              Employee.working("Slot1Only", LocalTime.of(7, 30), LocalTime.of(14, 30)),
+              Employee.working("Slot2", LocalTime.of(8, 0), LocalTime.of(15, 30)),
+              Employee.working("Slot3", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("Slot4", LocalTime.of(9, 0), LocalTime.of(16, 30)),
+              Employee.working("Slot5", LocalTime.of(9, 0), LocalTime.of(18, 0)),
+              Employee.working("Slot6", LocalTime.of(9, 0), LocalTime.of(18, 30)));
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+
+      assertTrue(dpResult.isPresent(), "DP should find an assignment");
+      assertEquals(
+          List.of("AllDay0", "Slot1Only", "Slot2", "Slot3", "Slot4", "Slot5", "AllDay1", "Slot6"),
+          assignedNames(dpResult.get()));
+      assertEquals(330, dpResult.get().score());
+      assertSameResult(dpResult, bruteForceExplore(employees).result());
+    }
+
+    private void assertSameResult(
+        Optional<AssignmentResult> dpResult, Optional<AssignmentResult> bruteForceResult) {
       assertEquals(
           dpResult.isPresent(),
-          bruteForceResult.result().isPresent(),
-          "DP and brute force should agree on feasibility (both empty is also valid)");
-
+          bruteForceResult.isPresent(),
+          "DP and brute force should agree on feasibility");
       if (dpResult.isPresent()) {
         assertEquals(
+            bruteForceResult.get().score(),
             dpResult.get().score(),
-            bruteForceResult.result().get().score(),
             "DP and brute force should have same score");
+        assertEquals(
+            assignedNames(bruteForceResult.get()),
+            assignedNames(dpResult.get()),
+            "DP and brute force should choose the same assignment");
       }
+    }
+
+    private List<String> assignedNames(AssignmentResult result) {
+      return result.assignments().stream().map(a -> a.employee().name()).toList();
     }
 
     private List<Employee> generateRandomTimeRangeEmployees(Random random, int count) {
