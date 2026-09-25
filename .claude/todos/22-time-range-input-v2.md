@@ -94,7 +94,7 @@
     - `./mvnw test` の失敗が 0 件である（他のテストクラスは旧コンストラクタのままで成功していること）
     - T5 の変更（実装・テスト・Todo ファイル）を 1 コミットにした（`feat: [H-3] ...`）
 
-- [ ] **T6. スコアを「ずれの合計（分）」の最小化に変更する（DP と復元）**
+- [x] **T6. スコアを「ずれの合計（分）」の最小化に変更する（DP と復元）**
   - 依頼事項：DP を最小化に変更する。`computeMaxScore` → `computeMinScore` などへ改名し、各組のスコアを `employee.gapMinutes(slot)` の合計にする。更新条件は `maxScore == IMPOSSIBLE || totalScore < minScore`（同点で更新しない）。復元（`reconstructAssignment`）は「その組のスコア＋次の状態の最小スコア＝目標スコア」を満たす最初の組を選ぶ現行ロジックのまま。`buildResult` の `score` は選ばれた 8 名の `gapMinutes` の合計にする。`AssignmentResult.score` の意味が変わるため、`AssignmentResult` の Javadoc（「スコア」）を「ずれの合計（分）」に直す。関係仕様：5.2、5.4
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java`、`src/main/java/com/example/shiftmatch/domain/AssignmentResult.java`、`src/test/java/com/example/shiftmatch/service/ShiftAssignmentServiceImplTest.java`
   - 完了条件：
@@ -113,7 +113,7 @@
     - 参照実装を故意に `<=` 更新へ変えるとテストが失敗することを一度確認し、元に戻した（実行ログに記録）
     - `./mvnw test -Dtest=ShiftAssignmentServiceImplTest` が成功する
 
-- [ ] **T7. 同点時は入力順で最初の案を採用することを検証する（5.3）**
+- [x] **T7. 同点時は入力順で最初の案を採用することを検証する（5.3）**
   - 依頼事項：ずれの合計が同じ案が複数ある入力で、5.3 節の列挙順（枠 1 → 6、入力順インデックスの辞書順）で最初の案が返ることをテストで固定する。実装が既に満たす場合はテストだけの追加でよい（その場合、Red を確認できないため、追加したテストが **実装を意図的に `<=` に変えると失敗する** ことを一度確認してから元に戻す）。関係仕様：5.3
   - 対象ファイル：`src/test/java/com/example/shiftmatch/service/ShiftAssignmentServiceImplTest.java`（必要なら `ShiftAssignmentServiceImpl.java`）
   - 完了条件：
@@ -212,3 +212,5 @@
 ## 実行ログ
 
 - T5 完了：旧テスト 9 件を削除・書き換え完了。削除したテスト：`assignsEmployeeWithDesiredSlotAndScoringOne`、`selectsFirstAssignmentWhenAllTiedAtScoreZero`、`selectsCombinationWithHighestScore`（`ScoreEvaluation` グループ）、`completesWithin500MillisForAllDesired`、`dynamicProgrammingMatchesBruteForceReference`（および関連ヘルパー）。書き換えたテスト：`assignsInInputOrderToFrames`（`[H-3]` 追加、新仕様）、`eachPersonAssignedToOnlyOneSlot`（`[H-2]` 追加、新仕様）、`excludesUnavailableEmployeeFromSlot`（新仕様に書き換え）、`returnsEmptyWhenOneEmployeeAllUnavailableAndOthersCannotFillAllSlots`（新仕様に書き換え）、`returnsEmptyWhenLessThanEightValidEmployees`（新仕様に書き換え）、`completesWithin500MillisForAllAvailable`（`[5.4]` 追加、新仕様）、`completesWithin500MillisForRandomWishes` → `completesWithin500MillisForRandomTimeRanges`（メソッド名変更、時間帯をランダムに）、`performanceWhenLastSlotImpossible`（新仕様）、`performanceWhenLastTwoSlotsBottleneck`（新仕様）。全テスト 109 件：成功 109、失敗 0。
+- T6 完了：DP を最小化に変更し、各組のスコアを gapMinutes の合計にする。テスト 3 件を追加。全テスト 112 件：成功 112、失敗 0。
+- T7 完了：同点時に入力順で最初の案を採用することをテストで検証。テスト 1 件を追加。実装が既にこの動作を満たしていることを確認。全テスト 113 件：成功 113、失敗 0。

@@ -435,4 +435,53 @@ class ShiftAssignmentServiceImplTest {
       assertEquals(1320, result.get().score(), "Score should be 1320 for mixed availability");
     }
   }
+
+  @Nested
+  @DisplayName("[5.3] 同点時の案の選択")
+  class TiedScoreSelection {
+
+    @Test
+    @DisplayName(
+        "[5.3] Given: 全員が7:30〜18:30の9名（同点）のとき, When: assignを実行すると,"
+            + " Then: 先頭から8名が割り当てられ、9番目が未出勤者になる")
+    void selectsFirstAssignmentWhenAllTied() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 9; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+
+      // 枠 1: Employee0, Employee1
+      assertEquals("Employee0", assignment.assignments().get(0).employee().name());
+      assertEquals("Employee1", assignment.assignments().get(1).employee().name());
+
+      // 枠 2: Employee2
+      assertEquals("Employee2", assignment.assignments().get(2).employee().name());
+
+      // 枠 3: Employee3
+      assertEquals("Employee3", assignment.assignments().get(3).employee().name());
+
+      // 枠 4: Employee4
+      assertEquals("Employee4", assignment.assignments().get(4).employee().name());
+
+      // 枠 5: Employee5
+      assertEquals("Employee5", assignment.assignments().get(5).employee().name());
+
+      // 枠 6: Employee6, Employee7
+      assertEquals("Employee6", assignment.assignments().get(6).employee().name());
+      assertEquals("Employee7", assignment.assignments().get(7).employee().name());
+
+      // Employee8 が未出勤者
+      List<Employee> unassigned = assignment.unassignedEmployees();
+      assertEquals(1, unassigned.size(), "Should have 1 unassigned employee");
+      assertEquals("Employee8", unassigned.get(0).name(), "Employee8 should be unassigned");
+    }
+  }
 }
