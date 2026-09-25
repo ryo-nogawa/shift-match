@@ -47,7 +47,10 @@
         <h2>従業員の勤務できる時間帯</h2>
         <span class="count"><b id="row-count" th:text="${shiftForm.employees.size()}">0</b> 名</span>
       </div>
-      <table class="input-table">
+      <table
+        class="input-table"
+        th:attr="data-time-options=${#strings.listJoin(timeOptions, '|')}"
+      >
         <thead>
           <tr>
             <th>氏名</th>

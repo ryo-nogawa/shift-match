@@ -1394,6 +1394,85 @@ class ShiftControllerTest {
   @DisplayName("[F-2][F-6] JavaScriptの行追加・削除機能")
   class JavaScriptAddDeleteRows {
 
+    private String readShiftFormJs() throws Exception {
+      return new String(
+          java.nio.file.Files.readAllBytes(
+              java.nio.file.Paths.get("src/main/resources/static/js/shift-form.js")),
+          java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: GETリクエストが与えられたとき, When: 入力表を確認すると,"
+            + " Then: data-time-optionsに07:30〜18:30の23件が「|」区切りで入っている")
+    void inputTableHasDataTimeOptions() throws Exception {
+      String html =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      Matcher matcher =
+          Pattern.compile("<table[^>]*class=\"input-table\"[^>]*data-time-options=\"([^\"]*)\"")
+              .matcher(html);
+      assertTrue(matcher.find(), "Input table should have data-time-options attribute");
+      String[] options = matcher.group(1).split("\\|");
+      assertEquals(23, options.length, "data-time-options should have 23 items");
+      assertEquals("07:30", options[0]);
+      assertEquals("18:30", options[22]);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-2][F-6] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: 休み・開始・終了のname生成とdata-time-optionsの読み取りがあり、wishes・createWishSelectがない")
+    void shiftFormJsGeneratesOffStartEndInputs() throws Exception {
+      String jsContent = readShiftFormJs();
+
+      assertTrue(jsContent.contains("\".off\""), "shift-form.js should build employees[N].off");
+      assertTrue(jsContent.contains("\".start\""), "shift-form.js should build employees[N].start");
+      assertTrue(jsContent.contains("\".end\""), "shift-form.js should build employees[N].end");
+      assertTrue(
+          jsContent.contains("data-time-options"), "shift-form.js should read data-time-options");
+      assertFalse(jsContent.contains("wishes"), "shift-form.js should not contain 'wishes'");
+      assertFalse(
+          jsContent.contains("createWishSelect"),
+          "shift-form.js should not contain 'createWishSelect'");
+      assertFalse(
+          jsContent.contains("data-slot-labels"),
+          "shift-form.js should not contain 'data-slot-labels'");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-6] Given: shift-form.jsをロードしたとき, When: インデックスの振り直し処理を確認すると,"
+            + " Then: 休みの隠しフィールド（_employees[N].off）も振り直しの対象である")
+    void shiftFormJsRenumbersHiddenCheckboxFields() throws Exception {
+      String jsContent = readShiftFormJs();
+
+      assertTrue(
+          jsContent.contains("/(_?employees)\\[\\d+\\]/"),
+          "renumber regex should match both employees[N] and _employees[N]");
+      assertTrue(
+          jsContent.contains("_employees["), "shift-form.js should mention _employees[ fields");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: shift-form.jsをロードしたとき, When: 休みチェックの処理を確認すると,"
+            + " Then: 同じ行の開始・終了のdisabledを切り替える処理がある")
+    void shiftFormJsTogglesTimeSelectsByOffCheckbox() throws Exception {
+      String jsContent = readShiftFormJs();
+
+      assertTrue(
+          jsContent.contains("function updateTimeSelectsState"),
+          "shift-form.js should have updateTimeSelectsState function");
+      assertTrue(
+          jsContent.contains("off-checkbox"), "shift-form.js should handle .off-checkbox changes");
+    }
+
     @Test
     @DisplayName(
         "[F-2] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then:"
