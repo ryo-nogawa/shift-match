@@ -367,4 +367,72 @@ class ShiftAssignmentServiceImplTest {
       assertEquals("OnLeave9", unassigned.get(1).name());
     }
   }
+
+  @Nested
+  @DisplayName("[5.2] スコア評価：ずれの合計（分）")
+  class GapMinutesScoreEvaluation {
+
+    @Test
+    @DisplayName(
+        "[5.2] Given: 全員が7:30〜18:30（660分）の8名のとき, When: assignを実行すると,"
+            + " Then: scoreが1380（=8×660-3900）になる")
+    void allEmployeesFullAvailableScore() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      assertEquals(1380, result.get().score(), "Score should be 1380 for full availability");
+    }
+
+    @Test
+    @DisplayName(
+        "[5.2] Given: 7:30〜18:30の7名と7:30〜14:30（420分）の1名のとき, When: assignを実行すると,"
+            + " Then: scoreが1140（=7×660+420-3900）になる")
+    void mixedAvailabilityScore() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 7; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+      employees.add(
+          Employee.working(
+              "Employee7", java.time.LocalTime.of(7, 30), java.time.LocalTime.of(14, 30)));
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      assertEquals(1140, result.get().score(), "Score should be 1140 for mixed availability");
+    }
+
+    @Test
+    @DisplayName(
+        "[5.2] Given: 7名が7:30〜18:30、1名が8:00〜18:00のとき, When: assignを実行すると," + " Then: scoreが1320になる")
+    void alternativeTimeRangeScore() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 7; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+      employees.add(
+          Employee.working(
+              "Employee7", java.time.LocalTime.of(8, 0), java.time.LocalTime.of(18, 0)));
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      // score = 7×660 + 600 - 3900 = 4620 + 600 - 3900 = 1320
+      assertEquals(1320, result.get().score(), "Score should be 1320 for mixed availability");
+    }
+  }
 }

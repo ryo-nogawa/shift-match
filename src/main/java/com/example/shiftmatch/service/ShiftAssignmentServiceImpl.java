@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
  * シフト割り当てを行うサービス実装。
  *
  * <p>6 種類の枠に 8 名を割り当てます。動的計画法で最適な案を高速に求め、条件を満たす案の
- * 中でスコアが最大かつ入力順で最初の案を返します。
+ * 中でずれの合計が最小かつ入力順で最初の案を返します。
  */
 @Service
 public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
@@ -48,29 +48,29 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
     }
 
-    int maxScore = computeMaxScore(candidates, 0, 0, memo);
+    int minScore = computeMinScore(candidates, 0, 0, memo);
 
-    if (maxScore == IMPOSSIBLE) {
+    if (minScore == IMPOSSIBLE) {
       return Optional.empty();
     }
 
-    // 復元：入力順の辞書順で最初の最大スコア案を構築
+    // 復元：入力順の辞書順で最初の最小スコア案を構築
     int[] assignment = new int[ShiftSlot.totalEmployees()];
-    reconstructAssignment(candidates, 0, 0, maxScore, assignment, 0, memo);
+    reconstructAssignment(candidates, 0, 0, minScore, assignment, 0, memo);
 
     return Optional.of(buildResult(validEmployees, candidates, assignment));
   }
 
   /**
-   * 動的計画法で最大スコアを計算します。
+   * 動的計画法で最小スコアを計算します。
    *
    * @param candidates 候補となる従業員リスト（新仕様）
    * @param slotIndex 現在の枠インデックス
    * @param usedMask 使用済み従業員のビットマスク
    * @param memo メモ化テーブル
-   * @return 枠 slotIndex 以降で得られる最大の追加スコア（割り当て不可なら {@code IMPOSSIBLE}）
+   * @return 枠 slotIndex 以降で得られる最小の追加スコア（割り当て不可なら {@code IMPOSSIBLE}）
    */
-  private int computeMaxScore(
+  private int computeMinScore(
       List<Employee> candidates, int slotIndex, int usedMask, int[][] memo) {
     if (slotIndex >= ShiftSlot.values().length) {
       return 0;
@@ -82,7 +82,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
     ShiftSlot slot = ShiftSlot.values()[slotIndex];
     int requiredCount = slot.numberOfEmployees();
-    int maxScore = IMPOSSIBLE;
+    int minScore = IMPOSSIBLE;
 
     // この枠に割り当てる従業員の組を列挙（入力順の辞書順）
     for (int combo : generateCombinations(candidates, slotIndex, usedMask, requiredCount)) {
@@ -91,9 +91,10 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
       for (int i = 0, bit = 0; i < candidates.size() && i < 32; i++) {
         if ((combo & (1 << i)) != 0) {
+          Employee emp = candidates.get(i);
+          // ずれ（分）= 入力時間帯 - 枠の勤務時間
+          comboScore += emp.gapMinutes(slot);
           nextMask |= (1 << i);
-          // 新仕様：◎の数ではなく、スコアは後で計算（T6で変更予定）
-          comboScore += 0;
           bit++;
           if (bit >= requiredCount) {
             break;
@@ -101,17 +102,17 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
         }
       }
 
-      int futureScore = computeMaxScore(candidates, slotIndex + 1, nextMask, memo);
+      int futureScore = computeMinScore(candidates, slotIndex + 1, nextMask, memo);
       if (futureScore != IMPOSSIBLE) {
         int totalScore = comboScore + futureScore;
-        if (maxScore == IMPOSSIBLE || totalScore > maxScore) {
-          maxScore = totalScore;
+        if (minScore == IMPOSSIBLE || totalScore < minScore) {
+          minScore = totalScore;
         }
       }
     }
 
-    memo[slotIndex][usedMask] = maxScore;
-    return maxScore;
+    memo[slotIndex][usedMask] = minScore;
+    return minScore;
   }
 
   /**
@@ -164,9 +165,9 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
   }
 
   /**
-   * 復元：入力順の辞書順で最初の最大スコア案を構築します。
+   * 復元：入力順の辞書順で最初の最小スコア案を構築します。
    *
-   * <p>仕様 5.3 節の「列挙順で最初に最大スコアへ到達する案」と同じ案を得るため、 入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選びます。
+   * <p>仕様 5.3 節の「列挙順で最初に最小スコアへ到達する案」と同じ案を得るため、 入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選びます。
    */
   private void reconstructAssignment(
       List<Employee> candidates,
@@ -190,15 +191,16 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       int assignedCount = 0;
       for (int i = 0; i < candidates.size() && assignedCount < requiredCount; i++) {
         if ((combo & (1 << i)) != 0) {
+          Employee emp = candidates.get(i);
           assignment[assignmentIndex + assignedCount] = i;
           nextMask |= (1 << i);
-          // 新仕様：スコアは後で計算（T6で変更予定）
-          comboScore += 0;
+          // ずれ（分）= 入力時間帯 - 枠の勤務時間
+          comboScore += emp.gapMinutes(slot);
           assignedCount++;
         }
       }
 
-      int futureScore = computeMaxScore(candidates, slotIndex + 1, nextMask, memo);
+      int futureScore = computeMinScore(candidates, slotIndex + 1, nextMask, memo);
       if (futureScore != IMPOSSIBLE && comboScore + futureScore == targetScore) {
         reconstructAssignment(
             candidates,
@@ -208,7 +210,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
             assignment,
             assignmentIndex + requiredCount,
             memo);
-        return; // 最初の最大スコア案を採用（同点では更新しない）
+        return; // 最初の最小スコア案を採用（同点では更新しない）
       }
     }
   }
@@ -250,8 +252,8 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       shiftAssignments.add(
           new ShiftAssignment(employee, slot, breakInterval.startTime(), breakInterval.endTime()));
 
-      // 新仕様：スコアは T6 で計算予定。当面は 0。
-      score += 0;
+      // スコア：ずれの合計（分）
+      score += employee.gapMinutes(slot);
 
       used[employeeIndex] = true;
     }
