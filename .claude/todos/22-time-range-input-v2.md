@@ -68,7 +68,7 @@
     - 入れない枠を指定すると `IllegalStateException` になるテストが存在する
     - `./mvnw test -Dtest=EmployeeTest` が成功する
 
-- [ ] **T5. サービスの割り当てを H-3 と「休み」に対応させる（V-4 を含む）— 実装は作業ツリーに完成済み。旧テスト 9 件の処置とコミットが残り**
+- [x] **T5. サービスの割り当てを H-3 と「休み」に対応させる（V-4 を含む）— 実装は作業ツリーに完成済み。旧テスト 9 件の処置とコミットが残り**
   - 依頼事項：`ShiftAssignmentServiceImpl.assign` の新仕様の実装（候補＝氏名あり＆休みでない従業員、候補 8 名未満は `Optional.empty()`、組の列挙は `canWork`、未出勤者は余った従業員と休みの従業員を入力順で返す）と、`TimeRangeAssignment` グループの新テスト 4 件は作業ツリーに存在する。`git diff` で確認し、作り直さずそのまま使う。残る作業は、`ShiftAssignmentServiceImplTest` の旧テストを次のとおり処置し、全体を緑にしてコミットすること。旧コンストラクタ `Employee(String, List<Wish>)` は使わない（`start`/`end` が null で誰も入れないため）。関係仕様：H-3、V-4、7 章
     - 書き換える（`Employee.working(name, start, end)` を使い、`@DisplayName` の先頭に仕様 ID を付ける）
       1. `assignsInInputOrderToFrames`：全員 7:30〜18:30 の 8 名。`[H-3]`。枠 1（2 名）→ 6（2 名）の順に入力順で割り当たること（スコアは検証しない）
@@ -211,4 +211,4 @@
 
 ## 実行ログ
 
-<!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
+- T5 完了：旧テスト 9 件を削除・書き換え完了。削除したテスト：`assignsEmployeeWithDesiredSlotAndScoringOne`、`selectsFirstAssignmentWhenAllTiedAtScoreZero`、`selectsCombinationWithHighestScore`（`ScoreEvaluation` グループ）、`completesWithin500MillisForAllDesired`、`dynamicProgrammingMatchesBruteForceReference`（および関連ヘルパー）。書き換えたテスト：`assignsInInputOrderToFrames`（`[H-3]` 追加、新仕様）、`eachPersonAssignedToOnlyOneSlot`（`[H-2]` 追加、新仕様）、`excludesUnavailableEmployeeFromSlot`（新仕様に書き換え）、`returnsEmptyWhenOneEmployeeAllUnavailableAndOthersCannotFillAllSlots`（新仕様に書き換え）、`returnsEmptyWhenLessThanEightValidEmployees`（新仕様に書き換え）、`completesWithin500MillisForAllAvailable`（`[5.4]` 追加、新仕様）、`completesWithin500MillisForRandomWishes` → `completesWithin500MillisForRandomTimeRanges`（メソッド名変更、時間帯をランダムに）、`performanceWhenLastSlotImpossible`（新仕様）、`performanceWhenLastTwoSlotsBottleneck`（新仕様）。全テスト 109 件：成功 109、失敗 0。
