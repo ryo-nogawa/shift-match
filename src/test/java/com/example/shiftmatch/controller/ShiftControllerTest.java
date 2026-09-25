@@ -22,8 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -39,9 +37,7 @@ class ShiftControllerTest {
   @MockitoBean private ShiftAssignmentService shiftAssignmentService;
 
   @BeforeEach
-  void resetMock() {
-    Mockito.reset(shiftAssignmentService);
-
+  void setupDefaultStubs() {
     ShiftAssignmentServiceImpl realService = new ShiftAssignmentServiceImpl();
     Mockito.doAnswer(invocation -> realService.assign((java.util.List) invocation.getArgument(0)))
         .when(shiftAssignmentService)
@@ -51,14 +47,6 @@ class ShiftControllerTest {
                 realService.findDuplicateNames((java.util.List) invocation.getArgument(0)))
         .when(shiftAssignmentService)
         .findDuplicateNames(Mockito.any());
-  }
-
-  @Configuration
-  static class ServiceConfiguration {
-    @Bean
-    ShiftAssignmentService shiftAssignmentService() {
-      return new ShiftAssignmentServiceImpl();
-    }
   }
 
   @Nested
@@ -394,6 +382,20 @@ class ShiftControllerTest {
   @Nested
   @DisplayName("[V-2] 重複氏名チェック")
   class DuplicateNameValidation {
+
+    @BeforeEach
+    void setupFindDuplicateNamesStub() {
+      Mockito.reset(shiftAssignmentService);
+      ShiftAssignmentServiceImpl realService = new ShiftAssignmentServiceImpl();
+      Mockito.doAnswer(invocation -> realService.assign((java.util.List) invocation.getArgument(0)))
+          .when(shiftAssignmentService)
+          .assign(Mockito.any());
+      Mockito.doAnswer(
+              invocation ->
+                  realService.findDuplicateNames((java.util.List) invocation.getArgument(0)))
+          .when(shiftAssignmentService)
+          .findDuplicateNames(Mockito.any());
+    }
 
     @Test
     @DisplayName("[V-2] Given: 1行目が空、2・3行目が同名のとき, When: POSTすると, Then: 「2, 3行目」が表示され、「1, 2行目」ではない")
