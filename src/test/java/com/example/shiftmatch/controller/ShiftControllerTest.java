@@ -560,6 +560,116 @@ class ShiftControllerTest {
   }
 
   @Nested
+  @DisplayName("[V-3][V-1] 開始・終了の入力チェック")
+  class TimeRangeValidation {
+
+    private String postRows(String... rows) throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < rows.length; i++) {
+        String[] cols = rows[i].split(",", -1);
+        params.append("&employees[").append(i).append("].name=").append(cols[0]);
+        if (cols[1].equals("off")) {
+          params.append("&employees[").append(i).append("].off=true");
+        }
+        appendTimeRange(params, i, cols[2], cols[3]);
+      }
+      return mockMvc
+          .perform(
+              post("/shift")
+                  .contentType("application/x-www-form-urlencoded")
+                  .content(params.substring(1)))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 2行目の開始が未選択のとき, When: POSTすると," + " Then: 「2行目 開始が未選択です」が表示され、assignが呼ばれない")
+    void showsErrorWhenStartIsMissing() throws Exception {
+      String response = postRows("A,,07:30,18:30", "B,,,17:00");
+
+      assertTrue(response.contains("2行目 開始が未選択です"), "Should show start missing error");
+      assertFalse(response.contains("1行目"), "Valid row should not have an error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の終了が未選択のとき, When: POSTすると," + " Then: 「1行目 終了が未選択です」が表示され、assignが呼ばれない")
+    void showsErrorWhenEndIsMissing() throws Exception {
+      String response = postRows("A,,08:00,");
+
+      assertTrue(response.contains("1行目 終了が未選択です"), "Should show end missing error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の開始が選択肢外（08:10）のとき, When: POSTすると,"
+            + " Then: 「1行目 開始は選択肢にありません」が表示され、assignが呼ばれない")
+    void showsErrorWhenStartIsNotAnOption() throws Exception {
+      String response = postRows("A,,08:10,17:00");
+
+      assertTrue(response.contains("1行目 開始は選択肢にありません"), "Should show start not-an-option error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の終了が選択肢外（19:00）のとき, When: POSTすると,"
+            + " Then: 「1行目 終了は選択肢にありません」が表示され、assignが呼ばれない")
+    void showsErrorWhenEndIsNotAnOption() throws Exception {
+      String response = postRows("A,,08:00,19:00");
+
+      assertTrue(response.contains("1行目 終了は選択肢にありません"), "Should show end not-an-option error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の開始と終了が同じ（09:00）とき, When: POSTすると,"
+            + " Then: 「1行目 開始は終了より前にしてください」が表示され、assignが呼ばれない")
+    void showsErrorWhenStartEqualsEnd() throws Exception {
+      String response = postRows("A,,09:00,09:00");
+
+      assertTrue(response.contains("1行目 開始は終了より前にしてください"), "Should show order error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の開始が終了より後（17:00〜08:00）のとき, When: POSTすると,"
+            + " Then: 「1行目 開始は終了より前にしてください」が表示され、assignが呼ばれない")
+    void showsErrorWhenStartIsAfterEnd() throws Exception {
+      String response = postRows("A,,17:00,08:00");
+
+      assertTrue(response.contains("1行目 開始は終了より前にしてください"), "Should show order error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 休みにチェックした行の開始・終了が空のとき, When: POSTすると," + " Then: 入力エラーにならず、assignが呼ばれる")
+    void doesNotShowErrorForOffRowWithoutTimeRange() throws Exception {
+      String response = postRows("A,off,,");
+
+      assertFalse(response.contains("入力エラー"), "Off row should not produce an input error");
+      verify(shiftAssignmentService).assign(any());
+    }
+
+    @Test
+    @DisplayName("[V-1] Given: 氏名が空の行の開始・終了が不正なとき, When: POSTすると," + " Then: 入力エラーにならず、assignが呼ばれる")
+    void doesNotShowErrorForBlankNameRowWithInvalidTimeRange() throws Exception {
+      String response = postRows("A,,07:30,18:30", ",,08:10,");
+
+      assertFalse(response.contains("入力エラー"), "Blank name row should not produce an error");
+      verify(shiftAssignmentService).assign(any());
+    }
+  }
+
+  @Nested
   @DisplayName("[F-1] POST の全戻り経路で slotLabels をモデルに設定")
   class PostReturnPathsIncludeSlotLabels {
 
