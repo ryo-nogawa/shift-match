@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   private static final int MIN_EMPLOYEES = 8;
+  private static final int UNCOMPUTED = -2;
+  private static final int IMPOSSIBLE = -1;
 
   @Override
   public Optional<AssignmentResult> assign(List<Employee> employees) {
@@ -45,13 +47,13 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     int[][] memo = new int[7][1 << n];
     for (int i = 0; i < 7; i++) {
       for (int j = 0; j < (1 << n); j++) {
-        memo[i][j] = -1;
+        memo[i][j] = UNCOMPUTED;
       }
     }
 
     int maxScore = computeMaxScore(wishes, 0, 0, memo);
 
-    if (maxScore < 0) {
+    if (maxScore == IMPOSSIBLE) {
       return Optional.empty();
     }
 
@@ -69,20 +71,20 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
    * @param slotIndex 現在の枠インデックス
    * @param usedMask 使用済み従業員のビットマスク
    * @param memo メモ化テーブル
-   * @return 枠 slotIndex 以降で得られる最大の追加スコア（割り当て不可なら -1）
+   * @return 枠 slotIndex 以降で得られる最大の追加スコア（割り当て不可なら {@code IMPOSSIBLE}）
    */
   private int computeMaxScore(Wish[][] wishes, int slotIndex, int usedMask, int[][] memo) {
     if (slotIndex >= ShiftSlot.values().length) {
       return 0;
     }
 
-    if (memo[slotIndex][usedMask] >= 0) {
+    if (memo[slotIndex][usedMask] != UNCOMPUTED) {
       return memo[slotIndex][usedMask];
     }
 
     ShiftSlot slot = ShiftSlot.values()[slotIndex];
     int requiredCount = slot.numberOfEmployees();
-    int maxScore = -1;
+    int maxScore = IMPOSSIBLE;
 
     // この枠に割り当てる従業員の組を列挙（入力順の辞書順）
     for (int combo : generateCombinations(wishes, slotIndex, usedMask, requiredCount)) {
@@ -103,9 +105,9 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
 
       int futureScore = computeMaxScore(wishes, slotIndex + 1, nextMask, memo);
-      if (futureScore >= 0) {
+      if (futureScore != IMPOSSIBLE) {
         int totalScore = comboScore + futureScore;
-        if (totalScore > maxScore) {
+        if (maxScore == IMPOSSIBLE || totalScore > maxScore) {
           maxScore = totalScore;
         }
       }
@@ -200,7 +202,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
 
       int futureScore = computeMaxScore(wishes, slotIndex + 1, nextMask, memo);
-      if (futureScore >= 0 && comboScore + futureScore == targetScore) {
+      if (futureScore != IMPOSSIBLE && comboScore + futureScore == targetScore) {
         reconstructAssignment(
             wishes,
             slotIndex + 1,

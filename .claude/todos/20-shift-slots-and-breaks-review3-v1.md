@@ -34,7 +34,7 @@
     - 確認した Javadoc の一覧と、直した箇所を実行ログに書く
     - `./mvnw test` が成功する（Checkstyle 違反 0 件）
 
-- [ ] **S3. 動的計画法のメモ化で、「割り当て不能」も保存する（H-1〜H-3、仕様 5.4 節、レビュー SHOULD）**
+- [x] **S3. 動的計画法のメモ化で、「割り当て不能」も保存する（H-1〜H-3、仕様 5.4 節、レビュー SHOULD）**
   - 依頼事項：`ShiftAssignmentServiceImpl` は、メモ配列を `-1` で初期化し、キャッシュヒットを `>= 0` で判定している。割り当て不能な状態も `-1` で保存されるため、未計算と区別できず、同じ不能状態へ別経路から来るたびに再計算している。「未計算」と「割り当て不能」に別の定数（例：`UNCOMPUTED = -2`、`IMPOSSIBLE = -1`）を使い、不能状態もキャッシュから返す。結果（採用される案）は変えない
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java`、`src/test/java/com/example/shiftmatch/service/ShiftAssignmentServiceImplTest.java`
   - 完了条件：
@@ -110,3 +110,23 @@
    - ShiftSlot.java：enum Javadoc、列挙値 Javadoc（1 行）、メソッド Javadoc
    - ShiftAssignmentServiceImpl.java：クラス、メソッド Javadoc
 3. `./mvnw test` 成功（Checkstyle 違反 0 件） → Tests run: 90, Failures: 0, Errors: 0
+
+### S3 メモ化で割り当て不能状態をキャッシュ
+
+完了条件確認：
+1. 先にテストを書く → 2 件のテストを追加：
+   - `performanceWhenLastSlotImpossible()`：12 名で枠 6 が × のケース
+   - `performanceWhenLastTwoSlotsBottleneck()`：12 名で枠 5・6 の両方に割り当てられる者が 1 名のケース
+   - 実測：両テスト合計 0.033 秒（500 ミリ秒以内を確認）
+2. 別の悪条件でも 500 ミリ秒以内 → 確認済み
+3. 既存テスト（200 通り）を含み全テスト成功 → Tests run: 92, Failures: 0, Errors: 0（追加テスト 2 件含む）
+4. `git grep -n "\-1" src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java` の結果 → 定数 `IMPOSSIBLE = -1` だけ
+5. `./mvnw test` 成功 → Tests run: 92, Failures: 0, Errors: 0
+
+実装の変更内容：
+- 定数追加：`UNCOMPUTED = -2`、`IMPOSSIBLE = -1`
+- メモ配列を `UNCOMPUTED` で初期化（従来は `-1`）
+- キャッシュヒット判定を `memo[slotIndex][usedMask] != UNCOMPUTED` に変更（従来は `>= 0`）
+- `computeMaxScore()` の初期値を `IMPOSSIBLE` に設定
+- 割り当て不能な状態も `IMPOSSIBLE` で保存・返却
+- 比較を `futureScore != IMPOSSIBLE` に変更

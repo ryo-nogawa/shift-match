@@ -2,6 +2,7 @@ package com.example.shiftmatch.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.domain.AssignmentResult;
@@ -660,5 +661,74 @@ class ShiftAssignmentServiceImplTest {
             Wish.AVAILABLE,
             Wish.AVAILABLE,
             Wish.AVAILABLE));
+  }
+
+  @Nested
+  @DisplayName("[H-1][H-2][H-3] メモ化の性能（割り当て不能状態のキャッシング）")
+  class MemoizationPerformance {
+
+    @Test
+    @DisplayName(
+        "[H-1][H-2][H-3] Given: 12名で最後の枠だけ成立しない入力, When: assignを実行すると, Then: 500ms以内に不成立と判定される")
+    void performanceWhenLastSlotImpossible() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 12; i++) {
+        List<Wish> wishes = new ArrayList<>();
+        wishes.add(Wish.AVAILABLE);
+        wishes.add(Wish.AVAILABLE);
+        wishes.add(Wish.AVAILABLE);
+        wishes.add(Wish.AVAILABLE);
+        wishes.add(Wish.AVAILABLE);
+        wishes.add(Wish.UNAVAILABLE);
+        employees.add(new Employee("Emp" + i, wishes));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      assertTimeout(
+          Duration.ofMillis(500),
+          () -> {
+            Optional<AssignmentResult> result = service.assign(employees);
+            assertFalse(
+                result.isPresent(), "Should be unassignable when last slot has no available");
+          });
+    }
+
+    @Test
+    @DisplayName(
+        "[H-1][H-2][H-3] Given: 12名で枠5・6を割り当てられる者が1名しかない入力, When: assignを実行すると, Then:"
+            + " 500ms以内に不成立と判定される")
+    void performanceWhenLastTwoSlotsBottleneck() {
+      List<Employee> employees = new ArrayList<>();
+      employees.add(
+          new Employee(
+              "Emp0",
+              List.of(
+                  Wish.AVAILABLE,
+                  Wish.AVAILABLE,
+                  Wish.AVAILABLE,
+                  Wish.AVAILABLE,
+                  Wish.AVAILABLE,
+                  Wish.AVAILABLE)));
+
+      for (int i = 1; i < 12; i++) {
+        List<Wish> wishes = new ArrayList<>();
+        wishes.add(Wish.AVAILABLE);
+        wishes.add(Wish.AVAILABLE);
+        wishes.add(Wish.AVAILABLE);
+        wishes.add(Wish.AVAILABLE);
+        wishes.add(Wish.UNAVAILABLE);
+        wishes.add(Wish.UNAVAILABLE);
+        employees.add(new Employee("Emp" + i, wishes));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      assertTimeout(
+          Duration.ofMillis(500),
+          () -> {
+            Optional<AssignmentResult> result = service.assign(employees);
+            assertFalse(
+                result.isPresent(), "Should be unassignable with bottleneck at slots 5 & 6");
+          });
+    }
   }
 }
