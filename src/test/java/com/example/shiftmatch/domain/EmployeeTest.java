@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 class EmployeeTest {
 
   @Nested
-  @DisplayName("[F-1] 新仕様の従業員入力（時間帯・休み）")
+  @DisplayName("[F-1] 従業員入力（時間帯・休み）")
   class EmployeeTimeRange {
 
     @Test

@@ -48,13 +48,13 @@ class ShiftControllerTest {
   @MockitoBean private ShiftAssignmentService shiftAssignmentService;
 
   /**
-   * 旧仕様（枠ごとの 3 段階の希望入力）の名残を検出する語（小文字）。
+   * 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（小文字）。
    *
-   * <p>ソースに旧仕様の残骸がないことを文字列検索で確認できるよう、分割して記述します。
+   * <p>ソースに廃止した入力の残骸がないことを文字列検索で確認できるよう、分割して記述します。
    */
   private static final String LEGACY_TOKEN = "wi" + "sh";
 
-  /** 旧仕様のスコア表示で使っていた記号（二重丸、U+25CE）。 */
+  /** 廃止した希望入力のスコア表示で使っていた記号（二重丸、U+25CE）。 */
   private static final String LEGACY_MARK = String.valueOf((char) 0x25CE);
 
   /**
@@ -126,7 +126,7 @@ class ShiftControllerTest {
   class InputForm {
 
     @Test
-    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 旧仕様の希望入力の語が存在しない")
+    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 廃止した希望入力の語が存在しない")
     void doesNotContainLegacyInputTerms() throws Exception {
       String htmlContent =
           mockMvc
@@ -173,7 +173,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
-            + " Then: 休み・開始・終了のname属性があり、旧仕様の希望のname属性はない")
+            + " Then: 休み・開始・終了のname属性があり、廃止した希望のname属性はない")
     void containsOffStartEndInputsWithoutLegacyInputs() throws Exception {
       String html = getIndexHtml();
 
@@ -208,7 +208,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
-            + " Then: 旧仕様の3段階の希望の凡例・枠ごとの見出しがなく、時間帯を入力する説明文がある")
+            + " Then: 廃止した3段階の希望の凡例・枠ごとの見出しがなく、時間帯を入力する説明文がある")
     void doesNotContainLegacyLegendOrSlotHeaders() throws Exception {
       String html = getIndexHtml();
 
@@ -1459,7 +1459,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-2][F-6] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
-            + " Then: 休み・開始・終了のname生成とdata-time-optionsの読み取りがあり、旧仕様の希望のselect生成がない")
+            + " Then: 休み・開始・終了のname生成とdata-time-optionsの読み取りがあり、廃止した希望のselect生成がない")
     void shiftFormJsGeneratesOffStartEndInputs() throws Exception {
       String jsContent = readShiftFormJs();
 
@@ -1555,7 +1555,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-6] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:"
-            + " 旧仕様の希望入力の語・「早番」・「遅番」の文字列が存在しない")
+            + " 廃止した希望入力の語・「早番」・「遅番」の文字列が存在しない")
     void shiftFormJsDoesNotContainOldTerms() throws Exception {
       String jsFilePath = "src/main/resources/static/js/shift-form.js";
       java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);

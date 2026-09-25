@@ -61,7 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return cell;
   }
 
-  // 休みにチェックした行では、開始・終了を選択できなくする
+  // 休みの人は割り当て対象外（H-3）で開始・終了を使わないため、8 章の画面仕様どおり選択できなくする
   function updateTimeSelectsState(row) {
     const offCheckbox = row.querySelector(".off-checkbox");
     const off = offCheckbox !== null && offCheckbox.checked;

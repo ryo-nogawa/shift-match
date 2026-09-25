@@ -269,7 +269,7 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
-  @DisplayName("[H-3] 新仕様：時間帯と canWork() での割り当て判定")
+  @DisplayName("[H-3] 時間帯と canWork() での割り当て判定")
   class TimeRangeAssignment {
 
     @Test

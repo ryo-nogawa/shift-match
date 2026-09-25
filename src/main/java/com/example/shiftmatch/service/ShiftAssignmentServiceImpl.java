@@ -29,13 +29,13 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
-    // 新仕様：off == false（休みでない）かつ、開始・終了が設定されている従業員を候補とする
+    // V-4 は「休みでない人」の人数で不成立を判定するため、休みの人を除いてから数える。
+    // 開始・終了のない人は H-3 によりどの枠にも入れないので、候補にも含めない
     List<Employee> candidates =
         validEmployees.stream()
             .filter(emp -> !emp.off() && emp.start() != null && emp.end() != null)
             .toList();
 
-    // V-4：候補が 8 名未満なら不成立
     if (candidates.size() < ShiftSlot.totalEmployees()) {
       return Optional.empty();
     }
@@ -54,7 +54,8 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       return Optional.empty();
     }
 
-    // 復元：入力順の辞書順で最初の最小スコア案を構築
+    // F-3（5.3 節）の同点規則に従い、列挙順で最初に最小スコアへ到達する案を返すため、
+    // 最小スコアを求めた後に辞書順で案を復元する
     int[] assignment = new int[ShiftSlot.totalEmployees()];
     reconstructAssignment(candidates, 0, 0, minScore, assignment, 0, memo);
 
@@ -64,7 +65,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
   /**
    * 動的計画法で最小スコアを計算します。
    *
-   * @param candidates 候補となる従業員リスト（新仕様）
+   * @param candidates 候補となる従業員リスト
    * @param slotIndex 現在の枠インデックス
    * @param usedMask 使用済み従業員のビットマスク
    * @param memo メモ化テーブル
@@ -84,7 +85,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     int requiredCount = slot.numberOfEmployees();
     int minScore = IMPOSSIBLE;
 
-    // この枠に割り当てる従業員の組を列挙（入力順の辞書順）
     for (int combo : generateCombinations(candidates, slotIndex, usedMask, requiredCount)) {
       int nextMask = usedMask;
       int comboScore = 0;
@@ -92,7 +92,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       for (int i = 0, bit = 0; i < candidates.size() && i < 32; i++) {
         if ((combo & (1 << i)) != 0) {
           Employee emp = candidates.get(i);
-          // ずれ（分）= 入力時間帯 - 枠の勤務時間
           comboScore += emp.gapMinutes(slot);
           nextMask |= (1 << i);
           bit++;
@@ -105,6 +104,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       int futureScore = computeMinScore(candidates, slotIndex + 1, nextMask, memo);
       if (futureScore != IMPOSSIBLE) {
         int totalScore = comboScore + futureScore;
+        // 同点で更新すると F-3 の同点規則（列挙順で最初の案）に反するため、厳密に小さいときだけ更新する
         if (minScore == IMPOSSIBLE || totalScore < minScore) {
           minScore = totalScore;
         }
@@ -118,7 +118,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
   /**
    * 指定された枠に割り当て可能な従業員の組み合わせを列挙します。
    *
-   * @param candidates 候補となる従業員リスト（新仕様）
+   * @param candidates 候補となる従業員リスト
    * @param slotIndex 枠インデックス
    * @param usedMask 使用済み従業員のビットマスク
    * @param requiredCount この枠に必要な人数
@@ -165,9 +165,9 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
   }
 
   /**
-   * 復元：入力順の辞書順で最初の最小スコア案を構築します。
+   * 入力順の辞書順で最初の最小スコア案を復元します。
    *
-   * <p>仕様 5.3 節の「列挙順で最初に最小スコアへ到達する案」と同じ案を得るため、 入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選びます。
+   * <p>F-3 の同点規則（5.3 節の「列挙順で最初に最小スコアへ到達する案」）と同じ案を得るため、入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選びます。
    */
   private void reconstructAssignment(
       List<Employee> candidates,
@@ -194,13 +194,13 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
           Employee emp = candidates.get(i);
           assignment[assignmentIndex + assignedCount] = i;
           nextMask |= (1 << i);
-          // ずれ（分）= 入力時間帯 - 枠の勤務時間
           comboScore += emp.gapMinutes(slot);
           assignedCount++;
         }
       }
 
       int futureScore = computeMinScore(candidates, slotIndex + 1, nextMask, memo);
+      // 条件を満たす最初の組で確定し、同点の後続の組には切り替えない（F-3）
       if (futureScore != IMPOSSIBLE && comboScore + futureScore == targetScore) {
         reconstructAssignment(
             candidates,
@@ -210,7 +210,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
             assignment,
             assignmentIndex + requiredCount,
             memo);
-        return; // 最初の最小スコア案を採用（同点では更新しない）
+        return;
       }
     }
   }
@@ -252,29 +252,26 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       shiftAssignments.add(
           new ShiftAssignment(employee, slot, breakInterval.startTime(), breakInterval.endTime()));
 
-      // スコア：ずれの合計（分）
       score += employee.gapMinutes(slot);
 
       used[employeeIndex] = true;
     }
 
-    // 未出勤者：割り当てられなかった有効な従業員と「休み」の従業員の両方を入力順で返す
+    // 7 章の出力仕様で、未出勤者は割り当てられなかった人と「休み」の人の両方を入力順で示すため、
+    // 候補（休みを除いた人）ではなく有効な従業員全体から集める
     List<Employee> unassigned = new ArrayList<>();
     for (int i = 0; i < allEmployees.size(); i++) {
       Employee emp = allEmployees.get(i);
 
-      // 氏名が空でない（有効）かどうか確認
       if (emp.name() == null || emp.name().isBlank()) {
         continue;
       }
 
-      // 「休み」の従業員は未出勤者に含める
       if (emp.off()) {
         unassigned.add(emp);
         continue;
       }
 
-      // 有効で、休みでない従業員：候補リストから割り当てられたか確認
       boolean assigned = false;
       for (int j = 0; j < candidates.size(); j++) {
         if (candidates.get(j) == emp && used[j]) {
