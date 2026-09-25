@@ -424,10 +424,62 @@ class ShiftControllerTest {
           "Limit error should not be shown for 11 valid employees");
     }
 
+    /**
+     * 勤務する従業員と休みの従業員を指定人数分送信し、レスポンス本文を返します。
+     *
+     * @param workingCount 勤務する従業員数（7:30〜18:30）
+     * @param offCount 休みの従業員数
+     * @return レスポンス本文
+     * @throws Exception リクエストの実行に失敗した場合
+     */
+    private String postWorkingAndOffEmployees(int workingCount, int offCount) throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < workingCount; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        appendTimeRange(params, i, "07:30", "18:30");
+      }
+      for (int i = workingCount; i < workingCount + offCount; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        params.append("&employees[").append(i).append("].off=true");
+      }
+      return mockMvc
+          .perform(
+              post("/shift")
+                  .contentType("application/x-www-form-urlencoded")
+                  .content(params.toString().substring(1)))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
+    }
+
+    @Test
+    @DisplayName("[V-5] Given: 休み5名を含む有効な従業員13名のとき, When: POSTすると, Then: 上限エラーが表示され、assignが呼ばれない")
+    void showsErrorWhen13ValidEmployeesIncludingOff() throws Exception {
+      String responseContent = postWorkingAndOffEmployees(8, 5);
+
+      assertTrue(
+          responseContent.contains("上限（12名）を超えています"),
+          "Limit error should count employees on leave");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName("[V-5] Given: 休み4名を含む有効な従業員12名のとき, When: POSTすると, Then: 上限エラーにならず、assignが呼ばれる")
+    void callsAssignWhen12ValidEmployeesIncludingOff() throws Exception {
+      String responseContent = postWorkingAndOffEmployees(8, 4);
+
+      assertFalse(
+          responseContent.contains("上限（12名）を超えています"),
+          "Limit error should not be shown for 12 employees including those on leave");
+      verify(shiftAssignmentService).assign(any());
+    }
+
     @Test
     @DisplayName(
         "[V-4][F-5] Given: assignがOptional.empty()を返すとき, When: POSTすると, Then: 不成立メッセージが表示される")
     void showsUnassignableMessageWhenNoValidCombination() throws Exception {
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.empty());
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
