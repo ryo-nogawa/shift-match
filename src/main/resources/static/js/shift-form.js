@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function updateAddButtonState() {
-    const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows") || "12", 10);
+    const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows"), 10);
     const currentRowCount = employeeRows.querySelectorAll("tr").length;
     addRowBtn.disabled = currentRowCount >= maxRows;
   }
@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   addRowBtn.addEventListener("click", function () {
-    const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows") || "12", 10);
+    const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows"), 10);
     const currentRowCount = employeeRows.querySelectorAll("tr").length;
     if (currentRowCount >= maxRows) {
       return;

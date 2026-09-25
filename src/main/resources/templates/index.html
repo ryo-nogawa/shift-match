@@ -42,7 +42,6 @@
       th:action="@{/shift}"
       th:object="${shiftForm}"
       class="card"
-      data-max-rows="12"
     >
       <div class="card-head">
         <h2>従業員の希望</h2>
@@ -89,7 +88,9 @@
       </table>
 
       <div class="actions">
-        <button type="button" id="add-row-btn" class="btn ghost">＋ 行を追加</button>
+        <button type="button" id="add-row-btn" class="btn ghost" data-max-rows="12">
+          ＋ 行を追加
+        </button>
         <button type="submit" class="btn primary">シフトを作成</button>
       </div>
     </form>

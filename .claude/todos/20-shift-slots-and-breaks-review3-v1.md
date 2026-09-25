@@ -44,7 +44,7 @@
     - `git grep -n "\-1" src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java` に、意味の分からない数値リテラルの `-1` が残っていない（定数名で読める）
     - `./mvnw test` が成功する
 
-- [ ] **S4. 行数上限の `data-max-rows` を、JS が実際に読む要素に置く（F-2、レビュー SHOULD）**
+- [x] **S4. 行数上限の `data-max-rows` を、JS が実際に読む要素に置く（F-2、レビュー SHOULD）**
   - 依頼事項：`index.html` は `<form data-max-rows="12">` に属性を置いているが、`shift-form.js` は `addRowBtn.getAttribute("data-max-rows")` を読んでいるため、ボタンに属性がなく常にフォールバックの `"12"` が使われ、HTML の設定が無視されている。属性を `id="add-row-btn"` のボタンに移し（`th:attr` などで、上限値は 1 か所だけで管理する）、JS はそのボタンから読む。JS のフォールバックの数値（`|| "12"`）は削除する
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/main/resources/static/js/shift-form.js`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -130,3 +130,17 @@
 - `computeMaxScore()` の初期値を `IMPOSSIBLE` に設定
 - 割り当て不能な状態も `IMPOSSIBLE` で保存・返却
 - 比較を `futureScore != IMPOSSIBLE` に変更
+
+### S4 行数上限属性の配置修正
+
+完了条件確認：
+1. ボタン要素に `data-max-rows="12"` があることをテストで検証 → テスト追加：`buttonElementContainsDataMaxRows()`、パターンマッチで確認
+2. `shift-form.js` に `"12"` 数値リテラルがないことをテストで検証 → テスト追加：`shiftFormJsDoesNotContainHardcodedMaxRows()`
+3. `shift-form.js` が `addRowBtn` から `data-max-rows` を読んでいる（テスト既存） → `shiftFormJsReadsDataMaxRows()`
+4. `node --check src/main/resources/static/js/shift-form.js` が成功 → 確認済み
+5. `./mvnw test` 成功 → Tests run: 93, Failures: 0, Errors: 0（新規テスト 1 件含む）
+
+実装の変更内容：
+- index.html：フォーム要素から `data-max-rows="12"` を削除
+- index.html：ボタン要素（`id="add-row-btn"`）に `data-max-rows="12"` を追加
+- shift-form.js：22行と78行の `|| "12"` フォールバックを削除

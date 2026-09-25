@@ -1339,8 +1339,9 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
-        "[F-2] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: HTMLに'data-max-rows=\"12\"'が存在する")
-    void htmlContainsDataMaxRows() throws Exception {
+        "[F-2] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then:"
+            + " id=\"add-row-btn\"のボタン要素にdata-max-rows=\"12\"がある")
+    void buttonElementContainsDataMaxRows() throws Exception {
       String htmlContent =
           mockMvc
               .perform(get("/"))
@@ -1349,9 +1350,12 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
+      Pattern pattern =
+          Pattern.compile("id=\"add-row-btn\"[^>]*data-max-rows=\"12\"", Pattern.DOTALL);
+      Matcher matcher = pattern.matcher(htmlContent);
       assertTrue(
-          htmlContent.contains("data-max-rows=\"12\""),
-          "HTML should contain data-max-rows=\"12\" attribute");
+          matcher.find(),
+          "Button with id=\"add-row-btn\" should have data-max-rows=\"12\" attribute");
     }
 
     @Test
@@ -1398,6 +1402,20 @@ class ShiftControllerTest {
       assertFalse(jsContent.contains("lateWish"), "shift-form.js should not contain 'lateWish'");
       assertFalse(jsContent.contains("早番"), "shift-form.js should not contain '早番'");
       assertFalse(jsContent.contains("遅番"), "shift-form.js should not contain '遅番'");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: \"12\"や12の数値リテラルがない（設定は要素から読む）")
+    void shiftFormJsDoesNotContainHardcodedMaxRows() throws Exception {
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
+
+      assertFalse(
+          jsContent.contains("\"12\"") || jsContent.contains("|| \"12\""),
+          "shift-form.js should not contain hardcoded \"12\" string");
     }
 
     @Test
