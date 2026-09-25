@@ -65,7 +65,7 @@
     - テスト件数が減っていない（90 件以上）
     - `./mvnw test` が成功する
 
-- [ ] **S6. 旧仕様の取り残しを削除する（レビュー WANT）**
+- [x] **S6. 旧仕様の取り残しを削除する（レビュー WANT）**
   - 依頼事項：`ShiftAssignmentServiceImpl` の、加算されるだけで参照されないローカル変数（`position`）を削除する。`shift-form.css` の、参照されていない旧早番・遅番用の CSS 変数（`--early-bg`・`--early-fg`・`--late-bg`・`--late-fg` など。`grep` で本当に使われていないことを確認してから消す）を、ライトモード・ダークモードの両方から削除する。`index.html` の `class="pill"` は、スタイル定義が削除されているため、見た目を保つように `.pill` の 1 種類のスタイルを `shift-form.css` に復元する（旧仕様の値は `git show origin/main:src/main/resources/static/css/shift-form.css` で確認し、早番・遅番の色分けはせず、どちらかの色 1 つ、または既存の変数を使う）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java`、`src/main/resources/static/css/shift-form.css`、`src/main/resources/templates/index.html`
   - 完了条件：
@@ -165,3 +165,21 @@
 注：要件の「各テストで必要な戻り値をテストごとに明示的にスタブする」は、
 テスト全体で実サービス委譲をデフォルトとし、V-2 では明示的に上書きする形で
 実装。個別テストメソッドレベルでの設定は未実装（テスト数が多く実装時間制限のため）。
+
+### S6 旧仕様の取り残しを削除
+
+完了条件確認：
+1. `git grep -n "early-bg\|early-fg\|late-bg\|late-fg" src` が 0 件 → 確認済み
+2. `shift-form.css` に `.pill` のスタイルが 1 つだけ定義 → 確認済み（26行）
+3. `index.html` の `class="pill"` に対応 → 確認済み（152行で使用）
+4. `ShiftAssignmentServiceImpl` に参照されない変数がない → 確認済み（コンパイル警告なし）
+5. `./mvnw test` 成功 → Tests run: 93, Failures: 0, Errors: 0
+
+実装の変更内容：
+- ShiftAssignmentServiceImpl.java：`position` ローカル変数を削除（230、236行）
+- shift-form.css：ライトモード変数 `--early-bg`・`--early-fg`・`--late-bg`・`--late-fg` を削除（74-77行）
+- shift-form.css：ダークモード変数を削除（133-136行）
+- shift-form.css：`.pill` スタイルを復元（26行）
+  - 基本スタイル（padding、border-radius、font-size、font-weight）
+  - 色：既存の `--d-bg` (DESIRED) と `--d-fg` を使用
+  - 早番・遅番の色分けはしない

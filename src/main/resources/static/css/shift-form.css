@@ -23,6 +23,7 @@ table { border-collapse: collapse; width: 100% }
 .score-label { font-size: 13px; opacity: .7 }
 .unassigned { margin-top: 16px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center }
 .chip { padding: 2px 12px; border-radius: 999px; font-size: 13px }
+.pill { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--d-bg); color: var(--d-fg) }
 .alert h2 { font-size: 15px; margin-bottom: 4px }
 .alert ul { margin: 0; padding-left: 1.2em; font-size: 14px }
 .hero .lead { margin: 6px 0 0; font-size: 14px }
@@ -71,10 +72,6 @@ select[data-value=UNAVAILABLE] { background-color: var(--u-bg); color: var(--u-f
   --a-fg: #8a6100;
   --u-bg: #f2e7e4;
   --u-fg: #a4402c;
-  --early-bg: #ffe9c7;
-  --early-fg: #9a5a00;
-  --late-bg: #dfe9f7;
-  --late-fg: #2d5a97;
 }
 
 body { background: var(--bg); color: var(--text) }
@@ -134,10 +131,6 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
     --a-fg: #f0c25a;
     --u-bg: #3a201b;
     --u-fg: #ff9a86;
-    --early-bg: #3a2b12;
-    --early-fg: #f5b45c;
-    --late-bg: #1f2b40;
-    --late-fg: #9fbdf0;
   }
   .btn.primary { color: #1a1714; background: #f1ebe1 }
   .alert { background: #2e1a16; color: #ffcbbd }

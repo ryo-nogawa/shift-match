@@ -227,13 +227,11 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     ShiftSlot[] slots = ShiftSlot.values();
     List<ShiftSlot> slotList = new ArrayList<>();
 
-    int position = 0;
     for (int slotIndex = 0; slotIndex < slots.length; slotIndex++) {
       ShiftSlot slot = slots[slotIndex];
       int requiredCount = slot.numberOfEmployees();
       for (int i = 0; i < requiredCount; i++) {
         slotList.add(slot);
-        position++;
       }
     }
 
