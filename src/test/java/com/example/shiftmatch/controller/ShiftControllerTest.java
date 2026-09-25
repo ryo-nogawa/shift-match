@@ -2,6 +2,7 @@ package com.example.shiftmatch.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -9,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.shiftmatch.domain.AssignmentResult;
@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -159,37 +160,22 @@ class ShiftControllerTest {
     return new AssignmentResult(assignments, 8, List.of());
   }
 
+  /**
+   * フォームパラメータに、指定行の開始・終了を追加します。
+   *
+   * @param params パラメータの連結先
+   * @param index 行インデックス
+   * @param start 開始（HH:mm）
+   * @param end 終了（HH:mm）
+   */
+  private static void appendTimeRange(StringBuilder params, int index, String start, String end) {
+    params.append("&employees[").append(index).append("].start=").append(start);
+    params.append("&employees[").append(index).append("].end=").append(end);
+  }
+
   @Nested
   @DisplayName("[F-1] 希望入力フォーム")
   class InputForm {
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 初期4行に24個のselect要素がある（6枠×4行）")
-    void returns24SelectElementsForFourRows() throws Exception {
-      String htmlContent =
-          mockMvc
-              .perform(get("/"))
-              .andExpect(status().isOk())
-              .andExpect(content().contentType("text/html;charset=UTF-8"))
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      Pattern pattern = Pattern.compile("name=\"employees\\[(\\d)\\]\\.wishes\\[(\\d)\\]\"");
-      Matcher matcher = pattern.matcher(htmlContent);
-
-      int count = 0;
-      while (matcher.find()) {
-        int row = Integer.parseInt(matcher.group(1));
-        int col = Integer.parseInt(matcher.group(2));
-        assertTrue(row < 4, "Row should be less than 4");
-        assertTrue(col < 6, "Column should be less than 6");
-        count++;
-      }
-
-      assertEquals(24, count, "Should have exactly 24 select elements for 4 rows × 6 wishes");
-    }
 
     @Test
     @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 見出しに6つの勤務時間がこの順で表示される")
@@ -220,43 +206,6 @@ class ShiftControllerTest {
       assertTrue(pos3 < pos4, "08:30〜16:30 should come before 09:00〜16:30");
       assertTrue(pos4 < pos5, "09:00〜16:30 should come before 09:00〜18:00");
       assertTrue(pos5 < pos6, "09:00〜18:00 should come before 09:00〜18:30");
-    }
-
-    @Test
-    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 各selectのdata-labelが勤務時間である")
-    void selectsHaveCorrectDataLabels() throws Exception {
-      String htmlContent =
-          mockMvc
-              .perform(get("/"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      String[] workTimes = {
-        "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
-      };
-
-      for (int slot = 0; slot < 6; slot++) {
-        String selectName = "name=\"employees[0].wishes[" + slot + "]\"";
-        String expectedLabel = "data-label=\"" + workTimes[slot] + "\"";
-        int selectIndex = htmlContent.indexOf(selectName);
-        assertTrue(selectIndex >= 0, "Should find select for slot " + slot);
-
-        int tagEndIndex = htmlContent.indexOf(">", selectIndex);
-        assertTrue(tagEndIndex > selectIndex, "Should find end of select tag for slot " + slot);
-
-        String tagContent = htmlContent.substring(selectIndex - 100, tagEndIndex);
-        assertTrue(
-            tagContent.contains(expectedLabel),
-            "Select for slot "
-                + slot
-                + " should have "
-                + expectedLabel
-                + " (found: "
-                + tagContent
-                + ")");
-      }
     }
 
     @Test
@@ -316,14 +265,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 13; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -355,14 +297,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 12; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -387,20 +322,11 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 11; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
       for (int i = 11; i < 13; i++) {
         params.append("&employees[").append(i).append("].name=");
-        for (int j = 0; j < 6; j++) {
-          params.append("&employees[").append(i).append("].wishes[").append(j).append("]=");
-        }
+        appendTimeRange(params, i, "", "");
       }
 
       String responseContent =
@@ -426,14 +352,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=UNAVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -461,14 +380,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=UNAVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -512,17 +424,11 @@ class ShiftControllerTest {
     void displaysDuplicateLineNumbersCorrectlyWithBlankRowBefore() throws Exception {
       StringBuilder params = new StringBuilder();
       params.append("&employees[0].name=");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 0, "07:30", "18:30");
       params.append("&employees[1].name=A");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 1, "07:30", "18:30");
       params.append("&employees[2].name=A");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 2, "07:30", "18:30");
 
       String responseContent =
           mockMvc
@@ -551,17 +457,11 @@ class ShiftControllerTest {
     void displaysDuplicateLineNumbersCorrectlyWithBlankRowBetween() throws Exception {
       StringBuilder params = new StringBuilder();
       params.append("&employees[0].name=A");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 0, "07:30", "18:30");
       params.append("&employees[1].name=");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 1, "07:30", "18:30");
       params.append("&employees[2].name=A");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 2, "07:30", "18:30");
 
       String responseContent =
           mockMvc
@@ -587,108 +487,75 @@ class ShiftControllerTest {
   }
 
   @Nested
-  @DisplayName("[V-3][V-1] 希望の入力チェック")
-  class WishValidation {
+  @DisplayName("[F-1][V-1] フォームから従業員への変換")
+  class FormConversion {
+
+    @SuppressWarnings("unchecked")
+    private List<Employee> captureAssignedEmployees() {
+      ArgumentCaptor<List<Employee>> captor = ArgumentCaptor.forClass(List.class);
+      verify(shiftAssignmentService).assign(captor.capture());
+      return captor.getValue();
+    }
 
     @Test
     @DisplayName(
-        "[V-3] Given: wishes[2]だけが未選択のとき, When: POSTすると, Then: 08:30〜16:30を含むエラーが表示され、assignが呼ばれない")
-    void showsErrorForMissingWishSlot2() throws Exception {
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .param("employees[0].name", "Employee A")
-                      .param("employees[0].wishes[0]", "AVAILABLE")
-                      .param("employees[0].wishes[1]", "AVAILABLE")
-                      .param("employees[0].wishes[3]", "AVAILABLE")
-                      .param("employees[0].wishes[4]", "AVAILABLE")
-                      .param("employees[0].wishes[5]", "AVAILABLE"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
+        "[F-1] Given: 開始08:00・終了17:00の行があるとき, When: POSTすると,"
+            + " Then: assignに渡される従業員の開始が08:00、終了が17:00である")
+    void convertsStartAndEndToLocalTime() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].start", "08:00")
+                  .param("employees[0].end", "17:00"))
+          .andExpect(status().isOk());
 
-      assertTrue(
-          responseContent.contains("08:30〜16:30"),
-          "Error message should contain work time 08:30〜16:30");
-      assertTrue(responseContent.contains("class=\"alert\""), "Error section should be displayed");
-
-      verify(shiftAssignmentService, never()).assign(any());
+      List<Employee> employees = captureAssignedEmployees();
+      assertEquals(1, employees.size());
+      assertEquals("A", employees.get(0).name());
+      assertFalse(employees.get(0).off());
+      assertEquals(LocalTime.of(8, 0), employees.get(0).start());
+      assertEquals(LocalTime.of(17, 0), employees.get(0).end());
     }
 
     @Test
-    @DisplayName("[V-3] Given: 2つの枠が不正なとき, When: POSTすると, Then: エラーが2件表示される")
-    void showsMultipleErrors() throws Exception {
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .param("employees[0].name", "Employee A")
-                      .param("employees[0].wishes[2]", "AVAILABLE")
-                      .param("employees[0].wishes[3]", "AVAILABLE")
-                      .param("employees[0].wishes[4]", "AVAILABLE")
-                      .param("employees[0].wishes[5]", "AVAILABLE"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
+    @DisplayName(
+        "[F-1] Given: 休みにチェックした行があるとき, When: POSTすると," + " Then: assignに渡される従業員は休みで、開始・終了がnullである")
+    void convertsOffRowToEmployeeOnLeave() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "true")
+                  .param("employees[0].start", "08:00")
+                  .param("employees[0].end", "17:00"))
+          .andExpect(status().isOk());
 
-      int alertCount = 0;
-      for (int i = 0; i < responseContent.length() - 4; i++) {
-        if (responseContent.substring(i, i + 4).equals("<li>")) {
-          alertCount++;
-        }
-      }
-
-      assertTrue(alertCount >= 2, "Should display at least 2 errors");
+      List<Employee> employees = captureAssignedEmployees();
+      assertEquals(1, employees.size());
+      assertTrue(employees.get(0).off());
+      assertNull(employees.get(0).start());
+      assertNull(employees.get(0).end());
     }
 
     @Test
-    @DisplayName("[V-1] Given: 氏名が空の行のとき, When: POSTすると, Then: 希望が未選択でもエラーにならない")
-    void ignoresEmptyNameRow() throws Exception {
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .param("employees[0].name", "")
-                      .param("employees[0].wishes[0]", "")
-                      .param("employees[0].wishes[1]", "")
-                      .param("employees[0].wishes[2]", "")
-                      .param("employees[0].wishes[3]", "")
-                      .param("employees[0].wishes[4]", "")
-                      .param("employees[0].wishes[5]", ""))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
+    @DisplayName(
+        "[V-1] Given: 1行目の氏名が空で2行目に氏名があるとき, When: POSTすると," + " Then: assignには氏名がある2行目の従業員だけが渡される")
+    void excludesBlankNameRowFromAssignment() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "")
+                  .param("employees[0].start", "")
+                  .param("employees[0].end", "")
+                  .param("employees[1].name", "B")
+                  .param("employees[1].start", "07:30")
+                  .param("employees[1].end", "18:30"))
+          .andExpect(status().isOk());
 
-      assertFalse(
-          responseContent.contains("入力エラー"), "Should not show input error for empty name row");
-    }
-
-    @Test
-    @DisplayName("[V-3] Given: 不正な値が入力されたとき, When: POSTすると, Then: エラーが表示される")
-    void showsErrorForInvalidWishValue() throws Exception {
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .param("employees[0].name", "Employee A")
-                      .param("employees[0].wishes[0]", "INVALID")
-                      .param("employees[0].wishes[1]", "AVAILABLE")
-                      .param("employees[0].wishes[2]", "AVAILABLE")
-                      .param("employees[0].wishes[3]", "AVAILABLE")
-                      .param("employees[0].wishes[4]", "AVAILABLE")
-                      .param("employees[0].wishes[5]", "AVAILABLE"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      assertTrue(
-          responseContent.contains("class=\"alert\""),
-          "Error section should be displayed for invalid value");
+      List<Employee> employees = captureAssignedEmployees();
+      assertEquals(1, employees.size());
+      assertEquals("B", employees.get(0).name());
     }
   }
 
@@ -697,7 +564,7 @@ class ShiftControllerTest {
   class PostReturnPathsIncludeSlotLabels {
 
     @Test
-    @DisplayName("[F-1] Given: POSTで成立するとき, When: レスポンスHTMLを確認すると, Then: 6つの勤務時間と6個のselect要素がある")
+    @DisplayName("[F-1] Given: POSTで成立するとき, When: レスポンスHTMLを確認すると, Then: 6つの勤務時間がある")
     void includesSlotLabelsWhenAssignmentSucceeds() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
@@ -706,14 +573,7 @@ class ShiftControllerTest {
             .append(i)
             .append("].name=")
             .append(String.valueOf((char) ('A' + i)));
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -736,30 +596,18 @@ class ShiftControllerTest {
 
       assertTrue(
           responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
-
-      Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
-      Matcher selectMatcher = selectPattern.matcher(responseContent);
-      int selectCount = 0;
-      while (selectMatcher.find()) {
-        selectCount++;
-      }
-      assertEquals(6, selectCount, "Row 0 should have 6 select elements");
     }
 
     @Test
-    @DisplayName(
-        "[F-1] Given: POSTでV-3エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsと6個のselect要素がある")
+    @DisplayName("[F-1] Given: POSTでV-3エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
     void includesSlotLabelsWhenV3Error() throws Exception {
       String responseContent =
           mockMvc
               .perform(
                   post("/shift")
                       .param("employees[0].name", "Employee A")
-                      .param("employees[0].wishes[0]", "AVAILABLE")
-                      .param("employees[0].wishes[1]", "AVAILABLE")
-                      .param("employees[0].wishes[3]", "AVAILABLE")
-                      .param("employees[0].wishes[4]", "AVAILABLE")
-                      .param("employees[0].wishes[5]", "AVAILABLE"))
+                      .param("employees[0].start", "")
+                      .param("employees[0].end", "17:00"))
               .andExpect(status().isOk())
               .andReturn()
               .getResponse()
@@ -768,14 +616,6 @@ class ShiftControllerTest {
       assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
       assertTrue(
           responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
-
-      Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
-      Matcher selectMatcher = selectPattern.matcher(responseContent);
-      int selectCount = 0;
-      while (selectMatcher.find()) {
-        selectCount++;
-      }
-      assertEquals(6, selectCount, "Row should have 6 select elements even with V-3 error");
     }
 
     @Test
@@ -784,14 +624,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 13; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -819,14 +652,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=UNAVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -865,14 +691,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -910,14 +729,7 @@ class ShiftControllerTest {
             .append(i)
             .append("].name=")
             .append(String.valueOf((char) ('A' + i)));
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1011,14 +823,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1049,14 +854,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1122,15 +920,7 @@ class ShiftControllerTest {
             .append(i)
             .append("].name=")
             .append(String.valueOf((char) ('A' + i)));
-        params.append("&employees[").append(i).append("].wishes[0]=DESIRED");
-        for (int j = 1; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       for (int i = 5; i < 8; i++) {
@@ -1139,14 +929,7 @@ class ShiftControllerTest {
             .append(i)
             .append("].name=")
             .append(String.valueOf((char) ('A' + i)));
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1205,14 +988,7 @@ class ShiftControllerTest {
             .append(i)
             .append("].name=")
             .append(String.valueOf((char) ('A' + i)));
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1253,14 +1029,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1297,14 +1066,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1350,14 +1112,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1383,14 +1138,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1420,14 +1168,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1454,14 +1195,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1516,9 +1250,8 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
-        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:"
-            + " 'wishes['を使ったname生成と'disabled'の設定がある")
-    void shiftFormJsContainsWishesArrayLogic() throws Exception {
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:" + " 'disabled'の設定がある")
+    void shiftFormJsContainsDisabledLogic() throws Exception {
       String htmlContent =
           mockMvc
               .perform(get("/"))
@@ -1537,9 +1270,6 @@ class ShiftControllerTest {
       java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
       String jsContent = new String(java.nio.file.Files.readAllBytes(path));
 
-      assertTrue(
-          jsContent.contains("wishes["),
-          "shift-form.js should contain 'wishes[' for new 6-slot structure");
       assertTrue(
           jsContent.contains(".disabled"),
           "shift-form.js should contain '.disabled' for button state management");

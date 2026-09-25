@@ -2,14 +2,14 @@ package com.example.shiftmatch.controller;
 
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
-import com.example.shiftmatch.domain.InvalidWishError;
 import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.domain.Wish;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -25,6 +25,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 public class ShiftController {
 
   private static final int MAX_EMPLOYEE_COUNT = 12;
+
+  private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
+  /** 移行期間（T14 まで）の暫定値として Employee に渡す希望。 */
+  private static final List<Wish> PLACEHOLDER_WISHES =
+      Collections.nCopies(ShiftSlot.values().length, Wish.UNAVAILABLE);
 
   private final ShiftAssignmentService shiftAssignmentService;
 
@@ -48,11 +54,10 @@ public class ShiftController {
   @ModelAttribute("slotLabels")
   public List<String> slotLabels() {
     List<String> labels = new ArrayList<>();
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
     for (ShiftSlot slot : ShiftSlot.values()) {
       LocalTime start = slot.startTime();
       LocalTime end = slot.endTime();
-      labels.add(start.format(formatter) + "〜" + end.format(formatter));
+      labels.add(start.format(TIME_FORMATTER) + "〜" + end.format(TIME_FORMATTER));
     }
     return labels;
   }
@@ -95,27 +100,8 @@ public class ShiftController {
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
-    List<String> slotLabelsForError = slotLabels();
-
     // 空行を含む元のリストを渡す。サービス側が空行を除外しつつ元のインデックスを保持する
     List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
-
-    List<InvalidWishError> wishErrors = new ArrayList<>();
-
-    for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
-      EmployeeForm employee = shiftForm.getEmployees().get(i);
-      if (employee.getName() == null || employee.getName().isBlank()) {
-        continue;
-      }
-
-      List<String> wishes = employee.getWishes();
-      for (int j = 0; j < slotLabelsForError.size(); j++) {
-        String wish = (wishes != null && j < wishes.size()) ? wishes.get(j) : null;
-        if (!isValidWish(wish)) {
-          wishErrors.add(new InvalidWishError(i, slotLabelsForError.get(j)));
-        }
-      }
-    }
 
     boolean limitExceeded = validEmployees.size() > MAX_EMPLOYEE_COUNT;
     if (limitExceeded) {
@@ -123,8 +109,7 @@ public class ShiftController {
           "limitExceededError", "従業員の入力行数が上限（" + MAX_EMPLOYEE_COUNT + "名）を超えています。入力行を減らしてください。");
     }
 
-    if (!duplicateErrors.isEmpty() || !wishErrors.isEmpty() || limitExceeded) {
-      model.addAttribute("wishErrors", wishErrors);
+    if (!duplicateErrors.isEmpty() || limitExceeded) {
       model.addAttribute("duplicateErrors", duplicateErrors);
       model.addAttribute("shiftForm", shiftForm);
       return "index";
@@ -144,51 +129,37 @@ public class ShiftController {
   /**
    * ShiftForm を Employee のリストに変換します。
    *
+   * <p>開始・終了は {@code HH:mm} として解析し、空・不正な文字列は {@code null} にします。休みの行は開始・終了を無視します。
+   *
    * @param shiftForm フォームデータ
-   * @return Employee のリスト
+   * @return Employee のリスト（空行を含む、入力順）
    */
   private List<Employee> convertToEmployees(ShiftForm shiftForm) {
     List<Employee> employees = new ArrayList<>();
     for (EmployeeForm form : shiftForm.getEmployees()) {
-      List<Wish> wishes = new ArrayList<>();
-      List<String> wishStrings = form.getWishes();
-      for (int i = 0; i < ShiftSlot.values().length; i++) {
-        String wish = (wishStrings != null && i < wishStrings.size()) ? wishStrings.get(i) : null;
-        wishes.add(convertStringToWish(wish));
-      }
-      employees.add(new Employee(form.getName(), wishes));
+      boolean off = form.isOff();
+      LocalTime start = off ? null : parseTimeOrNull(form.getStart());
+      LocalTime end = off ? null : parseTimeOrNull(form.getEnd());
+      // wishes は T14 で削除するまでの暫定値
+      employees.add(new Employee(form.getName(), PLACEHOLDER_WISHES, off, start, end));
     }
     return employees;
   }
 
   /**
-   * 文字列を Wish enum に変換します。変換できない場合は UNAVAILABLE を返します。
+   * 時刻文字列を LocalTime に変換します。変換できない場合は null を返します。
    *
-   * @param wish 希望値（文字列）
-   * @return Wish enum
+   * @param time 時刻文字列（HH:mm 形式）
+   * @return LocalTime、または変換できない場合は null
    */
-  private Wish convertStringToWish(String wish) {
-    if (wish == null || wish.isEmpty()) {
-      return Wish.UNAVAILABLE;
+  private LocalTime parseTimeOrNull(String time) {
+    if (time == null || time.isEmpty()) {
+      return null;
     }
-    for (Wish w : Wish.values()) {
-      if (w.name().equals(wish)) {
-        return w;
-      }
+    try {
+      return LocalTime.parse(time, TIME_FORMATTER);
+    } catch (DateTimeParseException e) {
+      return null;
     }
-    return Wish.UNAVAILABLE;
-  }
-
-  /**
-   * 希望値が有効かどうかを判定します。
-   *
-   * @param wish 希望値
-   * @return 有効な場合 true、無効な場合 false
-   */
-  private boolean isValidWish(String wish) {
-    if (wish == null || wish.isEmpty()) {
-      return false;
-    }
-    return Arrays.stream(Wish.values()).anyMatch(w -> w.name().equals(wish));
   }
 }

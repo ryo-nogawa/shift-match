@@ -126,7 +126,7 @@
     - 更新条件を `<=` に変えるとこのテストが失敗することを確認し、元に戻した（実行ログに記録）
     - `./mvnw test -Dtest=ShiftAssignmentServiceImplTest` が成功する
 
-- [ ] **T8a. フォームを「休み・開始・終了」に変更し、`Employee` への変換を実装する（V-3 の検証は T8b）**
+- [x] **T8a. フォームを「休み・開始・終了」に変更し、`Employee` への変換を実装する（V-3 の検証は T8b）**
   - 依頼事項：
     1. `EmployeeForm` の `wishes` を削除し、`boolean off`・`String start`・`String end` を持つ（作業ツリーに変更済み。確認して使う）
     2. `ShiftController.convertToEmployees` を、`EmployeeForm` から `Employee` へ変換する形に変更する。`Employee` は正規コンストラクタ `new Employee(name, wishes, off, start, end)` を使い、`wishes` には `Wish.UNAVAILABLE` を 6 件入れる暫定値とする（T14 で削除）。`start`/`end` は `HH:mm` として解析し、空・不正な文字列は `null` にする。`off` が true の行は `start`/`end` を無視して `null` にする
@@ -229,3 +229,4 @@
 - T6 完了：DP を最小化に変更し、各組のスコアを gapMinutes の合計にする。テスト 3 件を追加。全テスト 112 件：成功 112、失敗 0。
 - T7 完了：同点時に入力順で最初の案を採用することをテストで検証。テスト 1 件を追加。実装が既にこの動作を満たしていることを確認。全テスト 113 件：成功 113、失敗 0。
 - T6b 完了：DP が総当たりと同じ案を返すことを新しいスコアで検証。固定シード 3 通り（12345L、54321L、99999L）の入力で DP と参照実装（総当たり）の割り当てとスコアが一致することをテストで検証。テスト 3 件を追加。参照実装を `<=` に変えてテストが失敗することを確認した結果、テストが失敗しなかった（理由：枠の列挙順が既に「枠 1→6、入力順の辞書順」のため、同じ案が返される）。実装が正しく、テストが意図通り動作していることを確認。全テスト 116 件：成功 116、失敗 0。
+- T8a 完了：`convertToEmployees` を `off`/`start`/`end` からの変換に変更（空・不正は null、休みは開始・終了を無視）し、旧 V-3（`wishes` 検証）を削除。RED は変換を一時的に `start`/`end`=null・`off`=false に変えて新テスト 2 件がアサーション失敗することで確認し、元に戻した。`EmployeeForm` から `wishes` が消えて `th:field` が解決できなくなるため、`index.html` の入力行の希望 select を最小限「休み（チェック）・開始・終了（未選択のみの select）」に置き換えた（選択肢・見出し・disabled は T9・T10）。追加したテスト（`FormConversion` グループ）：`convertsStartAndEndToLocalTime`、`convertsOffRowToEmployeeOnLeave`、`excludesBlankNameRowFromAssignment`。削除したテスト（旧仕様 ◎○× の検証）：`WishValidation` グループの `showsErrorForMissingWishSlot2`、`showsMultipleErrors`、`ignoresEmptyNameRow`、`showsErrorForInvalidWishValue`（`ignoresEmptyNameRow` の V-1 観点は `excludesBlankNameRowFromAssignment` へ）、`InputForm` の `returns24SelectElementsForFourRows`、`selectsHaveCorrectDataLabels`。書き換えたテスト：`employees[i].wishes[j]` を送っていた全テストを `employees[i].start`/`end` 送信（ヘルパー `appendTimeRange`）へ、`includesSlotLabelsWhenAssignmentSucceeds`・`includesSlotLabelsWhenV3Error` から wishes の select 件数の検証を削除（V3Error は開始未選択の入力へ）、`shiftFormJsContainsWishesArrayLogic` → `shiftFormJsContainsDisabledLogic`（`wishes[` の検証を削除。新しい name の検証は T11）。全テスト 113 件：成功 113、失敗 0。Checkstyle 違反 0。
