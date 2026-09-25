@@ -254,7 +254,6 @@ class ShiftControllerTest {
     @Test
     @DisplayName("[V-5] Given: 有効な従業員がちょうど12名のとき, When: POSTすると, Then: 上限エラーが表示されない（境界値）")
     void doesNotShowErrorWhen12ValidEmployees() throws Exception {
-      // but no valid assignment exists
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 12; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
@@ -400,17 +399,14 @@ class ShiftControllerTest {
     @DisplayName("[V-2] Given: 1行目が空、2・3行目が同名のとき, When: POSTすると, Then: 「2, 3行目」が表示され、「1, 2行目」ではない")
     void displaysDuplicateLineNumbersCorrectlyWithBlankRowBefore() throws Exception {
       StringBuilder params = new StringBuilder();
-      // Row 0: empty name (blank)
       params.append("&employees[0].name=");
       for (int j = 0; j < 6; j++) {
         params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
       }
-      // Row 1: name A (first occurrence)
       params.append("&employees[1].name=A");
       for (int j = 0; j < 6; j++) {
         params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
       }
-      // Row 2: name A (duplicate)
       params.append("&employees[2].name=A");
       for (int j = 0; j < 6; j++) {
         params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
@@ -427,9 +423,7 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Should show duplicate error and contain line numbers 2, 3
       assertTrue(responseContent.contains("重複"), "Response should contain duplicate error");
-      // Extract line numbers from the response and verify they are 2 and 3
       String pattern = "該当行：([^）]*)行目";
       Pattern p = Pattern.compile(pattern);
       Matcher m = p.matcher(responseContent);
@@ -444,17 +438,14 @@ class ShiftControllerTest {
     @DisplayName("[V-2] Given: 1行目A、2行目が空、3行目Aのとき, When: POSTすると, Then: 「1, 3行目」が表示される")
     void displaysDuplicateLineNumbersCorrectlyWithBlankRowBetween() throws Exception {
       StringBuilder params = new StringBuilder();
-      // Row 0: name A (first occurrence)
       params.append("&employees[0].name=A");
       for (int j = 0; j < 6; j++) {
         params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
       }
-      // Row 1: empty name (blank)
       params.append("&employees[1].name=");
       for (int j = 0; j < 6; j++) {
         params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
       }
-      // Row 2: name A (duplicate)
       params.append("&employees[2].name=A");
       for (int j = 0; j < 6; j++) {
         params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
@@ -471,9 +462,7 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Should show duplicate error and contain line numbers 1, 3
       assertTrue(responseContent.contains("重複"), "Response should contain duplicate error");
-      // Extract line numbers from the response and verify they are 1 and 3
       String pattern = "該当行：([^）]*)行目";
       Pattern p = Pattern.compile(pattern);
       Matcher m = p.matcher(responseContent);
@@ -500,7 +489,6 @@ class ShiftControllerTest {
                       .param("employees[0].name", "Employee A")
                       .param("employees[0].wishes[0]", "AVAILABLE")
                       .param("employees[0].wishes[1]", "AVAILABLE")
-                      // wishes[2] is not provided (missing)
                       .param("employees[0].wishes[3]", "AVAILABLE")
                       .param("employees[0].wishes[4]", "AVAILABLE")
                       .param("employees[0].wishes[5]", "AVAILABLE"))
@@ -525,7 +513,6 @@ class ShiftControllerTest {
               .perform(
                   post("/shift")
                       .param("employees[0].name", "Employee A")
-                      // wishes[0] and wishes[1] are missing
                       .param("employees[0].wishes[2]", "AVAILABLE")
                       .param("employees[0].wishes[3]", "AVAILABLE")
                       .param("employees[0].wishes[4]", "AVAILABLE")
@@ -628,7 +615,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Check that all 6 work time labels are present
       assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
       assertTrue(responseContent.contains("08:00〜15:30"), "Should contain work time 08:00〜15:30");
       assertTrue(responseContent.contains("08:30〜16:30"), "Should contain work time 08:30〜16:30");
@@ -636,11 +622,9 @@ class ShiftControllerTest {
       assertTrue(responseContent.contains("09:00〜18:00"), "Should contain work time 09:00〜18:00");
       assertTrue(responseContent.contains("09:00〜18:30"), "Should contain work time 09:00〜18:30");
 
-      // Check data-slot-labels attribute
       assertTrue(
           responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
 
-      // Check that each row has 6 select elements for wishes
       Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
       Matcher selectMatcher = selectPattern.matcher(responseContent);
       int selectCount = 0;
@@ -661,7 +645,6 @@ class ShiftControllerTest {
                       .param("employees[0].name", "Employee A")
                       .param("employees[0].wishes[0]", "AVAILABLE")
                       .param("employees[0].wishes[1]", "AVAILABLE")
-                      // wishes[2] is not provided (missing) - causes V-3 error
                       .param("employees[0].wishes[3]", "AVAILABLE")
                       .param("employees[0].wishes[4]", "AVAILABLE")
                       .param("employees[0].wishes[5]", "AVAILABLE"))
@@ -670,12 +653,10 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Check that all 6 work time labels are present
       assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
       assertTrue(
           responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
 
-      // Check that the row has 6 select elements
       Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
       Matcher selectMatcher = selectPattern.matcher(responseContent);
       int selectCount = 0;
@@ -712,7 +693,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Check that work time labels are present
       assertTrue(
           responseContent.contains("07:30〜14:30"),
           "Should contain work time 07:30〜14:30 even with V-5 error");
@@ -748,7 +728,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Check that work time labels are present
       assertTrue(
           responseContent.contains("07:30〜14:30"),
           "Should contain work time 07:30〜14:30 even when unassignable");
@@ -837,42 +816,37 @@ class ShiftControllerTest {
       assertTrue(
           responseContent.contains("class=\"result-table\""), "Result table should be displayed");
 
-      // Expected work times for slots 1-6 (2, 1, 1, 1, 1, 2 employees)
       String[] expectedWorkTimes = {
-        "07:30〜14:30", // Slot 1-1
-        "07:30〜14:30", // Slot 1-2
-        "08:00〜15:30", // Slot 2
-        "08:30〜16:30", // Slot 3
-        "09:00〜16:30", // Slot 4
-        "09:00〜18:00", // Slot 5
-        "09:00〜18:30", // Slot 6-1
-        "09:00〜18:30" // Slot 6-2
+        "07:30〜14:30",
+        "07:30〜14:30",
+        "08:00〜15:30",
+        "08:30〜16:30",
+        "09:00〜16:30",
+        "09:00〜18:00",
+        "09:00〜18:30",
+        "09:00〜18:30"
       };
 
-      // Expected break times for each slot
       String[] expectedBreakTimes = {
-        "12:00〜12:45", // Slot 1-1
-        "12:00〜12:45", // Slot 1-2
-        "12:45〜13:30", // Slot 2
-        "12:45〜13:30", // Slot 3
-        "13:30〜14:15", // Slot 4
-        "13:30〜14:30", // Slot 5
-        "14:15〜15:15", // Slot 6-1
-        "14:30〜15:30" // Slot 6-2
+        "12:00〜12:45",
+        "12:00〜12:45",
+        "12:45〜13:30",
+        "12:45〜13:30",
+        "13:30〜14:15",
+        "13:30〜14:30",
+        "14:15〜15:15",
+        "14:30〜15:30"
       };
 
-      // Verify expected arrays have 8 elements each
       assertEquals(8, expectedWorkTimes.length, "Should have 8 expected work times");
       assertEquals(8, expectedBreakTimes.length, "Should have 8 expected break times");
 
-      // Extract result table tbody only (not input table)
       Pattern resultTablePattern =
           Pattern.compile("class=\"result-table\">.*?<tbody[^>]*>(.*?)</tbody>", Pattern.DOTALL);
       Matcher resultTableMatcher = resultTablePattern.matcher(responseContent);
       assertTrue(resultTableMatcher.find(), "Result table tbody should be present");
       String resultTableTbody = resultTableMatcher.group(1);
 
-      // Verify result table tbody has exactly 8 rows
       Pattern rowPattern = Pattern.compile("<tr[^>]*>.*?</tr>", Pattern.DOTALL);
       Matcher rowMatcher = rowPattern.matcher(resultTableTbody);
 
@@ -882,7 +856,6 @@ class ShiftControllerTest {
       }
       assertEquals(8, rowCount, "Result table should have exactly 8 rows");
 
-      // Verify each row's content (name, work time, break time in order)
       rowMatcher = rowPattern.matcher(resultTableTbody);
       int currentRow = 0;
       while (rowMatcher.find() && currentRow < 8) {
@@ -891,22 +864,18 @@ class ShiftControllerTest {
         String expectedWorkTime = expectedWorkTimes[currentRow];
         String expectedBreakTime = expectedBreakTimes[currentRow];
 
-        // Verify name is present in this row
         assertTrue(
             rowHtml.contains(expectedName),
             "Row " + currentRow + " should contain name " + expectedName);
 
-        // Verify work time is present in this row
         assertTrue(
             rowHtml.contains(expectedWorkTime),
             "Row " + currentRow + " should contain work time " + expectedWorkTime);
 
-        // Verify break time is present in this row
         assertTrue(
             rowHtml.contains(expectedBreakTime),
             "Row " + currentRow + " should contain break time " + expectedBreakTime);
 
-        // Verify the order: name appears before work time, work time before break time
         int namePos = rowHtml.indexOf(expectedName);
         int workTimePos = rowHtml.indexOf(expectedWorkTime);
         int breakTimePos = rowHtml.indexOf(expectedBreakTime);
@@ -1021,7 +990,6 @@ class ShiftControllerTest {
     @DisplayName(
         "[F-4] Given: スコア5の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then: '.score-num'に'5'と'/ 8'が表示される")
     void displaysScoreFiveWithCorrectFormat() throws Exception {
-      // to generate a score of 5
       StringBuilder params = new StringBuilder();
 
       for (int i = 0; i < 5; i++) {
@@ -1247,8 +1215,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // left = 0 minutes / 660 * 100% = 0.00%
-      // width = 420 minutes / 660 * 100% = 63.64%
       assertTrue(responseContent.contains("left:0.00%"), "First work bar should have left:0.00%");
       assertTrue(
           responseContent.contains("width:63.64%"), "First work bar should have width:63.64%");
@@ -1282,8 +1248,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // left = 90 minutes / 660 * 100% = 13.64%
-      // width = 570 minutes / 660 * 100% = 86.36%
       assertTrue(
           responseContent.contains("left:13.64%"),
           "Last work bars (Slot 6) should have left:13.64%");
@@ -1321,8 +1285,6 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // left = 270 minutes (12:00 - 7:30) / 660 * 100% = 40.91%
-      // width = 45 minutes / 660 * 100% = 6.82%
       assertTrue(
           responseContent.contains("left:40.91%"), "First break bar should have left:40.91%");
       assertTrue(

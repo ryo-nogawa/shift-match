@@ -26,11 +26,9 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   @Override
   public Optional<AssignmentResult> assign(List<Employee> employees) {
-    // V-1: 氏名が空の行を処理対象から除外
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
-    // V-4: 有効な従業員が8名未満
     if (validEmployees.size() < MIN_EMPLOYEES) {
       return Optional.empty();
     }
@@ -91,7 +89,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       int nextMask = usedMask;
       int comboScore = 0;
 
-      // 各ビットを処理
       for (int i = 0, bit = 0; i < wishes.length && i < 32; i++) {
         if ((combo & (1 << i)) != 0) {
           nextMask |= (1 << i);
@@ -204,7 +201,6 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
       int futureScore = computeMaxScore(wishes, slotIndex + 1, nextMask, memo);
       if (futureScore >= 0 && comboScore + futureScore == targetScore) {
-        // このスロットの割り当てが確定。次のスロットへ
         reconstructAssignment(
             wishes,
             slotIndex + 1,
@@ -291,7 +287,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   @Override
   public List<DuplicateNameError> findDuplicateNames(List<Employee> employees) {
-    // V-2 で該当行を示すため、氏名と元のインデックスを同じ走査で対にして保持する
+    // V-2 の重複行番号を返すため、元のインデックスと氏名を対応させる
     List<Integer> validIndexes = new ArrayList<>();
     List<String> validNames = new ArrayList<>();
     for (int i = 0; i < employees.size(); i++) {

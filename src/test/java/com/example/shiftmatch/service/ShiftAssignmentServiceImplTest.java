@@ -385,11 +385,11 @@ class ShiftAssignmentServiceImplTest {
         "[H-1][H-2][H-3] Given: 9～10人のランダムな希望の入力200通り, When: assignを実行すると, Then: 参照実装の結果と一致する")
     void dynamicProgrammingMatchesBruteForceReference() {
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
-      java.util.Random random = new java.util.Random(12345L); // 固定シード
+      java.util.Random random = new java.util.Random(12345L);
       int testCases = 200;
 
       for (int testNum = 0; testNum < testCases; testNum++) {
-        int employeeCount = 9 + random.nextInt(2); // 9 or 10
+        int employeeCount = 9 + random.nextInt(2);
         List<Employee> employees = generateRandomEmployees(random, employeeCount);
 
         Optional<AssignmentResult> actual = service.assign(employees);
@@ -439,7 +439,6 @@ class ShiftAssignmentServiceImplTest {
       List<Wish> wishes = new ArrayList<>();
       for (int j = 0; j < 6; j++) {
         int val = random.nextInt(100);
-        // 70% UNAVAILABLE, 20% AVAILABLE, 10% DESIRED（不成立も含める）
         if (val < 70) {
           wishes.add(Wish.UNAVAILABLE);
         } else if (val < 90) {
@@ -454,11 +453,9 @@ class ShiftAssignmentServiceImplTest {
   }
 
   private Optional<AssignmentResult> bruteForceReference(List<Employee> employees) {
-    // V-1: Filter out blank names
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
-    // V-4: Check minimum employees
     if (validEmployees.size() < 8) {
       return Optional.empty();
     }

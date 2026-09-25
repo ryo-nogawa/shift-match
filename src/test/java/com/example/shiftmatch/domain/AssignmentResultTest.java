@@ -58,7 +58,6 @@ class AssignmentResultTest {
       AssignmentResult result = new AssignmentResult(assignments, score, unassigned);
       List<ShiftAssignment> returnedAssignments = result.assignments();
 
-      // Try to modify should throw
       assertThrows(
           UnsupportedOperationException.class,
           () -> returnedAssignments.add(createAssignment(8, ShiftSlot.SLOT_6)));

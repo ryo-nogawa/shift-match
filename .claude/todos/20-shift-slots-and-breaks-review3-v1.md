@@ -16,7 +16,7 @@
 
 ## Todo
 
-- [ ] **S1. 逐語的なコメントを、今回の変更範囲すべてから削除する（レビュー MUST、`.agents/rules/comment.md`）**
+- [x] **S1. 逐語的なコメントを、今回の変更範囲すべてから削除する（レビュー MUST、`.agents/rules/comment.md`）**
   - 依頼事項：`git diff origin/main --name-only -- src` の `.java`・`.js`・`.html`・`.css` を対象に、「何をしているか」を言い換えただけのコメントを削除する。例：`// V-1: 氏名が空の行を処理対象から除外`（`ShiftController`）、`// 各ビットを処理`（`ShiftAssignmentServiceImpl`）、各期待値を言い換えた `// Person 0: ...`・`// Slot 1-1` などのテスト内コメント、`BreakSchedulerTest` の「every minute」（実際は 5 分刻みのループで、内容も食い違っている）。残してよいのは、コードだけでは分からない「なぜ」（辞書順を維持する理由、Spring MVC の連番制約、同点で更新しない理由、動的計画法の復元で辞書順を保つ理由など）で、かつ実装と一致しているもの。`// Given`・`// When`・`// Then` の区切りと `CHECKSTYLE.SUPPRESS` は残す。Javadoc は削除しない（ただし S2 の書式に従う）。日本語と英語が混在していないこと
   - 対象ファイル：`src/main/`・`src/test/` の変更ファイル
   - 完了条件：
@@ -76,4 +76,17 @@
 
 ## 実行ログ
 
-<!-- implementer が Todo ごとに「完了条件ごとの根拠」・テスト件数を追記する欄。作成時は空のままにする -->
+### S1 逐語的なコメント削除
+
+完了条件確認：
+1. `git grep -n -E "//\s*[A-Za-z]" -- 'src/main/**/*.java' 'src/test/**/*.java'` の結果が、`// Given`・`// When`・`// Then`・`CHECKSTYLE` だけ → 0 件（追記コメント無し）
+2. `git grep -n -E "//\s*(Person|Slot|Check|Verify|Expected|Row|Test)" -- src` が 0 件 → 確認済み、0 件
+3. `git grep -n "//" -- 'src/main/**/*.java'` の全行目視確認 → 6 行（すべて「なぜ」を説明）：
+   - ShiftController.java:86：仕様上の理由
+   - ShiftController.java:98：元のインデックス保持の理由
+   - ShiftAssignmentServiceImpl.java:58：復元アルゴリズムの理由
+   - ShiftAssignmentServiceImpl.java:87：入力順の辞書順を使う理由
+   - ShiftAssignmentServiceImpl.java:212：同点で更新しない理由
+   - ShiftAssignmentServiceImpl.java:290：V-2 の行番号を返す理由
+4. `BreakSchedulerTest` に「every minute」が残っていない → 削除確認済み
+5. `./mvnw test` 成功（テスト件数 90 件、変更なし） → Tests run: 90, Failures: 0, Errors: 0

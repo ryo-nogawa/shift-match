@@ -90,17 +90,14 @@ public class ShiftController {
 
     List<Employee> employees = convertToEmployees(shiftForm);
 
-    // V-1: 氏名が空の行を処理対象から除外（エラーにしない）
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
     List<String> slotLabelsForError = slotLabels();
 
-    // V-2: 重複チェック
     // 空行を含む元のリストを渡す。サービス側が空行を除外しつつ元のインデックスを保持する
     List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
 
-    // V-3: 希望の有効性チェック
     List<InvalidWishError> wishErrors = new ArrayList<>();
 
     for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
@@ -118,7 +115,6 @@ public class ShiftController {
       }
     }
 
-    // V-5: 有効な従業員が13名以上のチェック
     boolean limitExceeded = validEmployees.size() > MAX_EMPLOYEE_COUNT;
     if (limitExceeded) {
       model.addAttribute(

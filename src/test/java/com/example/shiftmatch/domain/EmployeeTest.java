@@ -60,7 +60,6 @@ class EmployeeTest {
       Employee employee = new Employee(name, wishes);
       List<Wish> returnedWishes = employee.wishes();
 
-      // Try to modify the returned list should throw
       assertThrows(UnsupportedOperationException.class, () -> returnedWishes.add(Wish.DESIRED));
     }
   }
