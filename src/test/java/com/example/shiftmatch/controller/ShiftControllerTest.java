@@ -837,17 +837,55 @@ class ShiftControllerTest {
       assertTrue(
           responseContent.contains("class=\"result-table\""), "Result table should be displayed");
 
-      String[] expectedWorkTimes = {};
+      // Expected work times for slots 1-6 (2, 1, 1, 1, 1, 2 employees)
+      String[] expectedWorkTimes = {
+        "07:30〜14:30", // Slot 1-1
+        "07:30〜14:30", // Slot 1-2
+        "08:00〜15:30", // Slot 2
+        "08:30〜16:30", // Slot 3
+        "09:00〜16:30", // Slot 4
+        "09:00〜18:00", // Slot 5
+        "09:00〜18:30", // Slot 6-1
+        "09:00〜18:30" // Slot 6-2
+      };
 
-      String[] expectedBreakTimes = {};
+      // Expected break times for each slot
+      String[] expectedBreakTimes = {
+        "12:00〜12:45", // Slot 1-1
+        "12:00〜12:45", // Slot 1-2
+        "12:45〜13:30", // Slot 2
+        "12:45〜13:30", // Slot 3
+        "13:30〜14:15", // Slot 4
+        "13:30〜14:30", // Slot 5
+        "14:15〜15:15", // Slot 6-1
+        "14:30〜15:30" // Slot 6-2
+      };
 
+      // Verify expected work times
+      assertEquals(8, expectedWorkTimes.length, "Should have 8 expected work times");
       for (String workTime : expectedWorkTimes) {
         assertTrue(responseContent.contains(workTime), "Should contain work time: " + workTime);
       }
 
+      // Verify expected break times
+      assertEquals(8, expectedBreakTimes.length, "Should have 8 expected break times");
       for (String breakTime : expectedBreakTimes) {
         assertTrue(responseContent.contains(breakTime), "Should contain break time: " + breakTime);
       }
+
+      // Verify result table has exactly 8 rows (in tbody)
+      Pattern tablePattern = Pattern.compile("<tbody[^>]*>.*?</tbody>", Pattern.DOTALL);
+      Matcher tableMatcher = tablePattern.matcher(responseContent);
+      assertTrue(tableMatcher.find(), "Result table tbody should be present");
+      String tbody = tableMatcher.group();
+
+      Pattern rowPattern = Pattern.compile("<tr[^>]*>.*?</tr>", Pattern.DOTALL);
+      Matcher rowMatcher = rowPattern.matcher(tbody);
+      int rowCount = 0;
+      while (rowMatcher.find()) {
+        rowCount++;
+      }
+      assertEquals(8, rowCount, "Result table should have exactly 8 rows");
     }
 
     @Test
