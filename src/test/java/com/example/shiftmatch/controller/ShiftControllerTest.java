@@ -1075,29 +1075,84 @@ class ShiftControllerTest {
           .thenReturn(java.util.Optional.of(createStandardResult()));
     }
 
+    /**
+     * 全員 7:30〜18:30 の従業員を指定人数分送信し、レスポンス本文を返します。
+     *
+     * @param count 従業員数
+     * @return レスポンス本文
+     * @throws Exception リクエストの実行に失敗した場合
+     */
+    private String postEmployees(int count) throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < count; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        appendTimeRange(params, i, "07:30", "18:30");
+      }
+      return mockMvc
+          .perform(
+              post("/shift")
+                  .contentType("application/x-www-form-urlencoded")
+                  .content(params.toString().substring(1)))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
+    }
+
     @Test
     @DisplayName(
-        "[F-4] Given: スコア5の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then: '.score-num'に'5'と'/ 8'が表示される")
-    void displaysScoreFiveWithCorrectFormat() throws Exception {
+        "[F-4] Given: ずれの合計が90分の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then:"
+            + " '.score-num'に'90'と'分'が表示され、'/ 8'は表示されない")
+    void displaysGapTotalInMinutes() throws Exception {
+      AssignmentResult result =
+          new AssignmentResult(createStandardResult().assignments(), 90, List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      String responseContent = postEmployees(8);
+
+      Matcher matcher =
+          Pattern.compile("class=\"score-num\"[^>]*>\\s*<span>(\\d+)</span><small> 分</small>")
+              .matcher(responseContent);
+      assertTrue(matcher.find(), "Score should be displayed as '<n> 分'");
+      assertEquals("90", matcher.group(1));
+      assertFalse(responseContent.contains("/ 8"), "Score should not show '/ 8'");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 割当結果が表示されるとき, When: スコアのラベルを確認すると, Then:"
+            + " 'ずれの合計'のラベルがあり、旧スコアの記号（U+25CE）は表示されない")
+    void displaysGapTotalLabelWithoutDesiredMark() throws Exception {
+      String responseContent = postEmployees(8);
+
+      assertTrue(
+          responseContent.contains("ずれの合計（入力時間帯と割り当てた枠の差。0 が最良）"),
+          "Score label should describe the gap total");
+      assertFalse(
+          responseContent.contains(String.valueOf((char) 0x25CE)),
+          "Result should not contain the old score mark");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 未出勤者に休みの従業員（K）を含む割当結果が表示されるとき, When: 未出勤者セクションを確認すると, Then:"
+            + " 休みの従業員の氏名がチップで表示される")
+    void displaysEmployeeOnLeaveAsUnassigned() throws Exception {
+      AssignmentResult result =
+          new AssignmentResult(
+              createStandardResult().assignments(), 0, List.of(Employee.onLeave("K")));
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
       StringBuilder params = new StringBuilder();
-
-      for (int i = 0; i < 5; i++) {
-        params
-            .append("&employees[")
-            .append(i)
-            .append("].name=")
-            .append(String.valueOf((char) ('A' + i)));
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
-
-      for (int i = 5; i < 8; i++) {
-        params
-            .append("&employees[")
-            .append(i)
-            .append("].name=")
-            .append(String.valueOf((char) ('A' + i)));
-        appendTimeRange(params, i, "07:30", "18:30");
-      }
+      params.append("&employees[8].name=K&employees[8].off=true");
 
       String responseContent =
           mockMvc
@@ -1111,11 +1166,8 @@ class ShiftControllerTest {
               .getContentAsString();
 
       assertTrue(
-          responseContent.contains("class=\"score-num\""),
-          "Score display section should be present");
-      assertTrue(
-          responseContent.contains("5") && responseContent.contains("/ 8"),
-          "Score should show 5 / 8");
+          responseContent.contains("class=\"chip\">K</span>"),
+          "Employee on leave should be displayed as unassigned");
     }
 
     @Test
