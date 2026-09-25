@@ -501,6 +501,171 @@ class ShiftControllerTest {
   }
 
   @Nested
+  @DisplayName("[F-1] POST の全戻り経路で slotLabels をモデルに設定")
+  class PostReturnPathsIncludeSlotLabels {
+
+    @Test
+    @DisplayName("[F-1] Given: POSTで成立するとき, When: レスポンスHTMLを確認すると, Then: 6つの勤務時間と6個のselect要素がある")
+    void includesSlotLabelsWhenAssignmentSucceeds() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Check that all 6 work time labels are present
+      assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
+      assertTrue(responseContent.contains("08:00〜15:30"), "Should contain work time 08:00〜15:30");
+      assertTrue(responseContent.contains("08:30〜16:30"), "Should contain work time 08:30〜16:30");
+      assertTrue(responseContent.contains("09:00〜16:30"), "Should contain work time 09:00〜16:30");
+      assertTrue(responseContent.contains("09:00〜18:00"), "Should contain work time 09:00〜18:00");
+      assertTrue(responseContent.contains("09:00〜18:30"), "Should contain work time 09:00〜18:30");
+
+      // Check data-slot-labels attribute
+      assertTrue(
+          responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
+
+      // Check that each row has 6 select elements for wishes
+      Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
+      Matcher selectMatcher = selectPattern.matcher(responseContent);
+      int selectCount = 0;
+      while (selectMatcher.find()) {
+        selectCount++;
+      }
+      assertEquals(6, selectCount, "Row 0 should have 6 select elements");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: POSTでV-3エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsと6個のselect要素がある")
+    void includesSlotLabelsWhenV3Error() throws Exception {
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "Employee A")
+                      .param("employees[0].wishes[0]", "AVAILABLE")
+                      .param("employees[0].wishes[1]", "AVAILABLE")
+                      // wishes[2] is not provided (missing) - causes V-3 error
+                      .param("employees[0].wishes[3]", "AVAILABLE")
+                      .param("employees[0].wishes[4]", "AVAILABLE")
+                      .param("employees[0].wishes[5]", "AVAILABLE"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Check that all 6 work time labels are present
+      assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
+      assertTrue(
+          responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
+
+      // Check that the row has 6 select elements
+      Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
+      Matcher selectMatcher = selectPattern.matcher(responseContent);
+      int selectCount = 0;
+      while (selectMatcher.find()) {
+        selectCount++;
+      }
+      assertEquals(6, selectCount, "Row should have 6 select elements even with V-3 error");
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: POSTでV-5エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
+    void includesSlotLabelsWhenV5Error() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 13; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Check that work time labels are present
+      assertTrue(
+          responseContent.contains("07:30〜14:30"),
+          "Should contain work time 07:30〜14:30 even with V-5 error");
+      assertTrue(
+          responseContent.contains("data-slot-labels"),
+          "Should have data-slot-labels attribute even with V-5 error");
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: POSTで不成立のとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
+    void includesSlotLabelsWhenUnassignable() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=UNAVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Check that work time labels are present
+      assertTrue(
+          responseContent.contains("07:30〜14:30"),
+          "Should contain work time 07:30〜14:30 even when unassignable");
+      assertTrue(
+          responseContent.contains("data-slot-labels"),
+          "Should have data-slot-labels attribute even when unassignable");
+    }
+  }
+
+  @Nested
   @DisplayName("[F-4] 割当結果の表表示")
   class ResultTableDisplay {
 

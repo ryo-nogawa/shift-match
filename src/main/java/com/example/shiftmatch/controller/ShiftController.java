@@ -39,6 +39,23 @@ public class ShiftController {
   }
 
   /**
+   * 枠ラベルをモデルに設定します。GET と POST の全経路で必ずモデルに入るよう@ModelAttributeを使用します。
+   *
+   * @return 枠ラベルのリスト
+   */
+  @ModelAttribute("slotLabels")
+  public List<String> slotLabels() {
+    List<String> labels = new ArrayList<>();
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+    for (ShiftSlot slot : ShiftSlot.values()) {
+      LocalTime start = slot.startTime();
+      LocalTime end = slot.endTime();
+      labels.add(start.format(formatter) + "〜" + end.format(formatter));
+    }
+    return labels;
+  }
+
+  /**
    * 初期フォームを表示します。
    *
    * @param model モデルオブジェクト
@@ -53,15 +70,6 @@ public class ShiftController {
     }
     shiftForm.setEmployees(employees);
     model.addAttribute("shiftForm", shiftForm);
-
-    List<String> slotLabels = new ArrayList<>();
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
-    for (ShiftSlot slot : ShiftSlot.values()) {
-      LocalTime start = slot.startTime();
-      LocalTime end = slot.endTime();
-      slotLabels.add(start.format(formatter) + "〜" + end.format(formatter));
-    }
-    model.addAttribute("slotLabels", slotLabels);
 
     return "index";
   }
@@ -86,13 +94,7 @@ public class ShiftController {
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
-    List<String> slotLabelsForError = new ArrayList<>();
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
-    for (ShiftSlot slot : ShiftSlot.values()) {
-      LocalTime start = slot.startTime();
-      LocalTime end = slot.endTime();
-      slotLabelsForError.add(start.format(formatter) + "〜" + end.format(formatter));
-    }
+    List<String> slotLabelsForError = slotLabels();
 
     // V-2: 重複チェック
     List<DuplicateNameError> duplicateErrors =
