@@ -11,7 +11,7 @@
     <header class="hero">
       <p class="eyebrow">Shift Match</p>
       <h1>シフト作成</h1>
-      <p class="lead">従業員の希望を入力すると、6 つの勤務枠（8 名）の最適な割り当て案を提案します。</p>
+      <p class="lead">従業員の勤務できる時間帯を入力すると、6 つの勤務枠（8 名）の最適な割り当て案を提案します。</p>
     </header>
 
     <section class="alert" role="alert" th:if="${limitExceededError != null}">
@@ -44,10 +44,9 @@
       class="card"
     >
       <div class="card-head">
-        <h2>従業員の希望</h2>
+        <h2>従業員の勤務できる時間帯</h2>
         <span class="count"><b id="row-count" th:text="${shiftForm.employees.size()}">0</b> 名</span>
       </div>
-      <p class="wish-legend"><b class="w d">◎</b>希望 <b class="w a">○</b>可能 <b class="w u">×</b>不可</p>
       <table class="input-table">
         <thead>
           <tr>
@@ -68,16 +67,24 @@
               />
             </td>
             <td data-label="休み">
-              <input type="checkbox" th:field="*{employees[__${stat.index}__].off}" />
+              <input type="checkbox" class="off-checkbox" th:field="*{employees[__${stat.index}__].off}" />
             </td>
             <td data-label="開始">
-              <select th:field="*{employees[__${stat.index}__].start}">
+              <select
+                th:field="*{employees[__${stat.index}__].start}"
+                th:disabled="${employee.off}"
+              >
                 <option value="">-- 未選択 --</option>
+                <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}">07:30</option>
               </select>
             </td>
             <td data-label="終了">
-              <select th:field="*{employees[__${stat.index}__].end}">
+              <select
+                th:field="*{employees[__${stat.index}__].end}"
+                th:disabled="${employee.off}"
+              >
                 <option value="">-- 未選択 --</option>
+                <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}">18:30</option>
               </select>
             </td>
             <td>

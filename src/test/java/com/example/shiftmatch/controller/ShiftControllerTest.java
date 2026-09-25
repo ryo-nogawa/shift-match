@@ -197,6 +197,141 @@ class ShiftControllerTest {
           htmlContent.contains("name=\"employees[0].lateWish\""),
           "HTML should not contain old lateWish");
     }
+
+    private String getIndexHtml() throws Exception {
+      return mockMvc
+          .perform(get("/"))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
+    }
+
+    /** 指定した name 属性を持つ要素の開始タグを返します。 */
+    private String findTag(String html, String tagName, String name) {
+      Matcher matcher =
+          Pattern.compile("<" + tagName + "\\b[^>]*name=\"" + Pattern.quote(name) + "\"[^>]*>")
+              .matcher(html);
+      assertTrue(matcher.find(), "Should find <" + tagName + "> with name " + name);
+      return matcher.group();
+    }
+
+    /** 指定した name 属性を持つ select 要素全体（option を含む）を返します。 */
+    private String findSelect(String html, String name) {
+      Matcher matcher =
+          Pattern.compile(
+                  "<select\\b[^>]*name=\"" + Pattern.quote(name) + "\"[^>]*>.*?</select>",
+                  Pattern.DOTALL)
+              .matcher(html);
+      assertTrue(matcher.find(), "Should find <select> with name " + name);
+      return matcher.group();
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
+            + " Then: 休み・開始・終了のname属性があり、wishesのname属性はない")
+    void containsOffStartEndInputsWithoutWishes() throws Exception {
+      String html = getIndexHtml();
+
+      String offTag = findTag(html, "input", "employees[0].off");
+      assertTrue(offTag.contains("type=\"checkbox\""), "off should be a checkbox");
+      findSelect(html, "employees[0].start");
+      findSelect(html, "employees[0].end");
+      findSelect(html, "employees[3].end");
+      assertFalse(html.contains("employees[0].wishes"), "HTML should not contain wishes inputs");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: 開始・終了の選択肢を確認すると,"
+            + " Then: 未選択と07:30〜18:30があり、07:45はない")
+    void startAndEndSelectsHaveThirtyMinuteOptions() throws Exception {
+      String html = getIndexHtml();
+
+      for (String name : List.of("employees[0].start", "employees[0].end")) {
+        String select = findSelect(html, name);
+        assertTrue(select.contains("<option value=\"\">-- 未選択 --</option>"), name + " 未選択");
+        assertTrue(select.contains("value=\"07:30\""), name + " should contain 07:30");
+        assertTrue(select.contains("value=\"12:00\""), name + " should contain 12:00");
+        assertTrue(select.contains("value=\"18:30\""), name + " should contain 18:30");
+        assertFalse(select.contains("07:45"), name + " should not contain 07:45");
+        assertEquals(24, select.split("<option").length - 1, name + " should have 1 + 23 options");
+      }
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
+            + " Then: ◎○×の凡例・枠ごとの見出しがなく、時間帯を入力する説明文がある")
+    void doesNotContainWishLegendOrSlotHeaders() throws Exception {
+      String html = getIndexHtml();
+
+      assertFalse(html.contains("wish-legend"), "Wish legend should be removed");
+      assertFalse(html.contains("◎"), "◎ should not be displayed");
+      assertFalse(html.contains("data-slot-labels"), "data-slot-labels should be removed");
+      assertTrue(html.contains("従業員の勤務できる時間帯を入力すると"), "Lead text should be updated");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 1行目を休みにして送信し入力エラーで再表示されるとき, When: 画面を確認すると,"
+            + " Then: 1行目の開始・終了はdisabledで、2行目はdisabledでない")
+    void rendersStartAndEndDisabledForOffRow() throws Exception {
+      String html =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].off", "true")
+                      .param("employees[1].name", "B")
+                      .param("employees[1].start", "")
+                      .param("employees[1].end", "17:00"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(html.contains("2行目 開始が未選択です"), "Should be re-rendered with V-3 error");
+      assertTrue(
+          findTag(html, "input", "employees[0].off").contains("checked"), "off should be checked");
+      assertTrue(findTag(html, "select", "employees[0].start").contains("disabled"));
+      assertTrue(findTag(html, "select", "employees[0].end").contains("disabled"));
+      assertFalse(findTag(html, "select", "employees[1].start").contains("disabled"));
+      assertFalse(findTag(html, "select", "employees[1].end").contains("disabled"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 開始08:00・終了17:00で送信し入力エラーで再表示されるとき, When: 画面を確認すると,"
+            + " Then: 選択した値が選択状態で再表示される")
+    void rendersSelectedStartAndEndAfterError() throws Exception {
+      String html =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].start", "08:00")
+                      .param("employees[0].end", "17:00")
+                      .param("employees[1].name", "B")
+                      .param("employees[1].start", "")
+                      .param("employees[1].end", ""))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          Pattern.compile("<option value=\"08:00\" selected=\"selected\">")
+              .matcher(findSelect(html, "employees[0].start"))
+              .find(),
+          "08:00 should be selected for start");
+      assertTrue(
+          Pattern.compile("<option value=\"17:00\" selected=\"selected\">")
+              .matcher(findSelect(html, "employees[0].end"))
+              .find(),
+          "17:00 should be selected for end");
+    }
   }
 
   @Nested
