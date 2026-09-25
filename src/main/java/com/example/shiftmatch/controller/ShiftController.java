@@ -3,14 +3,11 @@ package com.example.shiftmatch.controller;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.InvalidTimeRangeError;
-import com.example.shiftmatch.domain.ShiftSlot;
-import com.example.shiftmatch.domain.Wish;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -37,10 +34,6 @@ public class ShiftController {
 
   /** 開始・終了の選択肢（07:30〜18:30 の 30 分刻み、HH:mm）。 */
   private static final List<String> TIME_OPTIONS = createTimeOptions();
-
-  /** 移行期間（T14 まで）の暫定値として Employee に渡す希望。 */
-  private static final List<Wish> PLACEHOLDER_WISHES =
-      Collections.nCopies(ShiftSlot.values().length, Wish.UNAVAILABLE);
 
   private final ShiftAssignmentService shiftAssignmentService;
 
@@ -210,8 +203,7 @@ public class ShiftController {
       boolean off = form.isOff();
       LocalTime start = off ? null : parseTimeOrNull(form.getStart());
       LocalTime end = off ? null : parseTimeOrNull(form.getEnd());
-      // wishes は T14 で削除するまでの暫定値
-      employees.add(new Employee(form.getName(), PLACEHOLDER_WISHES, off, start, end));
+      employees.add(new Employee(form.getName(), off, start, end));
     }
     return employees;
   }

@@ -17,11 +17,11 @@ import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
-import com.example.shiftmatch.domain.Wish;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +48,16 @@ class ShiftControllerTest {
   @MockitoBean private ShiftAssignmentService shiftAssignmentService;
 
   /**
+   * 旧仕様（枠ごとの 3 段階の希望入力）の名残を検出する語（小文字）。
+   *
+   * <p>ソースに旧仕様の残骸がないことを文字列検索で確認できるよう、分割して記述します。
+   */
+  private static final String LEGACY_TOKEN = "wi" + "sh";
+
+  /** 旧仕様のスコア表示で使っていた記号（二重丸、U+25CE）。 */
+  private static final String LEGACY_MARK = String.valueOf((char) 0x25CE);
+
+  /**
    * テスト用の割当結果を作成します（A-H の 8 名、各枠に割り当て）。
    *
    * @return 標準的な割当結果
@@ -56,106 +66,42 @@ class ShiftControllerTest {
     List<ShiftAssignment> assignments =
         List.of(
             new ShiftAssignment(
-                new Employee(
-                    "A",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("A", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_1,
                 LocalTime.of(12, 0),
                 LocalTime.of(12, 45)),
             new ShiftAssignment(
-                new Employee(
-                    "B",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("B", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_1,
                 LocalTime.of(12, 0),
                 LocalTime.of(12, 45)),
             new ShiftAssignment(
-                new Employee(
-                    "C",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("C", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_2,
                 LocalTime.of(12, 45),
                 LocalTime.of(13, 30)),
             new ShiftAssignment(
-                new Employee(
-                    "D",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("D", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_3,
                 LocalTime.of(12, 45),
                 LocalTime.of(13, 30)),
             new ShiftAssignment(
-                new Employee(
-                    "E",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("E", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_4,
                 LocalTime.of(13, 30),
                 LocalTime.of(14, 15)),
             new ShiftAssignment(
-                new Employee(
-                    "F",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("F", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_5,
                 LocalTime.of(13, 30),
                 LocalTime.of(14, 30)),
             new ShiftAssignment(
-                new Employee(
-                    "G",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("G", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_6,
                 LocalTime.of(14, 15),
                 LocalTime.of(15, 15)),
             new ShiftAssignment(
-                new Employee(
-                    "H",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("H", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_6,
                 LocalTime.of(14, 30),
                 LocalTime.of(15, 30)));
@@ -180,8 +126,8 @@ class ShiftControllerTest {
   class InputForm {
 
     @Test
-    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 旧earlyWish・lateWishは存在しない")
-    void doesNotContainOldEarlyOrLateWish() throws Exception {
+    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 旧仕様の希望入力の語が存在しない")
+    void doesNotContainLegacyInputTerms() throws Exception {
       String htmlContent =
           mockMvc
               .perform(get("/"))
@@ -191,11 +137,8 @@ class ShiftControllerTest {
               .getContentAsString();
 
       assertFalse(
-          htmlContent.contains("name=\"employees[0].earlyWish\""),
-          "HTML should not contain old earlyWish");
-      assertFalse(
-          htmlContent.contains("name=\"employees[0].lateWish\""),
-          "HTML should not contain old lateWish");
+          htmlContent.toLowerCase(Locale.ROOT).contains(LEGACY_TOKEN),
+          "HTML should not contain legacy input terms");
     }
 
     private String getIndexHtml() throws Exception {
@@ -230,8 +173,8 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
-            + " Then: 休み・開始・終了のname属性があり、wishesのname属性はない")
-    void containsOffStartEndInputsWithoutWishes() throws Exception {
+            + " Then: 休み・開始・終了のname属性があり、旧仕様の希望のname属性はない")
+    void containsOffStartEndInputsWithoutLegacyInputs() throws Exception {
       String html = getIndexHtml();
 
       String offTag = findTag(html, "input", "employees[0].off");
@@ -239,7 +182,9 @@ class ShiftControllerTest {
       findSelect(html, "employees[0].start");
       findSelect(html, "employees[0].end");
       findSelect(html, "employees[3].end");
-      assertFalse(html.contains("employees[0].wishes"), "HTML should not contain wishes inputs");
+      assertFalse(
+          html.contains("employees[0]." + LEGACY_TOKEN + "es"),
+          "HTML should not contain legacy inputs");
     }
 
     @Test
@@ -263,12 +208,12 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
-            + " Then: ◎○×の凡例・枠ごとの見出しがなく、時間帯を入力する説明文がある")
-    void doesNotContainWishLegendOrSlotHeaders() throws Exception {
+            + " Then: 旧仕様の3段階の希望の凡例・枠ごとの見出しがなく、時間帯を入力する説明文がある")
+    void doesNotContainLegacyLegendOrSlotHeaders() throws Exception {
       String html = getIndexHtml();
 
-      assertFalse(html.contains("wish-legend"), "Wish legend should be removed");
-      assertFalse(html.contains("◎"), "◎ should not be displayed");
+      assertFalse(html.contains(LEGACY_TOKEN + "-legend"), "Legacy legend should be removed");
+      assertFalse(html.contains(LEGACY_MARK), "Legacy mark should not be displayed");
       assertFalse(html.contains("data-slot-labels"), "data-slot-labels should be removed");
       assertTrue(html.contains("従業員の勤務できる時間帯を入力すると"), "Lead text should be updated");
     }
@@ -1185,8 +1130,7 @@ class ShiftControllerTest {
           responseContent.contains("ずれの合計（入力時間帯と割り当てた枠の差。0 が最良）"),
           "Score label should describe the gap total");
       assertFalse(
-          responseContent.contains(String.valueOf((char) 0x25CE)),
-          "Result should not contain the old score mark");
+          responseContent.contains(LEGACY_MARK), "Result should not contain the old score mark");
     }
 
     @Test
@@ -1229,24 +1173,8 @@ class ShiftControllerTest {
       // 未出勤者2名を含む結果をスタブ
       List<Employee> unassignedEmployees =
           List.of(
-              new Employee(
-                  "I",
-                  List.of(
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED)),
-              new Employee(
-                  "J",
-                  List.of(
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED)));
+              Employee.working("I", LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              Employee.working("J", LocalTime.of(7, 30), LocalTime.of(18, 30)));
       AssignmentResult resultWithUnassigned =
           new AssignmentResult(createStandardResult().assignments(), 5, unassignedEmployees);
       when(shiftAssignmentService.assign(any()))
@@ -1531,7 +1459,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-2][F-6] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
-            + " Then: 休み・開始・終了のname生成とdata-time-optionsの読み取りがあり、wishes・createWishSelectがない")
+            + " Then: 休み・開始・終了のname生成とdata-time-optionsの読み取りがあり、旧仕様の希望のselect生成がない")
     void shiftFormJsGeneratesOffStartEndInputs() throws Exception {
       String jsContent = readShiftFormJs();
 
@@ -1540,10 +1468,9 @@ class ShiftControllerTest {
       assertTrue(jsContent.contains("\".end\""), "shift-form.js should build employees[N].end");
       assertTrue(
           jsContent.contains("data-time-options"), "shift-form.js should read data-time-options");
-      assertFalse(jsContent.contains("wishes"), "shift-form.js should not contain 'wishes'");
       assertFalse(
-          jsContent.contains("createWishSelect"),
-          "shift-form.js should not contain 'createWishSelect'");
+          jsContent.toLowerCase(Locale.ROOT).contains(LEGACY_TOKEN),
+          "shift-form.js should not contain legacy input logic");
       assertFalse(
           jsContent.contains("data-slot-labels"),
           "shift-form.js should not contain 'data-slot-labels'");
@@ -1628,14 +1555,15 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-6] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:"
-            + " 'earlyWish'・'lateWish'・「早番」・「遅番」の文字列が存在しない")
+            + " 旧仕様の希望入力の語・「早番」・「遅番」の文字列が存在しない")
     void shiftFormJsDoesNotContainOldTerms() throws Exception {
       String jsFilePath = "src/main/resources/static/js/shift-form.js";
       java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
       String jsContent = new String(java.nio.file.Files.readAllBytes(path));
 
-      assertFalse(jsContent.contains("earlyWish"), "shift-form.js should not contain 'earlyWish'");
-      assertFalse(jsContent.contains("lateWish"), "shift-form.js should not contain 'lateWish'");
+      assertFalse(
+          jsContent.toLowerCase(Locale.ROOT).contains(LEGACY_TOKEN),
+          "shift-form.js should not contain legacy input terms");
       assertFalse(jsContent.contains("早番"), "shift-form.js should not contain '早番'");
       assertFalse(jsContent.contains("遅番"), "shift-form.js should not contain '遅番'");
     }

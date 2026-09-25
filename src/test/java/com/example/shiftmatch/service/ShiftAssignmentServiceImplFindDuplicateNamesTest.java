@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
-import com.example.shiftmatch.domain.Wish;
+import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -104,14 +104,6 @@ class ShiftAssignmentServiceImplFindDuplicateNamesTest {
   }
 
   private Employee createEmployee(String name) {
-    return new Employee(
-        name,
-        List.of(
-            Wish.AVAILABLE,
-            Wish.AVAILABLE,
-            Wish.AVAILABLE,
-            Wish.AVAILABLE,
-            Wish.AVAILABLE,
-            Wish.AVAILABLE));
+    return Employee.working(name, LocalTime.of(7, 30), LocalTime.of(18, 30));
   }
 }

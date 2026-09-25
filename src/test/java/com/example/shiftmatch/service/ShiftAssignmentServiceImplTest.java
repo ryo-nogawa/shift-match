@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.ShiftSlot;
-import com.example.shiftmatch.domain.Wish;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -214,25 +213,6 @@ class ShiftAssignmentServiceImplTest {
             Optional<AssignmentResult> result = service.assign(employees);
           });
     }
-  }
-
-  private List<Employee> generateRandomEmployees(java.util.Random random, int count) {
-    List<Employee> employees = new ArrayList<>();
-    for (int i = 0; i < count; i++) {
-      List<Wish> wishes = new ArrayList<>();
-      for (int j = 0; j < 6; j++) {
-        int val = random.nextInt(100);
-        if (val < 70) {
-          wishes.add(Wish.UNAVAILABLE);
-        } else if (val < 90) {
-          wishes.add(Wish.AVAILABLE);
-        } else {
-          wishes.add(Wish.DESIRED);
-        }
-      }
-      employees.add(new Employee("Emp" + i, wishes));
-    }
-    return employees;
   }
 
   @Nested

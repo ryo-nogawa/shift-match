@@ -5,66 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("Employee")
 class EmployeeTest {
-
-  @Nested
-  @DisplayName("[F-1] 従業員の希望")
-  class EmployeeWishes {
-
-    @Test
-    @DisplayName("[F-1] Given: 6つの希望が与えられたとき, When: Employeeを生成すると, Then: 希望がそれぞれ取得できる")
-    void canCreateEmployeeWithValidWishes() {
-      String name = "山田太郎";
-      List<Wish> wishes =
-          List.of(
-              Wish.DESIRED,
-              Wish.AVAILABLE,
-              Wish.UNAVAILABLE,
-              Wish.DESIRED,
-              Wish.AVAILABLE,
-              Wish.UNAVAILABLE);
-
-      Employee employee = new Employee(name, wishes);
-
-      assertEquals(name, employee.name());
-      assertEquals(wishes, employee.wishes());
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: 希望の件数が6でないとき, When: Employeeを生成すると, Then: IllegalArgumentExceptionがスローされる")
-    void throwsExceptionWhenWishesCountIsNotSix() {
-      String name = "山田太郎";
-      List<Wish> wishesWithWrongCount = List.of(Wish.DESIRED, Wish.AVAILABLE);
-
-      assertThrows(IllegalArgumentException.class, () -> new Employee(name, wishesWithWrongCount));
-    }
-
-    @Test
-    @DisplayName("[F-1] Given: 希望のリストが与えられたとき, When: wishesにアクセスすると, Then: 不変なリストが返される")
-    void returnsImmutableWishes() {
-      String name = "山田太郎";
-      List<Wish> wishes =
-          List.of(
-              Wish.DESIRED,
-              Wish.AVAILABLE,
-              Wish.UNAVAILABLE,
-              Wish.DESIRED,
-              Wish.AVAILABLE,
-              Wish.UNAVAILABLE);
-
-      Employee employee = new Employee(name, wishes);
-      List<Wish> returnedWishes = employee.wishes();
-
-      assertThrows(UnsupportedOperationException.class, () -> returnedWishes.add(Wish.DESIRED));
-    }
-  }
 
   @Nested
   @DisplayName("[F-1] 新仕様の従業員入力（時間帯・休み）")
@@ -143,18 +89,9 @@ class EmployeeTest {
     }
 
     @Test
-    @DisplayName("[H-3] Given: 旧コンストラクタで作った従業員またはstartがnullのとき, When: canWorkを呼ぶと, Then: falseである")
+    @DisplayName("[H-3] Given: startがnullの従業員のとき, When: canWorkを呼ぶと, Then: falseである")
     void canWorkReturnsFalseWhenStartIsNull() {
-      Employee employee =
-          new Employee(
-              "太郎",
-              List.of(
-                  Wish.DESIRED,
-                  Wish.AVAILABLE,
-                  Wish.UNAVAILABLE,
-                  Wish.DESIRED,
-                  Wish.AVAILABLE,
-                  Wish.UNAVAILABLE));
+      Employee employee = new Employee("太郎", false, null, LocalTime.of(17, 0));
 
       assertEquals(false, employee.canWork(ShiftSlot.SLOT_1));
     }
@@ -162,15 +99,7 @@ class EmployeeTest {
     @Test
     @DisplayName("[H-3] Given: endがnullの従業員のとき, When: canWorkを呼ぶと, Then: falseである")
     void canWorkReturnsFalseWhenEndIsNull() {
-      List<Wish> wishes =
-          List.of(
-              Wish.DESIRED,
-              Wish.AVAILABLE,
-              Wish.UNAVAILABLE,
-              Wish.DESIRED,
-              Wish.AVAILABLE,
-              Wish.UNAVAILABLE);
-      Employee employee = new Employee("太郎", wishes, false, LocalTime.of(8, 0), null);
+      Employee employee = new Employee("太郎", false, LocalTime.of(8, 0), null);
 
       assertEquals(false, employee.canWork(ShiftSlot.SLOT_1));
     }
