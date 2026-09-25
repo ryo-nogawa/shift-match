@@ -16,12 +16,13 @@ public record AssignmentResult(
    * <p>生成後に呼び出し側がリストを変更するとスコアと未出勤者の整合性が崩れるため、
    * 生成経路によらず不変なリストにする。
    *
-   * @throws IllegalArgumentException {@code assignments} の件数が
-   *     ちょうど 8 件でない場合
+   * @throws IllegalArgumentException {@code assignments} の件数が {@code
+   *     ShiftSlot.totalEmployees()} でない場合
    */
   public AssignmentResult {
-    if (assignments.size() != 8) {
-      throw new IllegalArgumentException("割り当ては必ずちょうど8件である必要があります");
+    if (assignments.size() != ShiftSlot.totalEmployees()) {
+      throw new IllegalArgumentException(
+          "割り当ては必ずちょうど" + ShiftSlot.totalEmployees() + "件である必要があります");
     }
     assignments = List.copyOf(assignments);
     unassignedEmployees = List.copyOf(unassignedEmployees);

@@ -54,7 +54,7 @@
     - `node --check src/main/resources/static/js/shift-form.js` が成功する（Node が使えない場合は、その旨を実行ログに記録する）
     - `./mvnw test` が成功する
 
-- [ ] **S5. `ShiftControllerTest` のサービスのスタブを明示的にする（レビュー SHOULD）**
+- [x] **S5. `ShiftControllerTest` のサービスのスタブを明示的にする（レビュー SHOULD）**
   - 依頼事項：`@WebMvcTest` で `ShiftAssignmentService` を `@MockitoBean` にしているのに、全テストの `@BeforeEach` で実サービスへ委譲し、さらに未使用の `ServiceConfiguration`（同じ型の Bean 定義）がある。Spring Framework 7.1 では、この構成クラスが無視されなくなり、実行ログにも警告が出ている。`ServiceConfiguration` を削除し、`@BeforeEach` の実サービスへの一括委譲をやめる。各テストで必要な戻り値を、テストごとに明示的にスタブする（`assign` は `when(...).thenReturn(...)`、`findDuplicateNames` は、重複エラーの行番号を検証するテストだけ `thenAnswer` で `new ShiftAssignmentServiceImpl().findDuplicateNames(...)` に委譲し、それ以外は空リストを返すスタブにする）
   - 依頼事項（差し戻し・追記）：Codex の 4 ラウンド目のレビューで、S5 が完了していないことが指摘された。現在の `ShiftControllerTest` は、外側の `@BeforeEach setupDefaultStubs()`（39 行目付近）が、`assign` と `findDuplicateNames` の両方を、**全テストに対して**実サービス（`new ShiftAssignmentServiceImpl()`）へ委譲している。これは完了条件の「`@BeforeEach` で一括して実サービスに委譲するコードが存在しない」に反している（実行ログの「移動・明示化」は、条件を満たしていない）。次のとおりに直すこと
     1. 外側の `setupDefaultStubs()` を**削除**する（`@BeforeEach` で実サービスに委譲しない）。`findDuplicateNames` は、スタブしなければ空リストを返し、`assign` は `Optional.empty()` を返す（Mockito の既定値）ので、通常のテストではスタブ不要
@@ -84,7 +84,7 @@
     - `ShiftAssignmentServiceImpl` に、参照されない変数が残っていない（`./mvnw compile` の警告と目視で確認した結果を書く）
     - `./mvnw test` が成功する
 
-- [ ] **S7. 希望数と総必要人数を `ShiftSlot` から導出する（レビュー WANT）**
+- [x] **S7. 希望数と総必要人数を `ShiftSlot` から導出する（レビュー WANT）**
   - 依頼事項：`ShiftController`（155 行目付近）と `ShiftAssignmentServiceImpl`（38 行目付近）に固定の `6`（枠数・希望数）と `8`（総必要人数）が重複している。希望数は `ShiftSlot.values().length`、総必要人数は各枠の `numberOfEmployees()` の合計から導出する（必要なら `ShiftSlot` に、総人数を返す `static` メソッド（例：`totalEmployees()`）を追加し、そのテストを `ShiftSlotTest` に足す）。`Employee` や `AssignmentResult` の検証（件数が 6 や 8 でなければ例外）にも、同じ値を使う。振る舞いは変えない
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java`、`src/main/java/com/example/shiftmatch/domain/`、`src/test/java/com/example/shiftmatch/domain/ShiftSlotTest.java`
   - 完了条件：
@@ -201,3 +201,52 @@
   - 基本スタイル（padding、border-radius、font-size、font-weight）
   - 色：既存の `--d-bg` (DESIRED) と `--d-fg` を使用
   - 早番・遅番の色分けはしない
+
+### S5 ShiftControllerTest のサービスのスタブを明示的にする（差し戻し対応）
+
+完了条件確認：
+1. `git grep -n "ServiceConfiguration"` が 0 件 → 確認済み
+2. `@BeforeEach` で実サービス委譲するコードが存在しない → 削除確認済み（外側の setupDefaultStubs() を削除）
+3. `findDuplicateNames` を実サービス委譲は V-2 テストだけ → DuplicateNameValidation クラスの @BeforeEach setupFindDuplicateNamesStub() で実装
+4. 警告が出ない → 確認済み
+5. テスト件数 90 件以上 → 93 件（S4 +1, S3 +2）
+6. `./mvnw test` 成功 → Tests run: 93, Failures: 0
+
+追加の完了条件（grep 結果）：
+1. `grep -n "new ShiftAssignmentServiceImpl"` が V-2 だけ → src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java:499（DuplicateNameValidation クラス内）
+2. `grep -n "setupDefaultStubs"` が 0 件 → 確認済み
+3. `grep -n "realService"` が外側に存在しない → 499-505 行（@Nested クラス内のみ）
+4. テスト件数 93 件 → 確認済み
+
+実装の変更内容：
+- 外側の `setupDefaultStubs()` メソッドを削除（全テストへの一括委譲を廃止）
+- 割当結果を使用するテストクラスに @BeforeEach で明示的なスタブ設定を追加：
+  - ResultTableDisplay：createStandardResult() をスタブ
+  - ScoreAndUnassignedDisplay：createStandardResult() をスタブ、displaysUnassignedEmployeesWithChips() では未出勤者を含む結果をスタブ
+  - TimelineDisplay：createStandardResult() をスタブ
+- ヘルパーメソッド createStandardResult() を追加（A-H の 8 名、スコア 8）
+- V-2 の DuplicateNameValidation クラスは実サービス委譲を保持
+
+### S7 希望数と総必要人数を ShiftSlot から導出
+
+完了条件確認：
+1. `ShiftSlot.totalEmployees()` static メソッドが 8 を返す → ShiftSlotTest に totalEmployeesReturnsEight() を追加、テスト成功
+2. `git grep -n -E "\b(6|8)\b"` で固定リテラルが残っていない → コード内は残らず、Javadoc コメントのみ：
+   - src/main/java/com/example/shiftmatch/domain/AssignmentResult.java:8 ("8 人分" のコメント)
+   - src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java:19 ("6 種類、8 名" のコメント)
+   - src/main/java/com/example/shiftmatch/service/ShiftAssignmentServiceImpl.java:222 ("8 件" のコメント)
+   - → すべて Javadoc/コメント内（コード内の固定値なし）
+3. 既存テスト全成功 → ./mvnw test: Tests run: 94, Failures: 0
+
+実装の変更内容：
+- ShiftSlot.java：`totalEmployees()` static メソッドを追加（全枠の numberOfEmployees() 合計）
+- ShiftSlotTest.java：totalEmployeesReturnsEight() テストを追加
+- ShiftController.java：convertToEmployees() メソッドで `6` を `ShiftSlot.values().length` に置き換え
+- ShiftAssignmentServiceImpl.java：
+  - `MIN_EMPLOYEES = 8` 定数を削除
+  - `validEmployees.size() < ShiftSlot.totalEmployees()` に変更
+  - `wishes` 配列の列を `ShiftSlot.values().length` に変更
+  - `memo` 配列のスロット次元を `ShiftSlot.values().length + 1` に変更
+  - `assignment` 配列を `ShiftSlot.totalEmployees()` で初期化
+- Employee.java：wish 件数検証を `ShiftSlot.values().length` に変更
+- AssignmentResult.java：assignment 件数検証を `ShiftSlot.totalEmployees()` に変更

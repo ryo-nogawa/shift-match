@@ -22,7 +22,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
-  private static final int MIN_EMPLOYEES = 8;
   private static final int UNCOMPUTED = -2;
   private static final int IMPOSSIBLE = -1;
 
@@ -31,21 +30,21 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     List<Employee> validEmployees =
         employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
 
-    if (validEmployees.size() < MIN_EMPLOYEES) {
+    if (validEmployees.size() < ShiftSlot.totalEmployees()) {
       return Optional.empty();
     }
 
-    Wish[][] wishes = new Wish[validEmployees.size()][6];
+    Wish[][] wishes = new Wish[validEmployees.size()][ShiftSlot.values().length];
     for (int i = 0; i < validEmployees.size(); i++) {
       List<Wish> employeeWishes = validEmployees.get(i).wishes();
-      for (int j = 0; j < 6; j++) {
+      for (int j = 0; j < ShiftSlot.values().length; j++) {
         wishes[i][j] = employeeWishes.get(j);
       }
     }
 
     int n = validEmployees.size();
-    int[][] memo = new int[7][1 << n];
-    for (int i = 0; i < 7; i++) {
+    int[][] memo = new int[ShiftSlot.values().length + 1][1 << n];
+    for (int i = 0; i < ShiftSlot.values().length + 1; i++) {
       for (int j = 0; j < (1 << n); j++) {
         memo[i][j] = UNCOMPUTED;
       }
@@ -58,7 +57,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     }
 
     // 復元：入力順の辞書順で最初の最大スコア案を構築
-    int[] assignment = new int[8];
+    int[] assignment = new int[ShiftSlot.totalEmployees()];
     reconstructAssignment(wishes, 0, 0, maxScore, assignment, 0, memo);
 
     return Optional.of(buildResult(validEmployees, assignment));

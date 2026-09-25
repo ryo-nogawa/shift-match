@@ -143,6 +143,12 @@ class ShiftSlotTest {
       }
       assertEquals(8, total);
     }
+
+    @Test
+    @DisplayName("[S7] Given: ShiftSlot.totalEmployees()を呼ぶとき, When: 全枠の合計人数を取得すると, Then: 8が返る")
+    void totalEmployeesReturnsEight() {
+      assertEquals(8, ShiftSlot.totalEmployees());
+    }
   }
 
   @Nested

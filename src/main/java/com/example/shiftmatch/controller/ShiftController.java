@@ -152,7 +152,7 @@ public class ShiftController {
     for (EmployeeForm form : shiftForm.getEmployees()) {
       List<Wish> wishes = new ArrayList<>();
       List<String> wishStrings = form.getWishes();
-      for (int i = 0; i < 6; i++) {
+      for (int i = 0; i < ShiftSlot.values().length; i++) {
         String wish = (wishStrings != null && i < wishStrings.size()) ? wishStrings.get(i) : null;
         wishes.add(convertStringToWish(wish));
       }

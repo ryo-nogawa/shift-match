@@ -94,4 +94,17 @@ public enum ShiftSlot {
   public int breakDurationMinutes() {
     return breakDurationMinutes;
   }
+
+  /**
+   * すべての枠に必要な人数の合計を返します。
+   *
+   * @return 必要な人数の合計
+   */
+  public static int totalEmployees() {
+    int total = 0;
+    for (ShiftSlot slot : ShiftSlot.values()) {
+      total += slot.numberOfEmployees();
+    }
+    return total;
+  }
 }
