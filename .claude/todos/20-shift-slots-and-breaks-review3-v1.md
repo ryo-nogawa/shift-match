@@ -26,7 +26,7 @@
     - `BreakSchedulerTest` に「every minute」が残っていない
     - `./mvnw test` が成功する（テスト件数が変わっていない）
 
-- [ ] **S2. Javadoc の書式を規約に合わせる（レビュー MUST、`.agents/rules/javadoc.md`）**
+- [x] **S2. Javadoc の書式を規約に合わせる（レビュー MUST、`.agents/rules/javadoc.md`）**
   - 依頼事項：`ShiftController.slotLabels()` の Javadoc を、1 行目を「枠ラベルをモデルに設定します。」だけにし、`GET` と `POST` の全経路で `@ModelAttribute` を使う理由は空行のあとの `<p>` 段落に移す。アノテーション名やコード表記は `{@code @ModelAttribute}` のように `{@code}` で囲む。先に `.agents/rules/javadoc.md` を読み、今回の変更範囲（`git diff origin/main --name-only -- src/main`）にある、ほかの Javadoc（`ShiftSlot`・`BreakScheduler`・`BreakInterval`・`ShiftAssignment`・`AssignmentResult`・`ShiftAssignmentServiceImpl`・`ShiftController` など）も同じ規約に合っているかを確認して直す
   - 対象ファイル：`src/main/java/com/example/shiftmatch/` の変更ファイル
   - 完了条件：
@@ -90,3 +90,23 @@
    - ShiftAssignmentServiceImpl.java:290：V-2 の行番号を返す理由
 4. `BreakSchedulerTest` に「every minute」が残っていない → 削除確認済み
 5. `./mvnw test` 成功（テスト件数 90 件、変更なし） → Tests run: 90, Failures: 0, Errors: 0
+
+### S2 Javadoc の書式規約適用
+
+完了条件確認：
+1. `slotLabels()` の Javadoc が規約に適合 → 修正完了：
+   - 1 行目：「枠ラベルをモデルに設定します。」（概要のみ）
+   - 空行 + `<p>` 段落：「GET と POST の全経路でモデルに含まれるよう、{@code @ModelAttribute} を使用します。」
+   - `@return` タグ：枠ラベルのリスト
+2. 確認した Javadoc 一覧（変更範囲内、すべて規約に適合）：
+   - EmployeeForm.java：フィールド Javadoc（1 行）
+   - ShiftController.java：slotLabels() メソッド、index()、createShift() メソッド、private メソッド
+   - AssignmentResult.java：クラス、コンストラクタ Javadoc
+   - BreakInterval.java：クラス Javadoc（1 行）
+   - BreakScheduler.java：クラス、schedule()、findEarliestBreakStart()、private メソッド
+   - Employee.java：クラス、コンストラクタ Javadoc
+   - InvalidWishError.java：クラス、フィールド Javadoc
+   - ShiftAssignment.java：クラス Javadoc（1 行）
+   - ShiftSlot.java：enum Javadoc、列挙値 Javadoc（1 行）、メソッド Javadoc
+   - ShiftAssignmentServiceImpl.java：クラス、メソッド Javadoc
+3. `./mvnw test` 成功（Checkstyle 違反 0 件） → Tests run: 90, Failures: 0, Errors: 0

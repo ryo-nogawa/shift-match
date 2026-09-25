@@ -39,7 +39,9 @@ public class ShiftController {
   }
 
   /**
-   * 枠ラベルをモデルに設定します。GET と POST の全経路で必ずモデルに入るよう@ModelAttributeを使用します。
+   * 枠ラベルをモデルに設定します。
+   *
+   * <p>GET と POST の全経路でモデルに含まれるよう、{@code @ModelAttribute} を使用します。
    *
    * @return 枠ラベルのリスト
    */
