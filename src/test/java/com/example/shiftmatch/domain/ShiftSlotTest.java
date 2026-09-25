@@ -199,41 +199,41 @@ class ShiftSlotTest {
   }
 
   @Nested
-  @DisplayName("[5.2] 勤務時間の分数")
+  @DisplayName("[F-3] 勤務時間の分数")
   class WorkDuration {
 
     @Test
-    @DisplayName("[5.2] Given: ShiftSlot.SLOT_1を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 420が返る")
+    @DisplayName("[F-3] Given: ShiftSlot.SLOT_1を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 420が返る")
     void slot1WorkMinutes() {
       assertEquals(420, ShiftSlot.SLOT_1.workMinutes());
     }
 
     @Test
-    @DisplayName("[5.2] Given: ShiftSlot.SLOT_2を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 450が返る")
+    @DisplayName("[F-3] Given: ShiftSlot.SLOT_2を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 450が返る")
     void slot2WorkMinutes() {
       assertEquals(450, ShiftSlot.SLOT_2.workMinutes());
     }
 
     @Test
-    @DisplayName("[5.2] Given: ShiftSlot.SLOT_3を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 480が返る")
+    @DisplayName("[F-3] Given: ShiftSlot.SLOT_3を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 480が返る")
     void slot3WorkMinutes() {
       assertEquals(480, ShiftSlot.SLOT_3.workMinutes());
     }
 
     @Test
-    @DisplayName("[5.2] Given: ShiftSlot.SLOT_4を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 450が返る")
+    @DisplayName("[F-3] Given: ShiftSlot.SLOT_4を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 450が返る")
     void slot4WorkMinutes() {
       assertEquals(450, ShiftSlot.SLOT_4.workMinutes());
     }
 
     @Test
-    @DisplayName("[5.2] Given: ShiftSlot.SLOT_5を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 540が返る")
+    @DisplayName("[F-3] Given: ShiftSlot.SLOT_5を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 540が返る")
     void slot5WorkMinutes() {
       assertEquals(540, ShiftSlot.SLOT_5.workMinutes());
     }
 
     @Test
-    @DisplayName("[5.2] Given: ShiftSlot.SLOT_6を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 570が返る")
+    @DisplayName("[F-3] Given: ShiftSlot.SLOT_6を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 570が返る")
     void slot6WorkMinutes() {
       assertEquals(570, ShiftSlot.SLOT_6.workMinutes());
     }

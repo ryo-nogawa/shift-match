@@ -157,11 +157,11 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
-  @DisplayName("[パフォーマンス]")
+  @DisplayName("パフォーマンス")
   class Performance {
 
     @Test
-    @DisplayName("[5.4] Given: 12人全員が7:30〜18:30のとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
+    @DisplayName("Given: 12人全員が7:30〜18:30のとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
     void completesWithin500MillisForAllAvailable() {
       List<Employee> employees = new ArrayList<>();
       for (int i = 0; i < 12; i++) {
@@ -180,7 +180,7 @@ class ShiftAssignmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("[5.4] Given: 12人の勤務時間がランダムのとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
+    @DisplayName("Given: 12人の勤務時間がランダムのとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
     void completesWithin500MillisForRandomTimeRanges() {
       java.util.Random random = new java.util.Random(54321L);
       List<Employee> employees = new ArrayList<>();
@@ -216,12 +216,11 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
-  @DisplayName("[5.4] メモ化の性能（割り当て不能状態のキャッシング）")
+  @DisplayName("メモ化の性能（割り当て不能状態のキャッシング）")
   class MemoizationPerformance {
 
     @Test
-    @DisplayName(
-        "[5.4] Given: 12名全員が9:00〜16:30（枠6に入れない）のとき, When: assignを実行すると, Then: 500ms以内に不成立と判定される")
+    @DisplayName("Given: 12名全員が9:00〜16:30（枠6に入れない）のとき, When: assignを実行すると, Then: 500ms以内に不成立と判定される")
     void performanceWhenLastSlotImpossible() {
       List<Employee> employees = new ArrayList<>();
       for (int i = 0; i < 12; i++) {
@@ -243,7 +242,7 @@ class ShiftAssignmentServiceImplTest {
 
     @Test
     @DisplayName(
-        "[5.4] Given: 12名中11名が9:00〜16:30、1名のみが7:30〜18:30のとき, When: assignを実行すると, Then:"
+        "Given: 12名中11名が9:00〜16:30、1名のみが7:30〜18:30のとき, When: assignを実行すると, Then:"
             + " 500ms以内に不成立と判定される")
     void performanceWhenLastTwoSlotsBottleneck() {
       List<Employee> employees = new ArrayList<>();
@@ -353,12 +352,12 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
-  @DisplayName("[5.2] スコア評価：ずれの合計（分）")
+  @DisplayName("[F-3] スコア評価：ずれの合計（分）")
   class GapMinutesScoreEvaluation {
 
     @Test
     @DisplayName(
-        "[5.2] Given: 全員が7:30〜18:30（660分）の8名のとき, When: assignを実行すると,"
+        "[F-3] Given: 全員が7:30〜18:30（660分）の8名のとき, When: assignを実行すると,"
             + " Then: scoreが1380（=8×660-3900）になる")
     void allEmployeesFullAvailableScore() {
       List<Employee> employees = new ArrayList<>();
@@ -377,7 +376,7 @@ class ShiftAssignmentServiceImplTest {
 
     @Test
     @DisplayName(
-        "[5.2] Given: 7:30〜18:30の7名と7:30〜14:30（420分）の1名のとき, When: assignを実行すると,"
+        "[F-3] Given: 7:30〜18:30の7名と7:30〜14:30（420分）の1名のとき, When: assignを実行すると,"
             + " Then: scoreが1140（=7×660+420-3900）になる")
     void mixedAvailabilityScore() {
       List<Employee> employees = new ArrayList<>();
@@ -399,7 +398,7 @@ class ShiftAssignmentServiceImplTest {
 
     @Test
     @DisplayName(
-        "[5.2] Given: 7名が7:30〜18:30、1名が8:00〜18:00のとき, When: assignを実行すると," + " Then: scoreが1320になる")
+        "[F-3] Given: 7名が7:30〜18:30、1名が8:00〜18:00のとき, When: assignを実行すると," + " Then: scoreが1320になる")
     void alternativeTimeRangeScore() {
       List<Employee> employees = new ArrayList<>();
       for (int i = 0; i < 7; i++) {
@@ -421,12 +420,12 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
-  @DisplayName("[5.3] 同点時の案の選択")
+  @DisplayName("[F-3] 同点時の案の選択")
   class TiedScoreSelection {
 
     @Test
     @DisplayName(
-        "[5.3] Given: 全員が7:30〜18:30の9名（同点）のとき, When: assignを実行すると,"
+        "[F-3] Given: 全員が7:30〜18:30の9名（同点）のとき, When: assignを実行すると,"
             + " Then: 先頭から8名が割り当てられ、9番目が未出勤者になる")
     void selectsFirstAssignmentWhenAllTied() {
       List<Employee> employees = new ArrayList<>();
@@ -470,7 +469,7 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
-  @DisplayName("[5.4] 動的計画法の検証（総当たりとの一致）")
+  @DisplayName("[F-3] 動的計画法の検証（総当たりとの一致）")
   class DynamicProgrammingVerification {
 
     private record BruteForceResult(
@@ -579,7 +578,7 @@ class ShiftAssignmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("[5.4] Given: 9名のランダム時間帯（シード1）のとき, When: DP と総当たりを実行すると, Then: 割り当てとスコアが一致する")
+    @DisplayName("[F-3] Given: 9名のランダム時間帯（シード1）のとき, When: DP と総当たりを実行すると, Then: 割り当てとスコアが一致する")
     void dynamicProgrammingMatchesBruteForceWithSeed1() {
       Random random = new Random(12345L);
       List<Employee> employees = generateRandomTimeRangeEmployees(random, 9);
@@ -606,7 +605,7 @@ class ShiftAssignmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("[5.4] Given: 10名のランダム時間帯（シード2）のとき, When: DP と総当たりを実行すると, Then: 割り当てとスコアが一致する")
+    @DisplayName("[F-3] Given: 10名のランダム時間帯（シード2）のとき, When: DP と総当たりを実行すると, Then: 割り当てとスコアが一致する")
     void dynamicProgrammingMatchesBruteForceWithSeed2() {
       Random random = new Random(54321L);
       List<Employee> employees = generateRandomTimeRangeEmployees(random, 10);
@@ -629,7 +628,7 @@ class ShiftAssignmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("[5.4] Given: 9名で成立しない入力（シード3）のとき, When: DP と総当たりを実行すると, Then: 両方が案なしで一致する")
+    @DisplayName("[F-3] Given: 9名で成立しない入力（シード3）のとき, When: DP と総当たりを実行すると, Then: 両方が案なしで一致する")
     void dynamicProgrammingMatchesBruteForceWhenUnfeasibleWithSeed3() {
       Random random = new Random(99999L);
       List<Employee> employees = generateRandomTimeRangeEmployees(random, 9);
