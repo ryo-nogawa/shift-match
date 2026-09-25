@@ -43,7 +43,7 @@
     - 既存の `EmployeeTest` のテストがすべて成功する
     - `./mvnw test` がコンパイルエラーなく実行でき、失敗が 0 件である
 
-- [ ] **T3. `Employee.canWork(ShiftSlot)` で H-3（枠が入力時間帯に完全に含まれる）を判定する**
+- [x] **T3. `Employee.canWork(ShiftSlot)` で H-3（枠が入力時間帯に完全に含まれる）を判定する**
   - 依頼事項：`public boolean canWork(ShiftSlot slot)` を追加する。`off` が true、または `start`・`end` のいずれかが null なら false。そうでなければ `!slot.startTime().isBefore(start) && !slot.endTime().isAfter(end)` のとき true。関係仕様：H-3
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/Employee.java`、`src/test/java/com/example/shiftmatch/domain/EmployeeTest.java`
   - 完了条件：

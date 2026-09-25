@@ -75,4 +75,19 @@ public record Employee(
             Wish.UNAVAILABLE);
     return new Employee(name, wishes, true, null, null);
   }
+
+  /**
+   * 枠の勤務時間が、この従業員の入力した時間帯に完全に含まれるかを判定します。
+   *
+   * <p>休みの従業員、または開始・終了時刻が設定されていない場合は false を返します。
+   *
+   * @param slot 判定対象の枠
+   * @return 枠の勤務時間が入力時間帯に完全に含まれる場合は true、そうでなければ false
+   */
+  public boolean canWork(ShiftSlot slot) {
+    if (off || start == null || end == null) {
+      return false;
+    }
+    return !slot.startTime().isBefore(start) && !slot.endTime().isAfter(end);
+  }
 }
