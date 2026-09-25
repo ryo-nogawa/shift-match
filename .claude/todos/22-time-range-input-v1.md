@@ -33,7 +33,7 @@
     - 枠 1〜6 の `workMinutes()` が 420, 450, 480, 450, 540, 570 であることを検証するテストが存在する（`@DisplayName` 先頭に `[5.2]`）
     - `./mvnw test -Dtest=ShiftSlotTest` が成功する
 
-- [ ] **T2. `Employee` に「休み・開始・終了」を追加し、ファクトリメソッドを用意する**
+- [x] **T2. `Employee` に「休み・開始・終了」を追加し、ファクトリメソッドを用意する**
   - 依頼事項：`Employee` を `record Employee(String name, List<Wish> wishes, boolean off, LocalTime start, LocalTime end)` に拡張する。旧 2 引数コンストラクタ `Employee(String name, List<Wish> wishes)`（`off=false, start=null, end=null`）は移行用として残す（Javadoc に「T14 で削除予定の移行用」と明記）。`wishes` の件数検証（6 件）と不変リスト化は現状どおり残す。静的ファクトリ `Employee.working(String name, LocalTime start, LocalTime end)`（`off=false`）と `Employee.onLeave(String name)`（`off=true, start=null, end=null`）を追加する。この 2 つは `wishes` に `Wish.UNAVAILABLE` を 6 件入れる（移行期間の暫定値）。関係仕様：F-1、4.1
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/Employee.java`、`src/test/java/com/example/shiftmatch/domain/EmployeeTest.java`
   - 完了条件：
