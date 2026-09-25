@@ -97,8 +97,8 @@ public class ShiftController {
     List<String> slotLabelsForError = slotLabels();
 
     // V-2: 重複チェック
-    List<DuplicateNameError> duplicateErrors =
-        shiftAssignmentService.findDuplicateNames(validEmployees);
+    // 空行を含む元のリストを渡す。サービス側が空行を除外しつつ元のインデックスを保持する
+    List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
 
     // V-3: 希望の有効性チェック
     List<InvalidWishError> wishErrors = new ArrayList<>();

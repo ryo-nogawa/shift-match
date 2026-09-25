@@ -393,6 +393,99 @@ class ShiftControllerTest {
   }
 
   @Nested
+  @DisplayName("[V-2] 重複氏名チェック")
+  class DuplicateNameValidation {
+
+    @Test
+    @DisplayName("[V-2] Given: 1行目が空、2・3行目が同名のとき, When: POSTすると, Then: 「2, 3行目」が表示され、「1, 2行目」ではない")
+    void displaysDuplicateLineNumbersCorrectlyWithBlankRowBefore() throws Exception {
+      StringBuilder params = new StringBuilder();
+      // Row 0: empty name (blank)
+      params.append("&employees[0].name=");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
+      }
+      // Row 1: name A (first occurrence)
+      params.append("&employees[1].name=A");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
+      }
+      // Row 2: name A (duplicate)
+      params.append("&employees[2].name=A");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Should show duplicate error and contain line numbers 2, 3
+      assertTrue(responseContent.contains("重複"), "Response should contain duplicate error");
+      // Extract line numbers from the response and verify they are 2 and 3
+      String pattern = "該当行：([^）]*)行目";
+      Pattern p = Pattern.compile(pattern);
+      Matcher m = p.matcher(responseContent);
+      assertTrue(m.find(), "Should contain '該当行：' with line numbers");
+      String lineNumbers = m.group(1);
+      assertTrue(
+          lineNumbers.contains("2") && lineNumbers.contains("3"),
+          "Should display line numbers 2 and 3, got: " + lineNumbers);
+    }
+
+    @Test
+    @DisplayName("[V-2] Given: 1行目A、2行目が空、3行目Aのとき, When: POSTすると, Then: 「1, 3行目」が表示される")
+    void displaysDuplicateLineNumbersCorrectlyWithBlankRowBetween() throws Exception {
+      StringBuilder params = new StringBuilder();
+      // Row 0: name A (first occurrence)
+      params.append("&employees[0].name=A");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
+      }
+      // Row 1: empty name (blank)
+      params.append("&employees[1].name=");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
+      }
+      // Row 2: name A (duplicate)
+      params.append("&employees[2].name=A");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Should show duplicate error and contain line numbers 1, 3
+      assertTrue(responseContent.contains("重複"), "Response should contain duplicate error");
+      // Extract line numbers from the response and verify they are 1 and 3
+      String pattern = "該当行：([^）]*)行目";
+      Pattern p = Pattern.compile(pattern);
+      Matcher m = p.matcher(responseContent);
+      assertTrue(m.find(), "Should contain '該当行：' with line numbers");
+      String lineNumbers = m.group(1);
+      assertTrue(
+          lineNumbers.contains("1") && lineNumbers.contains("3"),
+          "Should display line numbers 1 and 3, got: " + lineNumbers);
+    }
+  }
+
+  @Nested
   @DisplayName("[V-3][V-1] 希望の入力チェック")
   class WishValidation {
 
