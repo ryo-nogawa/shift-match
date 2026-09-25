@@ -18,7 +18,8 @@ class BreakSchedulerTest {
   class StandardConfiguration {
 
     @Test
-    @DisplayName("Given: 標準構成（枠1×2、枠2、枠3、枠4、枠5、枠6×2）が与えられたとき, When: 休憩時刻を割り当てると, Then: 仕様書の表と一致する")
+    @DisplayName(
+        "[C-6] Given: 標準構成（枠1×2、枠2、枠3、枠4、枠5、枠6×2）が与えられたとき, When: 休憩時刻を割り当てると, Then: 仕様書の表と一致する")
     void assignsBreakTimesAccordingToSpecification() {
       List<ShiftSlot> slots = new ArrayList<>();
       slots.add(ShiftSlot.SLOT_1); // person 0
@@ -74,7 +75,7 @@ class BreakSchedulerTest {
   class SimultaneousBreakLimit {
 
     @Test
-    @DisplayName("Given: 標準構成が与えられたとき, When: 休憩時刻を割り当てると, Then: どの時刻でも同時休憩は2名以下である")
+    @DisplayName("[C-6] Given: 標準構成が与えられたとき, When: 休憩時刻を割り当てると, Then: どの時刻でも同時休憩は2名以下である")
     void noMoreThanTwoEmployeesOnBreakAtSameTime() {
       List<ShiftSlot> slots = new ArrayList<>();
       slots.add(ShiftSlot.SLOT_1);
@@ -111,7 +112,7 @@ class BreakSchedulerTest {
   class BreakValidity {
 
     @Test
-    @DisplayName("Given: 標準構成が与えられたとき, When: 休憩時刻を割り当てると, Then: 各人の休憩は勤務時間内に収まる")
+    @DisplayName("[C-6] Given: 標準構成が与えられたとき, When: 休憩時刻を割り当てると, Then: 各人の休憩は勤務時間内に収まる")
     void breaksAreWithinWorkingHours() {
       List<ShiftSlot> slots = new ArrayList<>();
       slots.add(ShiftSlot.SLOT_1);
@@ -140,7 +141,7 @@ class BreakSchedulerTest {
     }
 
     @Test
-    @DisplayName("Given: 標準構成が与えられたとき, When: 休憩時刻を割り当てると, Then: 各人の休憩の長さが正しい")
+    @DisplayName("[C-6] Given: 標準構成が与えられたとき, When: 休憩時刻を割り当てると, Then: 各人の休憩の長さが正しい")
     void breakDurationMatchesSlotRequirement() {
       List<ShiftSlot> slots = new ArrayList<>();
       slots.add(ShiftSlot.SLOT_1);

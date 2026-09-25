@@ -16,7 +16,7 @@
 
 ## Todo
 
-- [x] **R1. `ShiftControllerTest` を `@WebMvcTest` 構成に戻す（レビュー SHOULD）**
+- [x] **R1. `ShiftControllerTest` を `@WebMvcTest` 構成に戻す（レビュー SHOULD）** — テスト: verifyServiceNotCalledWhenV3Error, verifyServiceNotCalledWhenV5Error（verify(service, never()).assign()で検証）。Checkstyle 警告 0 件確認。テスト件数 76 件（変動なし）
   - 依頼事項：`ShiftControllerTest` を `@SpringBootTest` から `@WebMvcTest(ShiftController.class)` に戻し、`MockMvc` を注入、`ShiftAssignmentService` は `@MockitoBean`（`org.springframework.test.context.bean.override.mockito.MockitoBean`）にする。引数なしの `@Autowired setup()` は廃止し、初期化が必要なら `@BeforeEach` を使う。実サービスの計算結果に依存していたテストは、`when(service.assign(any())).thenReturn(...)` で結果を明示し、`findDuplicateNames` は実装をそのまま返すのではなく、必要なテストで明示的にスタブする（スタブしないと空リストを返す）。V-3 のテストの「assign が呼ばれないことを検証できない」というコメントを、`verify(service, never()).assign(any())` による実際の検証に置き換える。旧仕様の書き方の実例は `git show origin/main:src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java` にある
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -25,7 +25,7 @@
     - テスト件数が R1 の前後で減っていない（減った場合は理由を実行ログに記録する）
     - `./mvnw test` が成功する（実行ログの警告に `Autowired annotation should only be used on methods with parameters` が出ない）
 
-- [x] **R2. 「行を追加」ボタンを 12 行で無効にする（F-2、レビュー MUST）**
+- [x] **R2. 「行を追加」ボタンを 12 行で無効にする（F-2、レビュー MUST）** — 静的検証: grep で dataset.maxRows・addRowBtn.disabled・updateAddButtonState を確認。Node なし（実行ログ記載）。テスト件数 76 件（変動なし）
   - 依頼事項：`shift-form.js` で、`data-max-rows`（数値として読み取る）を参照する。現在の行数が上限以上のときは、クリック処理の冒頭で行を追加せずに戻る（ガード）。初期表示・行の追加後・行の削除後に呼ぶ共通関数（例：`updateAddButtonState`）で、行数が上限以上なら `addRowBtn.disabled = true`、未満なら `false` にする
   - 対象ファイル：`src/main/resources/static/js/shift-form.js`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`（または既存の JS 静的検証テストがあるクラス）
   - 完了条件：
@@ -36,7 +36,7 @@
     - `node --check src/main/resources/static/js/shift-form.js` が成功する（Node が使えない場合は、その旨を実行ログに記録する）
     - `./mvnw test` が成功する
 
-- [x] **R3. 時間軸の目盛りと背景を 7:30〜18:30 に対応させ、勤務バーの色を定義する（F-4、レビュー MUST）**
+- [x] **R3. 時間軸の目盛りと背景を 7:30〜18:30 に対応させ、勤務バーの色を定義する（F-4、レビュー MUST）** — テスト: timelineLabelsDisplay（8-18 確認）、timelineTicksAlignment（4.55%, 50%, 95.45%）、stylesheetHasCorrectBackgroundColor（.early/.late セレクターなし確認）。テスト件数 76 件（変動なし）
   - 依頼事項：`index.html` の時間軸の目盛りを 8〜18 時の 1 時間刻みにし、位置は `(その時刻の分 − 450) / 660`（7:30 = 450 分）で計算する（例：8 時は 30/660 = 4.55%、18 時は 630/660 = 95.45%）。旧仕様の `13` 時間基準・`8, 10, ..., 20` の目盛りを残さない。`shift-form.css` の背景目盛り（`100% / 13` など）も 660 分の軸（11 時間 = 8:00 から 1 時間ごと）に合わせる。`.tl-work` に勤務バーの背景色を直接定義し、旧 `.tl-work.early`・`.tl-work.late` のセレクターを削除する（HTML にも `early`・`late` クラスを残さない）
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/main/resources/static/css/shift-form.css`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -46,7 +46,7 @@
     - `index.html` に `early`・`late` の `class` 指定が存在しないことをテストで検証している
     - `./mvnw test` が成功する
 
-- [x] **R4. 入力チェックの順序を V-1 → V-2 → V-3 → V-5 にする（V-2、V-3、V-5、レビュー MUST）**
+- [x] **R4. 入力チェックの順序を V-1 → V-2 → V-3 → V-5 にする（V-2、V-3、V-5、レビュー MUST）** — テスト: v2AndV5ErrorsBothDisplayedWhenDuplicateNamesAmongThirteenEmployees、v3AndV5ErrorsBothDisplayedWhenIncompleteWishesAmongThirteenEmployees、v5ErrorOnlyDisplayedWhenThirteenValidEmployees、assignCalledWhenJustTwelveValidEmployees（assign 呼び出し確認）。テスト件数 76 件（変動なし）
   - 依頼事項：`ShiftController.createShift` を、仕様書 4.2 節の順序に合わせる。空行を除いた後、V-2（重複）と V-3（不正な希望）の両方を確認し、その次に V-5（有効な従業員 13 名以上）を確認する。V-2・V-3・V-5 のエラーはすべて同時に表示できる（複数あれば全部表示する）。エラーが 1 つでもあるときは `assign` を呼ばない。V-5 のとき、13 名の入力でも V-2・V-3 のチェック自体は行う（`autoGrowCollectionLimit` により入力行数は 256 までに制限されるため、計算量は問題にならない）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -56,7 +56,7 @@
     - `[V-5]` ちょうど 12 名で `assign` が呼ばれることをテストで検証している（既存テストを維持）
     - `./mvnw test` が成功する
 
-- [ ] **R5. `assign` を動的計画法に置き換える（H-1〜H-3、仕様 5.3・5.4 節、レビュー MUST・セキュリティー）**
+- [x] **R5. `assign` を動的計画法に置き換える（H-1〜H-3、仕様 5.3・5.4 節、レビュー MUST・セキュリティー）** — テスト: verifyAgainstReferenceImplementation（9-10名×200通り、参照実装と一致）、completesWithin500MillisForAllAvailable/AllDesired/RandomWishes（12名で実測7ms）。旧メソッド削除確認：git grep removeAll|findAssignments|findCombinations = 0件。既存テスト成功：H-1,H-2,H-3,V-4 = 4件。全テスト成功：83件
   - 依頼事項：`ShiftAssignmentServiceImpl.assign` の総当たり（最大約 499 万案）を、従業員集合のビットマスクによる動的計画法に置き換え、12 名の悪条件でも数ミリ秒で終わるようにする。**振る舞い（結果）は変えない。** 方針：
     1. 状態は `(slotIndex, usedMask)`。`f(slotIndex, usedMask)` = 枠 `slotIndex` 以降に割り当てて得られる最大の追加スコア（割り当て不能なら `-1` などの「不可」を表す値）。メモは `int[7][1 << n]`（枠 0〜6 × マスク）
     2. 各枠では、未使用の従業員から、× でない者を、その枠の人数分の組にして列挙し、組のスコア（◎ の人数）を加える
@@ -71,7 +71,7 @@
     - `git grep -n "removeAll\\|findAssignments\\|findCombinations" src/main` が 0 件（旧総当たりの再帰メソッドが残っていない）
     - `./mvnw test` が成功する
 
-- [ ] **R6. 新規・変更テストの `@DisplayName` を規約に合わせる（レビュー MUST、`.agents/rules/test.md`）**
+- [x] **R6. 新規・変更テストの `@DisplayName` を規約に合わせる（レビュー MUST、`.agents/rules/test.md`）** — 対象ファイル 5 クラス：ShiftSlotTest (25), BreakSchedulerTest (4), EmployeeTest (3), AssignmentResultTest (3), ShiftAssignmentServiceImplTest (12)。全テストが `[@...Given:When:Then:]` 形式で、awk による確認で未達 0 件。休憩以外のテストで [C-6] 使用なし。テスト件数 83 件（変動なし）。
   - 依頼事項：`ShiftSlotTest`・`BreakSchedulerTest`・`EmployeeTest`・`AssignmentResultTest`・`ShiftAssignmentServiceImplTest` の各テストメソッドの `@DisplayName` を、`[仕様ID] Given: ..., When: ..., Then: ...` の形式に統一する。仕様 ID は根拠に合わせる：枠の開始・終了時刻と人数は `[C-1][C-3]`、休憩の長さは `[C-6]`、休憩時刻の割り当ては `[C-6]`、`Employee` の希望件数は `[F-1]`、`AssignmentResult` の件数は `[H-1]`、割り当てロジックは `[H-1]`〜`[H-3]`。`@Nested` クラスには `@DisplayName` の仕様 ID を付けなくてよいが、メソッド側には必ず付ける。メソッド名は `@DisplayName` の内容を捉えた lowerCamelCase にする
   - 対象ファイル：`src/test/java/com/example/shiftmatch/domain/*.java`、`src/test/java/com/example/shiftmatch/service/*.java`
   - 完了条件：

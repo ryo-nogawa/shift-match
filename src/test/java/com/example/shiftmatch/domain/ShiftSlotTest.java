@@ -11,119 +11,131 @@ import org.junit.jupiter.api.Test;
 class ShiftSlotTest {
 
   @Nested
-  @DisplayName("[C-6] 枠の定義")
+  @DisplayName("[C-1][C-3] 枠の定義")
   class SlotDefinition {
 
     @Test
-    @DisplayName("枠1の開始時刻が07:30であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_1を参照するとき, When: startTimeメソッドを呼ぶと, Then: 07:30が返る")
     void slot1StartsAt0730() {
       assertEquals(LocalTime.of(7, 30), ShiftSlot.SLOT_1.startTime());
     }
 
     @Test
-    @DisplayName("枠1の終了時刻が14:30であること")
+    @DisplayName("[C-1][C-3] Given: ShiftSlot.SLOT_1を参照するとき, When: endTimeメソッドを呼ぶと, Then: 14:30が返る")
     void slot1EndsAt1430() {
       assertEquals(LocalTime.of(14, 30), ShiftSlot.SLOT_1.endTime());
     }
 
     @Test
-    @DisplayName("枠1の人数が2名であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_1を参照するとき, When: numberOfEmployeesメソッドを呼ぶと, Then: 2が返る")
     void slot1HasTwoEmployees() {
       assertEquals(2, ShiftSlot.SLOT_1.numberOfEmployees());
     }
 
     @Test
-    @DisplayName("枠2の開始時刻が08:00であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_2を参照するとき, When: startTimeメソッドを呼ぶと, Then: 08:00が返る")
     void slot2StartsAt0800() {
       assertEquals(LocalTime.of(8, 0), ShiftSlot.SLOT_2.startTime());
     }
 
     @Test
-    @DisplayName("枠2の終了時刻が15:30であること")
+    @DisplayName("[C-1][C-3] Given: ShiftSlot.SLOT_2を参照するとき, When: endTimeメソッドを呼ぶと, Then: 15:30が返る")
     void slot2EndsAt1530() {
       assertEquals(LocalTime.of(15, 30), ShiftSlot.SLOT_2.endTime());
     }
 
     @Test
-    @DisplayName("枠2の人数が1名であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_2を参照するとき, When: numberOfEmployeesメソッドを呼ぶと, Then: 1が返る")
     void slot2HasOneEmployee() {
       assertEquals(1, ShiftSlot.SLOT_2.numberOfEmployees());
     }
 
     @Test
-    @DisplayName("枠3の開始時刻が08:30であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_3を参照するとき, When: startTimeメソッドを呼ぶと, Then: 08:30が返る")
     void slot3StartsAt0830() {
       assertEquals(LocalTime.of(8, 30), ShiftSlot.SLOT_3.startTime());
     }
 
     @Test
-    @DisplayName("枠3の終了時刻が16:30であること")
+    @DisplayName("[C-1][C-3] Given: ShiftSlot.SLOT_3を参照するとき, When: endTimeメソッドを呼ぶと, Then: 16:30が返る")
     void slot3EndsAt1630() {
       assertEquals(LocalTime.of(16, 30), ShiftSlot.SLOT_3.endTime());
     }
 
     @Test
-    @DisplayName("枠3の人数が1名であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_3を参照するとき, When: numberOfEmployeesメソッドを呼ぶと, Then: 1が返る")
     void slot3HasOneEmployee() {
       assertEquals(1, ShiftSlot.SLOT_3.numberOfEmployees());
     }
 
     @Test
-    @DisplayName("枠4の開始時刻が09:00であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_4を参照するとき, When: startTimeメソッドを呼ぶと, Then: 09:00が返る")
     void slot4StartsAt0900() {
       assertEquals(LocalTime.of(9, 0), ShiftSlot.SLOT_4.startTime());
     }
 
     @Test
-    @DisplayName("枠4の終了時刻が16:30であること")
+    @DisplayName("[C-1][C-3] Given: ShiftSlot.SLOT_4を参照するとき, When: endTimeメソッドを呼ぶと, Then: 16:30が返る")
     void slot4EndsAt1630() {
       assertEquals(LocalTime.of(16, 30), ShiftSlot.SLOT_4.endTime());
     }
 
     @Test
-    @DisplayName("枠4の人数が1名であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_4を参照するとき, When: numberOfEmployeesメソッドを呼ぶと, Then: 1が返る")
     void slot4HasOneEmployee() {
       assertEquals(1, ShiftSlot.SLOT_4.numberOfEmployees());
     }
 
     @Test
-    @DisplayName("枠5の開始時刻が09:00であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_5を参照するとき, When: startTimeメソッドを呼ぶと, Then: 09:00が返る")
     void slot5StartsAt0900() {
       assertEquals(LocalTime.of(9, 0), ShiftSlot.SLOT_5.startTime());
     }
 
     @Test
-    @DisplayName("枠5の終了時刻が18:00であること")
+    @DisplayName("[C-1][C-3] Given: ShiftSlot.SLOT_5を参照するとき, When: endTimeメソッドを呼ぶと, Then: 18:00が返る")
     void slot5EndsAt1800() {
       assertEquals(LocalTime.of(18, 0), ShiftSlot.SLOT_5.endTime());
     }
 
     @Test
-    @DisplayName("枠5の人数が1名であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_5を参照するとき, When: numberOfEmployeesメソッドを呼ぶと, Then: 1が返る")
     void slot5HasOneEmployee() {
       assertEquals(1, ShiftSlot.SLOT_5.numberOfEmployees());
     }
 
     @Test
-    @DisplayName("枠6の開始時刻が09:00であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_6を参照するとき, When: startTimeメソッドを呼ぶと, Then: 09:00が返る")
     void slot6StartsAt0900() {
       assertEquals(LocalTime.of(9, 0), ShiftSlot.SLOT_6.startTime());
     }
 
     @Test
-    @DisplayName("枠6の終了時刻が18:30であること")
+    @DisplayName("[C-1][C-3] Given: ShiftSlot.SLOT_6を参照するとき, When: endTimeメソッドを呼ぶと, Then: 18:30が返る")
     void slot6EndsAt1830() {
       assertEquals(LocalTime.of(18, 30), ShiftSlot.SLOT_6.endTime());
     }
 
     @Test
-    @DisplayName("枠6の人数が2名であること")
+    @DisplayName(
+        "[C-1][C-3] Given: ShiftSlot.SLOT_6を参照するとき, When: numberOfEmployeesメソッドを呼ぶと, Then: 2が返る")
     void slot6HasTwoEmployees() {
       assertEquals(2, ShiftSlot.SLOT_6.numberOfEmployees());
     }
 
     @Test
-    @DisplayName("全枠の人数の合計が8名であること")
+    @DisplayName("[C-1][C-3] Given: すべての枠を参照するとき, When: numberOfEmployeesを合計すると, Then: 8になる")
     void totalEmployeesAcrossAllSlotsIsEight() {
       int total = 0;
       for (ShiftSlot slot : ShiftSlot.values()) {
@@ -138,37 +150,43 @@ class ShiftSlotTest {
   class BreakDuration {
 
     @Test
-    @DisplayName("枠1の休憩の長さが45分であること")
+    @DisplayName(
+        "[C-6] Given: ShiftSlot.SLOT_1を参照するとき, When: breakDurationMinutesメソッドを呼ぶと, Then: 45が返る")
     void slot1BreakDurationIs45Minutes() {
       assertEquals(45, ShiftSlot.SLOT_1.breakDurationMinutes());
     }
 
     @Test
-    @DisplayName("枠2の休憩の長さが45分であること")
+    @DisplayName(
+        "[C-6] Given: ShiftSlot.SLOT_2を参照するとき, When: breakDurationMinutesメソッドを呼ぶと, Then: 45が返る")
     void slot2BreakDurationIs45Minutes() {
       assertEquals(45, ShiftSlot.SLOT_2.breakDurationMinutes());
     }
 
     @Test
-    @DisplayName("枠3の休憩の長さが45分であること")
+    @DisplayName(
+        "[C-6] Given: ShiftSlot.SLOT_3を参照するとき, When: breakDurationMinutesメソッドを呼ぶと, Then: 45が返る")
     void slot3BreakDurationIs45Minutes() {
       assertEquals(45, ShiftSlot.SLOT_3.breakDurationMinutes());
     }
 
     @Test
-    @DisplayName("枠4の休憩の長さが45分であること")
+    @DisplayName(
+        "[C-6] Given: ShiftSlot.SLOT_4を参照するとき, When: breakDurationMinutesメソッドを呼ぶと, Then: 45が返る")
     void slot4BreakDurationIs45Minutes() {
       assertEquals(45, ShiftSlot.SLOT_4.breakDurationMinutes());
     }
 
     @Test
-    @DisplayName("枠5の休憩の長さが60分であること")
+    @DisplayName(
+        "[C-6] Given: ShiftSlot.SLOT_5を参照するとき, When: breakDurationMinutesメソッドを呼ぶと, Then: 60が返る")
     void slot5BreakDurationIs60Minutes() {
       assertEquals(60, ShiftSlot.SLOT_5.breakDurationMinutes());
     }
 
     @Test
-    @DisplayName("枠6の休憩の長さが60分であること")
+    @DisplayName(
+        "[C-6] Given: ShiftSlot.SLOT_6を参照するとき, When: breakDurationMinutesメソッドを呼ぶと, Then: 60が返る")
     void slot6BreakDurationIs60Minutes() {
       assertEquals(60, ShiftSlot.SLOT_6.breakDurationMinutes());
     }

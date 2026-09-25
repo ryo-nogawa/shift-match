@@ -26,7 +26,8 @@ class ShiftAssignmentServiceImplTest {
   class AssignmentRules {
 
     @Test
-    @DisplayName("Given: 8人全員が全6枠でAVAILABLEのとき, When: assignを実行すると, Then: 入力順どおりに枠1→6へ割り当てられる")
+    @DisplayName(
+        "[H-1] Given: 8人全員が全6枠でAVAILABLEのとき, When: assignを実行すると, Then: 入力順どおりに枠1→6へ割り当てられる")
     void assignsInInputOrderToFrames() {
       List<Employee> employees = createAllAvailableEmployees(8);
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
@@ -143,7 +144,7 @@ class ShiftAssignmentServiceImplTest {
   class InsufficientEmployees {
 
     @Test
-    @DisplayName("Given: 有効な従業員が7名のとき, When: assignを実行すると, Then: Optional.emptyが返される")
+    @DisplayName("[V-4] Given: 有効な従業員が7名のとき, When: assignを実行すると, Then: Optional.emptyが返される")
     void returnsEmptyWhenLessThanEightValidEmployees() {
       List<Employee> employees = createAllAvailableEmployees(7);
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
@@ -160,7 +161,7 @@ class ShiftAssignmentServiceImplTest {
 
     @Test
     @DisplayName(
-        "[5.2] Given: ある従業員だけが枠1に◎を付けたとき, When: assignを実行すると, Then: その従業員が枠1に割り当てられ、scoreが1になる")
+        "[H-1] Given: ある従業員だけが枠1に◎を付けたとき, When: assignを実行すると, Then: その従業員が枠1に割り当てられ、scoreが1になる")
     void assignsEmployeeWithDesiredSlotAndScoringOne() {
       List<Employee> employees = new ArrayList<>();
       // Employee A: Desired for slot 1
@@ -200,7 +201,7 @@ class ShiftAssignmentServiceImplTest {
 
     @Test
     @DisplayName(
-        "[5.3] Given: 全員が全枠◎を付けずに◯で、スコア0のとき, When: assignを実行すると, Then: 入力順どおりに枠1→6へ割り当てられる")
+        "[H-1] Given: 全員が全枠◎を付けずに◯で、スコア0のとき, When: assignを実行すると, Then: 入力順どおりに枠1→6へ割り当てられる")
     void selectsFirstAssignmentWhenAllTiedAtScoreZero() {
       List<Employee> employees = createAllAvailableEmployees(8);
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
@@ -224,7 +225,7 @@ class ShiftAssignmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("◎の数が多い案が選ばれること")
+    @DisplayName("[H-1] Given: ◎を付けた従業員数が異なる複数の案が存在するとき, When: assignを実行すると, Then: ◎の数が最も多い案が選ばれる")
     void selectsCombinationWithHighestScore() {
       List<Employee> employees = new ArrayList<>();
 

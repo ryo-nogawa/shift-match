@@ -18,7 +18,7 @@ class AssignmentResultTest {
   class AssignmentConstruction {
 
     @Test
-    @DisplayName("Given: 8件の割り当てが与えられたとき, When: AssignmentResultを生成すると, Then: 割り当てがそれぞれ取得できる")
+    @DisplayName("[H-1] Given: 8件の割り当てが与えられたとき, When: AssignmentResultを生成すると, Then: 割り当てがそれぞれ取得できる")
     void canCreateAssignmentResultWithEightAssignments() {
       List<ShiftAssignment> assignments = createStandardAssignments();
       int score = 5;
@@ -33,7 +33,7 @@ class AssignmentResultTest {
 
     @Test
     @DisplayName(
-        "Given: 割り当ての件数が8でないとき, When: AssignmentResultを生成すると, Then:"
+        "[H-1] Given: 割り当ての件数が8でないとき, When: AssignmentResultを生成すると, Then:"
             + " IllegalArgumentExceptionがスローされる")
     void throwsExceptionWhenAssignmentsCountIsNotEight() {
       List<ShiftAssignment> assignments = new ArrayList<>();
@@ -49,7 +49,7 @@ class AssignmentResultTest {
     }
 
     @Test
-    @DisplayName("Given: 割り当てが与えられたとき, When: assignmentsにアクセスすると, Then: 不変なリストが返される")
+    @DisplayName("[H-1] Given: 割り当てが与えられたとき, When: assignmentsにアクセスすると, Then: 不変なリストが返される")
     void returnsImmutableAssignments() {
       List<ShiftAssignment> assignments = createStandardAssignments();
       int score = 0;

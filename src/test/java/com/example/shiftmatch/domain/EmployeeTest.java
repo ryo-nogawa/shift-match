@@ -12,11 +12,11 @@ import org.junit.jupiter.api.Test;
 class EmployeeTest {
 
   @Nested
-  @DisplayName("[H-1] 従業員の希望")
+  @DisplayName("[F-1] 従業員の希望")
   class EmployeeWishes {
 
     @Test
-    @DisplayName("Given: 6つの希望が与えられたとき, When: Employeeを生成すると, Then: 希望がそれぞれ取得できる")
+    @DisplayName("[F-1] Given: 6つの希望が与えられたとき, When: Employeeを生成すると, Then: 希望がそれぞれ取得できる")
     void canCreateEmployeeWithValidWishes() {
       String name = "山田太郎";
       List<Wish> wishes =
@@ -35,7 +35,8 @@ class EmployeeTest {
     }
 
     @Test
-    @DisplayName("Given: 希望の件数が6でないとき, When: Employeeを生成すると, Then: IllegalArgumentExceptionがスローされる")
+    @DisplayName(
+        "[F-1] Given: 希望の件数が6でないとき, When: Employeeを生成すると, Then: IllegalArgumentExceptionがスローされる")
     void throwsExceptionWhenWishesCountIsNotSix() {
       String name = "山田太郎";
       List<Wish> wishesWithWrongCount = List.of(Wish.DESIRED, Wish.AVAILABLE);
@@ -44,7 +45,7 @@ class EmployeeTest {
     }
 
     @Test
-    @DisplayName("Given: 希望のリストが与えられたとき, When: wishesにアクセスすると, Then: 不変なリストが返される")
+    @DisplayName("[F-1] Given: 希望のリストが与えられたとき, When: wishesにアクセスすると, Then: 不変なリストが返される")
     void returnsImmutableWishes() {
       String name = "山田太郎";
       List<Wish> wishes =
