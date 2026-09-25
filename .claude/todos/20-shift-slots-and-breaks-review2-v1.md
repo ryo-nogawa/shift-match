@@ -18,7 +18,7 @@
 
 ## Todo
 
-- [ ] **Q1. POST の全戻り経路で `slotLabels` をモデルに設定する（F-1、レビュー MUST）**
+- [x] **Q1. POST の全戻り経路で `slotLabels` をモデルに設定する（F-1、レビュー MUST）**
   - 依頼事項：`ShiftController` は、`GET /` では `slotLabels` を設定しているが、`POST /shift` のどの戻り経路（成立・不成立・V-2/V-3/V-5 のエラー）でも設定しておらず、`index.html` の 6 列の見出し・`select`・`data-slot-labels` が出力されない。枠ラベルの生成を 1 か所（`@ModelAttribute("slotLabels")` のメソッドなど）にまとめ、GET と POST の全経路で必ずモデルに入るようにする。`ShiftSlot.values()` から作る仕組みは維持する
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -26,7 +26,7 @@
     - `[F-1]` 上記のうち少なくとも成立と V-3 エラーの POST で、送信した各行に `wishes[0]`〜`wishes[5]` の `select` が 6 個ずつ存在することをテストで検証している
     - `./mvnw test` が成功する
 
-- [ ] **Q2. 重複エラー（V-2）の行番号を、元のフォーム行のまま表示する（V-2、レビュー MUST）**
+- [x] **Q2. 重複エラー（V-2）の行番号を、元のフォーム行のまま表示する（V-2、レビュー MUST）**
   - 依頼事項：`ShiftController` は、空行を除いた（V-1）リストを `findDuplicateNames` に渡しているため、空行があると、表示される行番号が元のフォーム行からずれる。`findDuplicateNames` には、空行を含む元の行順のリスト（`convertToEmployees(shiftForm)` の結果全体）を渡す（サービス側は空行を除外しつつ、元のインデックスを保持する実装になっている。`ShiftAssignmentService` の Javadoc を確認すること）。`assign` へ渡すリストも、サービスが空行を除外するため、元のリストでよいかを確認する（V-5 の人数判定には、空行を除いた人数を使う既存の実装を維持する）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -36,7 +36,7 @@
     - `[V-1]` 空行だけの行があっても、V-3 のエラーが出ない（既存テストを維持する）
     - `./mvnw test` が成功する
 
-- [ ] **Q3. 結果表のテストの期待値を仕様どおりに設定する（F-4、レビュー SHOULD）**
+- [x] **Q3. 結果表のテストの期待値を仕様どおりに設定する（F-4、レビュー SHOULD）**
   - 依頼事項：`ShiftControllerTest` の、8 行の氏名・勤務時間・休憩時間を検証するテスト（`expectedWorkTimes` と `expectedBreakTimes` が空配列になっているもの）を直す。期待値は、仕様書 2 章の表のとおり：枠 1（2 名）`07:30〜14:30`＋`12:00〜12:45`、`07:30〜14:30`＋`12:00〜12:45`／枠 2 `08:00〜15:30`＋`12:45〜13:30`／枠 3 `08:30〜16:30`＋`12:45〜13:30`／枠 4 `09:00〜16:30`＋`13:30〜14:15`／枠 5 `09:00〜18:00`＋`13:30〜14:30`／枠 6（2 名）`09:00〜18:30`＋`14:15〜15:15`、`09:00〜18:30`＋`14:30〜15:30`
   - 対象ファイル：`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -48,4 +48,32 @@
 
 ## 実行ログ
 
-<!-- implementer が Todo ごとに「完了条件ごとの根拠（テストメソッド名）」・テスト件数を追記する欄。作成時は空のままにする -->
+### Q1：POST の全戻り経路で slotLabels をモデルに設定（完了）
+- 実装：`@ModelAttribute("slotLabels")` メソッドを追加し、GET と POST の全経路で自動的に設定される仕組みに
+- テスト件数：4 件追加（成立時・V-3 エラー時・V-5 エラー時・不成立時）
+- テストメソッド：
+  - `includesSlotLabelsWhenAssignmentSucceeds`：成立時に 6 つの勤務時間と select が表示されることを検証
+  - `includesSlotLabelsWhenV3Error`：V-3 エラー時に slotLabels が設定されることを検証
+  - `includesSlotLabelsWhenV5Error`：V-5 エラー時に slotLabels が設定されることを検証
+  - `includesSlotLabelsWhenUnassignable`：不成立時に slotLabels が設定されることを検証
+
+### Q2：重複エラーの行番号を元のフォーム行のまま表示（完了）
+- 実装：`findDuplicateNames` に空行を含む元のリストを渡すように修正（サービス側で元のインデックスを保持）
+- テスト件数：2 件追加（空行が手前・間に入るシナリオ）
+- テストメソッド：
+  - `displaysDuplicateLineNumbersCorrectlyWithBlankRowBefore`：1 行目が空、2・3 行目が同名の場合、「2, 3 行目」が表示されることを検証
+  - `displaysDuplicateLineNumbersCorrectlyWithBlankRowBetween`：1 行目 A、2 行目が空、3 行目 A の場合、「1, 3 行目」が表示されることを検証
+
+### Q3：結果表のテストの期待値を仕様どおりに設定（完了）
+- 実装：テストの期待値配列を 8 件分設定（仕様書 2 章のとおり）
+- テスト件数：変更なし（既存テストを修正）
+- テストメソッド：
+  - `displaysCorrectNumberOfRowsAndCorrectWorkSchedules`：
+    - 期待値：勤務時間 8 件（07:30〜14:30 x2, 08:00〜15:30, 08:30〜16:30, 09:00〜16:30, 09:00〜18:00, 09:00〜18:30 x2）
+    - 期待値：休憩時間 8 件（12:00〜12:45 x2, 12:45〜13:30 x2, 13:30〜14:15, 13:30〜14:30, 14:15〜15:15, 14:30〜15:30）
+    - 結果表の tbody が 8 行であることを検証
+    - すべての期待値が HTML に含まれることを検証
+
+### テスト結果
+- 全テスト：90 件成功（初期 84 件 + 6 件新規追加）
+- Spotless・Checkstyle：合格
