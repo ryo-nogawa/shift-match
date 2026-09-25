@@ -18,6 +18,12 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function updateAddButtonState() {
+    const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows"), 10);
+    const currentRowCount = employeeRows.querySelectorAll("tr").length;
+    addRowBtn.disabled = currentRowCount >= maxRows;
+  }
+
   function updateRowCount() {
     const rowCount = employeeRows.querySelectorAll("tr").length;
     const rowCountElement = document.getElementById("row-count");
@@ -69,7 +75,12 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   addRowBtn.addEventListener("click", function () {
+    const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows"), 10);
     const currentRowCount = employeeRows.querySelectorAll("tr").length;
+    if (currentRowCount >= maxRows) {
+      return;
+    }
+
     const newRow = document.createElement("tr");
 
     const nameCell = document.createElement("td");
@@ -79,20 +90,22 @@ document.addEventListener("DOMContentLoaded", function () {
     nameInput.name = "employees[" + currentRowCount + "].name";
     nameInput.placeholder = "氏名を入力";
     nameCell.appendChild(nameInput);
+    newRow.appendChild(nameCell);
 
-    const earlyCell = document.createElement("td");
-    earlyCell.setAttribute("data-label", "早番希望");
-    const earlySelect = createWishSelect(
-      "employees[" + currentRowCount + "].earlyWish"
-    );
-    earlyCell.appendChild(earlySelect);
+    const table = document.querySelector("table.input-table");
+    const slotLabelsAttr = table.getAttribute("data-slot-labels") || "";
+    const workTimes = slotLabelsAttr ? slotLabelsAttr.split("|") : [];
 
-    const lateCell = document.createElement("td");
-    lateCell.setAttribute("data-label", "遅番希望");
-    const lateSelect = createWishSelect(
-      "employees[" + currentRowCount + "].lateWish"
-    );
-    lateCell.appendChild(lateSelect);
+    for (let slotIndex = 0; slotIndex < workTimes.length; slotIndex++) {
+      const slotCell = document.createElement("td");
+      slotCell.setAttribute("data-label", workTimes[slotIndex]);
+      const slotSelect = createWishSelect(
+        "employees[" + currentRowCount + "].wishes[" + slotIndex + "]"
+      );
+      slotSelect.setAttribute("data-label", workTimes[slotIndex]);
+      slotCell.appendChild(slotSelect);
+      newRow.appendChild(slotCell);
+    }
 
     const deleteCell = document.createElement("td");
     const deleteBtn = document.createElement("button");
@@ -100,15 +113,12 @@ document.addEventListener("DOMContentLoaded", function () {
     deleteBtn.className = "delete-row-btn";
     deleteBtn.textContent = "削除";
     deleteCell.appendChild(deleteBtn);
-
-    newRow.appendChild(nameCell);
-    newRow.appendChild(earlyCell);
-    newRow.appendChild(lateCell);
     newRow.appendChild(deleteCell);
 
     employeeRows.appendChild(newRow);
 
     updateDeleteButtonState();
+    updateAddButtonState();
     updateRowCount();
   });
 
@@ -119,6 +129,7 @@ document.addEventListener("DOMContentLoaded", function () {
         row.remove();
         renumberInputIndices();
         updateDeleteButtonState();
+        updateAddButtonState();
         updateRowCount();
       }
     }
@@ -131,5 +142,6 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   updateDeleteButtonState();
+  updateAddButtonState();
   updateRowCount();
 });

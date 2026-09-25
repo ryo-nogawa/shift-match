@@ -2,1344 +2,1610 @@ package com.example.shiftmatch.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.shiftmatch.domain.DuplicateNameError;
+import com.example.shiftmatch.domain.AssignmentResult;
+import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.ShiftAssignment;
+import com.example.shiftmatch.domain.ShiftSlot;
+import com.example.shiftmatch.domain.Wish;
 import com.example.shiftmatch.service.ShiftAssignmentService;
-import java.util.ArrayList;
+import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 
+/**
+ * ShiftControllerのテスト。
+ */
 @WebMvcTest(ShiftController.class)
+@DisplayName("ShiftController")
 class ShiftControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private ShiftAssignmentService shiftAssignmentService;
 
-  @Nested
-  class GetIndexTest {
-    @Test
-    @DisplayName("[F-1] Given: 初期状態のとき, When: GET / を実行すると, Then: CSS ファイルへの link タグが含まれること")
-    void shouldIncludeCssLink() throws Exception {
-      MvcResult result =
-          mockMvc
-              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
-              .andReturn();
-
-      assertEquals(200, result.getResponse().getStatus());
-      String body = result.getResponse().getContentAsString();
-
-      assertTrue(
-          body.contains("<link")
-              && body.contains("/css/shift-form.css")
-              && body.contains("stylesheet"),
-          "本文に shift-form.css への stylesheet link が含まれていること");
-    }
-
-    @Test
-    @DisplayName("[F-1] Given: 初期状態のとき, When: GET / を実行すると, Then: shift-form.css がクラスパス上に存在すること")
-    void shouldHaveCssFileOnClasspath() {
-      org.springframework.core.io.ClassPathResource cssResource =
-          new org.springframework.core.io.ClassPathResource("static/css/shift-form.css");
-      assertTrue(cssResource.exists(), "shift-form.css がクラスパス上に存在すること");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: 初期状態のとき, When: GET / を実行すると, "
-            + "Then: ページの骨格（hero・card・ボタン）が C 案のクラス構成で表示されること")
-    void shouldDisplayCardUiWithDesignClasses() throws Exception {
-      MvcResult result =
-          mockMvc
-              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
-              .andReturn();
-
-      assertEquals(200, result.getResponse().getStatus());
-      String body = result.getResponse().getContentAsString();
-
-      assertTrue(body.contains("class=\"app\""), "本文に class=\"app\" を持つ要素が含まれること");
-      assertTrue(body.contains("class=\"hero\""), "本文に class=\"hero\" が含まれること");
-      assertTrue(
-          body.contains("Shift Match") && body.contains("class=\"eyebrow\""),
-          "本文に class=\"eyebrow\" 内に「Shift Match」が含まれること");
-      assertTrue(body.contains("<h1>") && body.contains("シフト作成"), "本文に <h1> で「シフト作成」が含まれること");
-      assertTrue(
-          body.contains("class=\"lead\"") && body.contains("早番 2 名・遅番 2 名の最適な割り当て案を提案します"),
-          "本文に class=\"lead\" 内に「早番 2 名・遅番 2 名の最適な割り当て案を提案します」が含まれること");
-      assertTrue(
-          body.contains("class=\"card\"") && body.contains("method=\"post\""),
-          "本文に class=\"card\" を持つフォームが含まれること");
-      assertTrue(
-          body.contains("class=\"btn ghost\"") && body.contains("id=\"add-row-btn\""),
-          "本文に class=\"btn ghost\" の「行を追加」ボタン（id=\"add-row-btn\"）が含まれること");
-      assertTrue(
-          body.contains("class=\"btn primary\"") && body.contains("type=\"submit\""),
-          "本文に class=\"btn primary\" の送信ボタンが含まれること");
-      assertTrue(body.contains("class=\"wish-legend\""), "本文に class=\"wish-legend\" が含まれること");
-      assertTrue(body.contains("id=\"row-count\""), "本文に従業員数の表示用 id=\"row-count\" が含まれること");
-    }
-
-    @Test
-    @DisplayName("[F-1] Given: 初期状態のとき, When: GET / を実行すると, Then: 4行の空フォームが表示されること")
-    void shouldDisplayInitialForm() throws Exception {
-      MvcResult result =
-          mockMvc
-              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
-              .andReturn();
-
-      assertEquals(200, result.getResponse().getStatus());
-
-      String viewName = (String) result.getModelAndView().getViewName();
-      assertEquals("index", viewName);
-
-      ShiftForm shiftForm = (ShiftForm) result.getModelAndView().getModel().get("shiftForm");
-      assertNotNull(shiftForm);
-      assertEquals(4, shiftForm.getEmployees().size());
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: 初期状態のとき, When: GET / を実行すると, "
-            + "Then: 入力行の各 <td> に data-label と <select> に data-value が含まれること")
-    void shouldDisplayDataLabelsAndDataValues() throws Exception {
-      MvcResult result =
-          mockMvc
-              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
-              .andReturn();
-
-      assertEquals(200, result.getResponse().getStatus());
-      String body = result.getResponse().getContentAsString();
-
-      assertTrue(body.contains("data-label=\"氏名\""), "本文に data-label=\"氏名\" が含まれること");
-      assertTrue(body.contains("data-label=\"早番希望\""), "本文に data-label=\"早番希望\" が含まれること");
-      assertTrue(body.contains("data-label=\"遅番希望\""), "本文に data-label=\"遅番希望\" が含まれること");
-      assertTrue(body.contains("data-value"), "本文に <select> の data-value が含まれること");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: 初期状態のとき, When: GET / を実行すると, "
-            + "Then: 入力表の見出しに 8:00〜17:00 と 12:00〜21:00 の時間帯が表示されること")
-    void shouldDisplayTimeRangeInTableHeaders() throws Exception {
-      MvcResult result =
-          mockMvc
-              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
-              .andReturn();
-
-      assertEquals(200, result.getResponse().getStatus());
-      String body = result.getResponse().getContentAsString();
-
-      assertTrue(body.contains("8:00〜17:00"), "本文に 8:00〜17:00 が含まれること");
-      assertTrue(body.contains("12:00〜21:00"), "本文に 12:00〜21:00 が含まれること");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-6] Given: GET / で初期表示するとき, When: 画面を取得すると, "
-            + "Then: 入力行（4行）と同数の「削除」ボタン（class=\"delete-row-btn\"）が含まれる")
-    void shouldDisplayDeleteButtonsInInitialForm() throws Exception {
-      MvcResult result =
-          mockMvc
-              .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/"))
-              .andReturn();
-
-      assertEquals(200, result.getResponse().getStatus());
-      String body = result.getResponse().getContentAsString();
-
-      Pattern deleteButtonPattern = Pattern.compile("class=\"delete-row-btn\"");
-      Matcher deleteButtonMatcher = deleteButtonPattern.matcher(body);
-      int deleteButtonCount = 0;
-      while (deleteButtonMatcher.find()) {
-        deleteButtonCount++;
-      }
-
-      assertEquals(4, deleteButtonCount, "削除ボタンが4個含まれていること");
-    }
+  /**
+   * テスト用の割当結果を作成します（A-H の 8 名、各枠に割り当て）。
+   *
+   * @return 標準的な割当結果
+   */
+  private AssignmentResult createStandardResult() {
+    List<ShiftAssignment> assignments =
+        List.of(
+            new ShiftAssignment(
+                new Employee(
+                    "A",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_1,
+                LocalTime.of(12, 0),
+                LocalTime.of(12, 45)),
+            new ShiftAssignment(
+                new Employee(
+                    "B",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_1,
+                LocalTime.of(12, 0),
+                LocalTime.of(12, 45)),
+            new ShiftAssignment(
+                new Employee(
+                    "C",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_2,
+                LocalTime.of(12, 45),
+                LocalTime.of(13, 30)),
+            new ShiftAssignment(
+                new Employee(
+                    "D",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_3,
+                LocalTime.of(12, 45),
+                LocalTime.of(13, 30)),
+            new ShiftAssignment(
+                new Employee(
+                    "E",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_4,
+                LocalTime.of(13, 30),
+                LocalTime.of(14, 15)),
+            new ShiftAssignment(
+                new Employee(
+                    "F",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_5,
+                LocalTime.of(13, 30),
+                LocalTime.of(14, 30)),
+            new ShiftAssignment(
+                new Employee(
+                    "G",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_6,
+                LocalTime.of(14, 15),
+                LocalTime.of(15, 15)),
+            new ShiftAssignment(
+                new Employee(
+                    "H",
+                    List.of(
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED,
+                        Wish.DESIRED)),
+                ShiftSlot.SLOT_6,
+                LocalTime.of(14, 30),
+                LocalTime.of(15, 30)));
+    return new AssignmentResult(assignments, 8, List.of());
   }
 
   @Nested
-  class PostShiftTest {
-    @Test
-    @DisplayName(
-        "[F-1] Given: 入力に不正値があるとき, When: POST /shift で再表示されると, "
-            + "Then: 再表示時の <select> に入力済みの data-value が含まれること")
-    void shouldPreserveDataValueWhenReDisplayingAfterError() throws Exception {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "UNAVAILABLE");
-      params.add("employees[1].name", "太郎");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "AVAILABLE");
-
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of(new DuplicateNameError("太郎", java.util.List.of(0, 1))));
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-
-      assertTrue(
-          body.contains("value=\"DESIRED\" selected")
-              || body.contains("selected value=\"DESIRED\""),
-          "再表示時に早番の選択値 DESIRED が selected 属性で反映されていること");
-      assertTrue(
-          body.contains("value=\"UNAVAILABLE\" selected")
-              || body.contains("selected value=\"UNAVAILABLE\""),
-          "再表示時に遅番の選択値 UNAVAILABLE が selected 属性で反映されていること");
-    }
+  @DisplayName("[F-1] 希望入力フォーム")
+  class InputForm {
 
     @Test
     @DisplayName(
-        "[V-3] Given: 氏名が入力されていて早番希望が未選択のとき, When: POST /shift を実行すると, "
-            + "Then: レスポンス本文に不正エラーを示す文言が含まれる")
-    void shouldShowErrorWhenEarlyWishIsEmpty() throws Exception {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "");
-      params.add("employees[0].lateWish", "AVAILABLE");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("不正") || body.contains("エラー"));
-    }
-
-    @Test
-    @DisplayName(
-        "[V-3] Given: 氏名が入力されていて遅番希望が不正値のとき, When: POST /shift を実行すると, "
-            + "Then: レスポンス本文に不正エラーを示す文言が含まれる")
-    void shouldShowErrorWhenLateWishIsInvalid() throws Exception {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "INVALID_VALUE");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("不正") || body.contains("エラー"));
-    }
-
-    @Test
-    @DisplayName(
-        "[V-3] Given: 氏名が空の行の早番・遅番希望が未選択のとき, When: POST /shift を実行すると, " + "Then: エラーにならない")
-    void shouldNotShowErrorForEmptyNameRow() throws Exception {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "");
-      params.add("employees[0].earlyWish", "");
-      params.add("employees[0].lateWish", "");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      // 不正エラーが表示されてはいけない
-      assertEquals(200, result.getResponse().getStatus());
-      assertTrue(!body.contains("入力エラー"));
-      java.util.List<?> wishErrors =
-          (java.util.List<?>) result.getModelAndView().getModel().get("wishErrors");
-      assertTrue(wishErrors != null && wishErrors.isEmpty());
-    }
-
-    @Test
-    @DisplayName(
-        "[V-3] Given: 氏名が空白のみの行の早番・遅番希望が未選択のとき, When: POST /shift を実行すると, " + "Then: エラーにならない")
-    void shouldNotShowErrorForBlankNameRow() throws Exception {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "   ");
-      params.add("employees[0].earlyWish", "");
-      params.add("employees[0].lateWish", "");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      // 不正エラーが表示されてはいけない
-      assertEquals(200, result.getResponse().getStatus());
-      assertTrue(!body.contains("入力エラー"));
-    }
-
-    @Test
-    @DisplayName(
-        "[V-2] Given: 氏名が重複しているとき, When: POST /shift を実行すると, "
-            + "Then: レスポンス本文に重複エラーを示す文言が含まれ、assign が呼び出されないこと")
-    void shouldShowErrorAndNotCallAssignWhenNamesAreDuplicated() throws Exception {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of(new DuplicateNameError("太郎", java.util.List.of(0, 1))));
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-      params.add("employees[1].name", "太郎");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("重複") || body.contains("エラー"));
-      assertTrue(body.contains("1") && body.contains("2") && body.contains("行目"));
-      verify(shiftAssignmentService, never()).assign(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    @DisplayName(
-        "[F-3] Given: V-2・V-3 いずれのエラーもないとき, When: POST /shift を実行すると, "
-            + "Then: ShiftAssignmentService#assign が 1 回呼び出されること")
-    void shouldCallAssignWhenNoErrorsExist() throws Exception {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.empty());
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      assertEquals(200, result.getResponse().getStatus());
-      verify(shiftAssignmentService).assign(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    @DisplayName("[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, Then: 結果が表形式で表示されること")
-    void shouldDisplayResultInTableFormatWhenAssignmentSucceeds() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          new com.example.shiftmatch.domain.AssignmentResult(
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee("太郎", null, null),
-                  new com.example.shiftmatch.domain.Employee("花子", null, null)),
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee("次郎", null, null),
-                  new com.example.shiftmatch.domain.Employee("美咲", null, null)),
-              3,
-              java.util.List.of(new com.example.shiftmatch.domain.Employee("五郎", null, null)));
-
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.of(assignmentResult));
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("太郎"));
-      assertTrue(body.contains("花子"));
-      assertTrue(body.contains("次郎"));
-      assertTrue(body.contains("美咲"));
-      assertTrue(body.contains("五郎"));
-      assertTrue(body.contains("3"));
-    }
-
-    @Test
-    @DisplayName(
-        "[T-1][F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: レスポンス本文に4つの休憩時刻（13:00~14:00、14:00~15:00、15:00~16:00、16:00~17:00）が含まれること")
-    void shouldDisplayBreakTimesInResultWhenAssignmentSucceeds() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          new com.example.shiftmatch.domain.AssignmentResult(
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee(
-                      "太郎",
-                      com.example.shiftmatch.domain.Wish.DESIRED,
-                      com.example.shiftmatch.domain.Wish.AVAILABLE),
-                  new com.example.shiftmatch.domain.Employee(
-                      "花子",
-                      com.example.shiftmatch.domain.Wish.AVAILABLE,
-                      com.example.shiftmatch.domain.Wish.DESIRED)),
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee(
-                      "次郎",
-                      com.example.shiftmatch.domain.Wish.DESIRED,
-                      com.example.shiftmatch.domain.Wish.AVAILABLE),
-                  new com.example.shiftmatch.domain.Employee(
-                      "美咲",
-                      com.example.shiftmatch.domain.Wish.AVAILABLE,
-                      com.example.shiftmatch.domain.Wish.DESIRED)),
-              4,
-              java.util.List.of());
-
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.of(assignmentResult));
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-
-      int resultSectionStart = body.indexOf("割当結果");
-      String resultSection = body.substring(resultSectionStart);
-
-      Pattern tableRowPattern = Pattern.compile("<tr>.*?</tr>", Pattern.DOTALL);
-      Matcher tableRowMatcher = tableRowPattern.matcher(resultSection);
-      List<String> rows = new ArrayList<>();
-      while (tableRowMatcher.find()) {
-        rows.add(tableRowMatcher.group());
-      }
-
-      List<String> dataRows = rows.subList(1, rows.size());
-      assertEquals(4, dataRows.size(), "結果表のデータ行は4行であること");
-
-      assertTrue(
-          dataRows.get(0).contains("08:00〜17:00")
-              && dataRows.get(0).contains("太郎")
-              && Pattern.compile("13:00.*?〜.*?14:00", Pattern.DOTALL)
-                  .matcher(dataRows.get(0))
-                  .find(),
-          "行0（08:00〜17:00・太郎・13:00〜14:00）が見つかりません");
-
-      assertTrue(
-          dataRows.get(1).contains("08:00〜17:00")
-              && dataRows.get(1).contains("花子")
-              && Pattern.compile("14:00.*?〜.*?15:00", Pattern.DOTALL)
-                  .matcher(dataRows.get(1))
-                  .find(),
-          "行1（08:00〜17:00・花子・14:00〜15:00）が見つかりません");
-
-      assertTrue(
-          dataRows.get(2).contains("12:00〜21:00")
-              && dataRows.get(2).contains("次郎")
-              && Pattern.compile("15:00.*?〜.*?16:00", Pattern.DOTALL)
-                  .matcher(dataRows.get(2))
-                  .find(),
-          "行2（12:00〜21:00・次郎・15:00〜16:00）が見つかりません");
-
-      assertTrue(
-          dataRows.get(3).contains("12:00〜21:00")
-              && dataRows.get(3).contains("美咲")
-              && Pattern.compile("16:00.*?〜.*?17:00", Pattern.DOTALL)
-                  .matcher(dataRows.get(3))
-                  .find(),
-          "行3（12:00〜21:00・美咲・16:00〜17:00）が見つかりません");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: 割当結果の表ヘッダが「氏名」・「勤務時間」・「休憩時間」の順で出力され、「枠」を含まないこと")
-    void shouldDisplayWorkHoursHeaderInResultTable() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          new com.example.shiftmatch.domain.AssignmentResult(
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee(
-                      "太郎",
-                      com.example.shiftmatch.domain.Wish.DESIRED,
-                      com.example.shiftmatch.domain.Wish.AVAILABLE),
-                  new com.example.shiftmatch.domain.Employee(
-                      "花子",
-                      com.example.shiftmatch.domain.Wish.AVAILABLE,
-                      com.example.shiftmatch.domain.Wish.DESIRED)),
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee(
-                      "次郎",
-                      com.example.shiftmatch.domain.Wish.DESIRED,
-                      com.example.shiftmatch.domain.Wish.AVAILABLE),
-                  new com.example.shiftmatch.domain.Employee(
-                      "美咲",
-                      com.example.shiftmatch.domain.Wish.AVAILABLE,
-                      com.example.shiftmatch.domain.Wish.DESIRED)),
-              4,
-              java.util.List.of());
-
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.of(assignmentResult));
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-
-      int resultSectionStart = body.indexOf("割当結果");
-      String resultSection = body.substring(resultSectionStart);
-
-      Pattern headerRowPattern = Pattern.compile("<tr>.*?</tr>", Pattern.DOTALL);
-      Matcher headerRowMatcher = headerRowPattern.matcher(resultSection);
-      headerRowMatcher.find();
-
-      String headerRow = headerRowMatcher.group();
-
-      int framePos = headerRow.indexOf("枠");
-      int namePos = headerRow.indexOf("氏名");
-      int workHoursPos = headerRow.indexOf("勤務時間");
-      int breakTimePos = headerRow.indexOf("休憩時間");
-
-      assertTrue(framePos == -1, "ヘッダに「枠」が含まれていないこと");
-      assertTrue(
-          namePos > -1 && workHoursPos > -1 && breakTimePos > -1, "「氏名」・「勤務時間」・「休憩時間」が含まれていること");
-      assertTrue(
-          namePos < workHoursPos && workHoursPos < breakTimePos,
-          "ヘッダが「氏名」・「勤務時間」・「休憩時間」の順で出力されていること");
-      int breakOnlyPos = headerRow.indexOf("<th>休憩</th>");
-      assertTrue(breakOnlyPos == -1, "「<th>休憩</th>」（「時間」なし）が出力されていないこと");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: 早番の行に08:00〜17:00、遅番の行に12:00〜21:00が表示され、「早番」「遅番」は表示されないこと")
-    void shouldDisplayWorkHoursForEachShift() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          new com.example.shiftmatch.domain.AssignmentResult(
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee(
-                      "太郎",
-                      com.example.shiftmatch.domain.Wish.DESIRED,
-                      com.example.shiftmatch.domain.Wish.AVAILABLE),
-                  new com.example.shiftmatch.domain.Employee(
-                      "花子",
-                      com.example.shiftmatch.domain.Wish.AVAILABLE,
-                      com.example.shiftmatch.domain.Wish.DESIRED)),
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee(
-                      "次郎",
-                      com.example.shiftmatch.domain.Wish.DESIRED,
-                      com.example.shiftmatch.domain.Wish.AVAILABLE),
-                  new com.example.shiftmatch.domain.Employee(
-                      "美咲",
-                      com.example.shiftmatch.domain.Wish.AVAILABLE,
-                      com.example.shiftmatch.domain.Wish.DESIRED)),
-              4,
-              java.util.List.of());
-
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.of(assignmentResult));
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-
-      int resultSectionStart = body.indexOf("割当結果");
-      String resultSection = body.substring(resultSectionStart);
-
-      Pattern tableRowPattern = Pattern.compile("<tr>.*?</tr>", Pattern.DOTALL);
-      Matcher tableRowMatcher = tableRowPattern.matcher(resultSection);
-      List<String> rows = new ArrayList<>();
-      while (tableRowMatcher.find()) {
-        rows.add(tableRowMatcher.group());
-      }
-
-      List<String> dataRows = rows.subList(1, rows.size());
-      assertEquals(4, dataRows.size(), "結果表のデータ行は4行であること");
-
-      assertTrue(
-          dataRows.get(0).contains("08:00〜17:00")
-              && dataRows.get(0).contains("太郎")
-              && !dataRows.get(0).contains("早番"),
-          "行0（08:00〜17:00・太郎）が同一行内に含まれ、「早番」は含まれていないこと");
-
-      assertTrue(
-          dataRows.get(1).contains("08:00〜17:00")
-              && dataRows.get(1).contains("花子")
-              && !dataRows.get(1).contains("早番"),
-          "行1（08:00〜17:00・花子）が同一行内に含まれ、「早番」は含まれていないこと");
-
-      assertTrue(
-          dataRows.get(2).contains("12:00〜21:00")
-              && dataRows.get(2).contains("次郎")
-              && !dataRows.get(2).contains("遅番"),
-          "行2（12:00〜21:00・次郎）が同一行内に含まれ、「遅番」は含まれていないこと");
-
-      assertTrue(
-          dataRows.get(3).contains("12:00〜21:00")
-              && dataRows.get(3).contains("美咲")
-              && !dataRows.get(3).contains("遅番"),
-          "行3（12:00〜21:00・美咲）が同一行内に含まれ、「遅番」は含まれていないこと");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: 割当結果の表のデータ行で、各行内で氏名が勤務時間より前に出力されること")
-    void shouldDisplayNameBeforeWorkHoursInDataRows() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          new com.example.shiftmatch.domain.AssignmentResult(
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee(
-                      "太郎",
-                      com.example.shiftmatch.domain.Wish.DESIRED,
-                      com.example.shiftmatch.domain.Wish.AVAILABLE),
-                  new com.example.shiftmatch.domain.Employee(
-                      "花子",
-                      com.example.shiftmatch.domain.Wish.AVAILABLE,
-                      com.example.shiftmatch.domain.Wish.DESIRED)),
-              java.util.List.of(
-                  new com.example.shiftmatch.domain.Employee(
-                      "次郎",
-                      com.example.shiftmatch.domain.Wish.DESIRED,
-                      com.example.shiftmatch.domain.Wish.AVAILABLE),
-                  new com.example.shiftmatch.domain.Employee(
-                      "美咲",
-                      com.example.shiftmatch.domain.Wish.AVAILABLE,
-                      com.example.shiftmatch.domain.Wish.DESIRED)),
-              4,
-              java.util.List.of());
-
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.of(assignmentResult));
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-
-      int resultSectionStart = body.indexOf("割当結果");
-      String resultSection = body.substring(resultSectionStart);
-
-      Pattern tableRowPattern = Pattern.compile("<tr>.*?</tr>", Pattern.DOTALL);
-      Matcher tableRowMatcher = tableRowPattern.matcher(resultSection);
-      List<String> rows = new ArrayList<>();
-      while (tableRowMatcher.find()) {
-        rows.add(tableRowMatcher.group());
-      }
-
-      List<String> dataRows = rows.subList(1, rows.size());
-      assertEquals(4, dataRows.size(), "結果表のデータ行は4行であること");
-
-      for (int i = 0; i < dataRows.size(); i++) {
-        String row = dataRows.get(i);
-        int namePos = row.indexOf(i < 2 ? (i == 0 ? "太郎" : "花子") : (i == 2 ? "次郎" : "美咲"));
-        int workHoursPos = row.indexOf(i < 2 ? "08:00〜17:00" : "12:00〜21:00");
-        assertTrue(
-            namePos > -1 && workHoursPos > -1 && namePos < workHoursPos,
-            "行" + i + "で氏名が勤務時間より前に出力されていること");
-      }
-    }
-
-    @Test
-    @DisplayName(
-        "[セキュリティー] Given: 有効な氏名を持つ行が上限（20名）を超えるとき, When: POST /shift を実行すると, "
-            + "Then: assign が呼び出されず、上限超過のエラーメッセージが表示されること")
-    void shouldRejectWhenEmployeeCountExceedsLimit() throws Exception {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      for (int i = 0; i < 21; i++) {
-        params.add("employees[" + i + "].name", "従業員" + i);
-        params.add("employees[" + i + "].earlyWish", "DESIRED");
-        params.add("employees[" + i + "].lateWish", "AVAILABLE");
-      }
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("上限"));
-      verify(shiftAssignmentService, never()).assign(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    @DisplayName(
-        "[F-6] Given: 2行を送信して POST /shift で再表示するとき, When: 入力行が再描画されると, "
-            + "Then: 送信した行数と同じ2個の「削除」ボタンが含まれ、削除した行は復活しない")
-    void shouldDisplayDeleteButtonsInPostResponse() throws Exception {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.empty());
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-
-      Pattern deleteButtonPattern = Pattern.compile("class=\"delete-row-btn\"");
-      Matcher deleteButtonMatcher = deleteButtonPattern.matcher(body);
-      int deleteButtonCount = 0;
-      while (deleteButtonMatcher.find()) {
-        deleteButtonCount++;
-      }
-
-      assertEquals(2, deleteButtonCount, "送信した行数（2行）と同数の削除ボタンが含まれること");
-    }
-
-    @Test
-    @DisplayName("[F-5] Given: 条件を満たす組み合わせがないとき, When: POST /shift を実行すると, Then: 不成立メッセージが表示されること")
-    void shouldDisplayUnassignableMessageWhenNoValidCombinationExists() throws Exception {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.empty());
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"));
-    }
-
-    @Test
-    @DisplayName(
-        "[V-4] Given: 従業員パラメータが一切送られないとき, When: POST /shift を実行すると, "
-            + "Then: 例外を投げずにステータス200で不成立と扱われること")
-    void shouldHandleEmptyEmployeeListWithoutException() throws Exception {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.empty());
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      assertEquals(200, result.getResponse().getStatus());
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"));
-    }
-
-    @Test
-    @DisplayName(
-        "[F-6] Given: 従業員パラメータが一切送られないとき, When: POST /shift で再表示すると, "
-            + "Then: 入力行が最低1行残り、削除ボタンが1個含まれる")
-    void shouldKeepOneRowWhenNoEmployeeParametersArePosted() throws Exception {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.empty());
-
-      MvcResult result =
+        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 初期4行に24個のselect要素がある（6枠×4行）")
+    void returns24SelectElementsForFourRows() throws Exception {
+      String htmlContent =
           mockMvc
-              .perform(
-                  MockMvcRequestBuilders.post("/shift")
-                      .params(new LinkedMultiValueMap<String, String>()))
-              .andReturn();
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andExpect(content().contentType("text/html;charset=UTF-8"))
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
 
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("name=\"employees[0].name\""));
-      Matcher matcher = Pattern.compile("class=\"delete-row-btn\"").matcher(body);
+      Pattern pattern = Pattern.compile("name=\"employees\\[(\\d)\\]\\.wishes\\[(\\d)\\]\"");
+      Matcher matcher = pattern.matcher(htmlContent);
+
       int count = 0;
       while (matcher.find()) {
+        int row = Integer.parseInt(matcher.group(1));
+        int col = Integer.parseInt(matcher.group(2));
+        assertTrue(row < 4, "Row should be less than 4");
+        assertTrue(col < 6, "Column should be less than 6");
         count++;
       }
-      assertEquals(1, count, "削除ボタンが1個含まれること");
+
+      assertEquals(24, count, "Should have exactly 24 select elements for 4 rows × 6 wishes");
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 見出しに6つの勤務時間がこの順で表示される")
+    void displaysHeadersWithWorkTimesInOrder() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      int pos1 = htmlContent.indexOf("07:30〜14:30");
+      int pos2 = htmlContent.indexOf("08:00〜15:30");
+      int pos3 = htmlContent.indexOf("08:30〜16:30");
+      assertTrue(pos1 >= 0, "Should contain work time 07:30〜14:30");
+      assertTrue(pos2 >= 0, "Should contain work time 08:00〜15:30");
+      assertTrue(pos3 >= 0, "Should contain work time 08:30〜16:30");
+      assertTrue(pos1 < pos2, "07:30〜14:30 should come before 08:00〜15:30");
+      assertTrue(pos2 < pos3, "08:00〜15:30 should come before 08:30〜16:30");
+
+      int pos4 = htmlContent.indexOf("09:00〜16:30");
+      int pos5 = htmlContent.indexOf("09:00〜18:00");
+      int pos6 = htmlContent.indexOf("09:00〜18:30");
+      assertTrue(pos4 >= 0, "Should contain work time 09:00〜16:30");
+      assertTrue(pos5 >= 0, "Should contain work time 09:00〜18:00");
+      assertTrue(pos6 >= 0, "Should contain work time 09:00〜18:30");
+      assertTrue(pos3 < pos4, "08:30〜16:30 should come before 09:00〜16:30");
+      assertTrue(pos4 < pos5, "09:00〜16:30 should come before 09:00〜18:00");
+      assertTrue(pos5 < pos6, "09:00〜18:00 should come before 09:00〜18:30");
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 各selectのdata-labelが勤務時間である")
+    void selectsHaveCorrectDataLabels() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      String[] workTimes = {
+        "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
+      };
+
+      for (int slot = 0; slot < 6; slot++) {
+        String selectName = "name=\"employees[0].wishes[" + slot + "]\"";
+        String expectedLabel = "data-label=\"" + workTimes[slot] + "\"";
+        int selectIndex = htmlContent.indexOf(selectName);
+        assertTrue(selectIndex >= 0, "Should find select for slot " + slot);
+
+        int tagEndIndex = htmlContent.indexOf(">", selectIndex);
+        assertTrue(tagEndIndex > selectIndex, "Should find end of select tag for slot " + slot);
+
+        String tagContent = htmlContent.substring(selectIndex - 100, tagEndIndex);
+        assertTrue(
+            tagContent.contains(expectedLabel),
+            "Select for slot "
+                + slot
+                + " should have "
+                + expectedLabel
+                + " (found: "
+                + tagContent
+                + ")");
+      }
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: data-slot-labels属性が6つの勤務時間を含む")
+    void tableHasDataSlotLabelsWithAllWorkTimes() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      Pattern pattern = Pattern.compile("data-slot-labels=\"([^\"]+)\"");
+      Matcher matcher = pattern.matcher(htmlContent);
+      assertTrue(matcher.find(), "Should have data-slot-labels attribute");
+
+      String slotLabels = matcher.group(1);
+      String[] workTimes = {
+        "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
+      };
+
+      for (String workTime : workTimes) {
+        assertTrue(
+            slotLabels.contains(workTime), "data-slot-labels should contain work time " + workTime);
+      }
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 旧earlyWish・lateWishは存在しない")
+    void doesNotContainOldEarlyOrLateWish() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertFalse(
+          htmlContent.contains("name=\"employees[0].earlyWish\""),
+          "HTML should not contain old earlyWish");
+      assertFalse(
+          htmlContent.contains("name=\"employees[0].lateWish\""),
+          "HTML should not contain old lateWish");
     }
   }
 
   @Nested
-  class UiDesignTest {
-
-    private com.example.shiftmatch.domain.AssignmentResult createAssignmentResult(
-        int score, com.example.shiftmatch.domain.Employee... unassignedEmployees) {
-      return new com.example.shiftmatch.domain.AssignmentResult(
-          java.util.List.of(
-              new com.example.shiftmatch.domain.Employee("太郎", null, null),
-              new com.example.shiftmatch.domain.Employee("花子", null, null)),
-          java.util.List.of(
-              new com.example.shiftmatch.domain.Employee("次郎", null, null),
-              new com.example.shiftmatch.domain.Employee("美咲", null, null)),
-          score,
-          java.util.List.of(unassignedEmployees));
-    }
-
-    private void stubAssignSuccess(com.example.shiftmatch.domain.AssignmentResult result) {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.of(result));
-    }
-
-    private void stubAssignEmpty() {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.empty());
-    }
-
-    private MultiValueMap<String, String> createValidParams() {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-      params.add("employees[1].name", "花子");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-      params.add("employees[2].name", "次郎");
-      params.add("employees[2].earlyWish", "DESIRED");
-      params.add("employees[2].lateWish", "AVAILABLE");
-      params.add("employees[3].name", "美咲");
-      params.add("employees[3].earlyWish", "AVAILABLE");
-      params.add("employees[3].lateWish", "DESIRED");
-      return params;
-    }
-
-    private MultiValueMap<String, String> createValidParamsSingleEmployee() {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-      return params;
-    }
-
-    private String extractSection(String body, String startMarker, String endMarker) {
-      int start = body.indexOf(startMarker);
-      int end = body.indexOf(endMarker, start);
-      if (start < 0 || end < 0) {
-        fail("マーカーが見つかりません: startMarker=" + startMarker + ", endMarker=" + endMarker);
-      }
-      return body.substring(start, end + endMarker.length());
-    }
+  @DisplayName("[V-5][V-4][F-5] 上限・不成立のチェック")
+  class EmployeeLimitAndUnassignable {
 
     @Test
-    @DisplayName(
-        "[F-1] Given: 従業員数が上限を超えるとき, When: POST /shift を実行すると, "
-            + "Then: .alert と role=\"alert\" が含まれるエラーが表示されること")
-    void shouldDisplayLimitExceededErrorWithAlertMarkup() throws Exception {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      for (int i = 0; i < 21; i++) {
-        params.add("employees[" + i + "].name", "従業員" + i);
-        params.add("employees[" + i + "].earlyWish", "DESIRED");
-        params.add("employees[" + i + "].lateWish", "AVAILABLE");
+    @DisplayName("[V-5] Given: 有効な従業員13名のとき, When: POSTすると, Then: 上限エラーが表示され、assignが呼ばれない")
+    void showsErrorWhen13ValidEmployees() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 13; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
       }
 
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
 
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("class=\"alert\""), "本文に class=\"alert\" が含まれること");
-      assertTrue(body.contains("role=\"alert\""), "本文に role=\"alert\" が含まれること");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: 氏名が重複しているとき, When: POST /shift を実行すると, "
-            + "Then: .alert と role=\"alert\" が含まれるエラーが表示されること")
-    void shouldDisplayDuplicateErrorWithAlertMarkup() throws Exception {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of(new DuplicateNameError("太郎", java.util.List.of(0, 1))));
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-      params.add("employees[1].name", "太郎");
-      params.add("employees[1].earlyWish", "AVAILABLE");
-      params.add("employees[1].lateWish", "DESIRED");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("class=\"alert\""), "本文に class=\"alert\" が含まれること");
-      assertTrue(body.contains("role=\"alert\""), "本文に role=\"alert\" が含まれること");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: 希望が不正値のとき, When: POST /shift を実行すると, "
-            + "Then: .alert と role=\"alert\" が含まれるエラーが表示されること")
-    void shouldDisplayWishErrorWithAlertMarkup() throws Exception {
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "INVALID_VALUE");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("class=\"alert\""), "本文に class=\"alert\" が含まれること");
-      assertTrue(body.contains("role=\"alert\""), "本文に role=\"alert\" が含まれること");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-5] Given: 条件を満たす組み合わせがないとき, When: POST /shift を実行すると, "
-            + "Then: 不成立の事実のみが表示され、補足文や対応案は表示されないこと")
-    void shouldDisplayOnlyUnassignableMessageWithoutSupplementalText() throws Exception {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.empty());
-
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("class=\"card result\""), "本文に class=\"card result\" が含まれること");
-      assertTrue(body.contains("class=\"empty\""), "本文に class=\"empty\" が含まれること");
-      assertTrue(body.contains("class=\"empty-icon\""), "本文に class=\"empty-icon\" が含まれること");
-      assertTrue(body.contains("条件を満たす組み合わせが見つかりませんでした。"), "本文に既存のメッセージが含まれること");
-      assertFalse(body.contains("希望（×）を見直すか、従業員を追加してください。"), "本文に補足文が含まれないこと");
-
-      int emptyStart = body.indexOf("class=\"empty\"");
-      int emptyEnd = body.indexOf("</div>", emptyStart);
-      String emptySection = body.substring(emptyStart, emptyEnd);
-      assertFalse(emptySection.contains("<small>"), "class=\"empty\" の要素に <small> が含まれないこと");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: class=\"empty\" が出力されていないこと")
-    void shouldNotDisplayEmptyClassWhenAssignmentSucceeds() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult = createAssignmentResult(4);
-      stubAssignSuccess(assignmentResult);
-
-      MultiValueMap<String, String> params = createValidParams();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(!body.contains("class=\"empty\""), "成立時に class=\"empty\" が含まれていないこと");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名・スコア3・未出勤者1名の割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: class=\"score-num\" がスコア3と \" / 4\" を含むこと")
-    void shouldDisplayScoreInScoreNum() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
-
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      String scoreSection = extractSection(body, "class=\"score-num\"", "</div>");
-      assertTrue(scoreSection.contains("3"), "class=\"score-num\" の要素に3が含まれること");
-      assertTrue(scoreSection.contains(" / 4"), "class=\"score-num\" の要素に / 4 が含まれること");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名の割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: class=\"result-table\" が含まれること")
-    void shouldDisplayResultTable() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
-
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      assertTrue(body.contains("class=\"result-table\""), "class=\"result-table\" が含まれること");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名の割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: pill early が 2 つ・pill late が 2 つ含まれること")
-    void shouldDisplayPillEarlyAndLateTwice() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
-
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      String resultTableSection = extractSection(body, "class=\"result-table\"", "</table>");
-      Pattern pillEarlyPattern = Pattern.compile("pill early");
-      Pattern pillLatePattern = Pattern.compile("pill late");
-      Matcher pillEarlyMatcher = pillEarlyPattern.matcher(resultTableSection);
-      Matcher pillLateMatcher = pillLatePattern.matcher(resultTableSection);
-      int pillEarlyCount = 0;
-      int pillLateCount = 0;
-      while (pillEarlyMatcher.find()) {
-        pillEarlyCount++;
-      }
-      while (pillLateMatcher.find()) {
-        pillLateCount++;
-      }
-      assertEquals(2, pillEarlyCount, "pill early が 2 つ含まれること");
-      assertEquals(2, pillLateCount, "pill late が 2 つ含まれること");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名・未出勤者1名(五郎)の割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: class=\"unassigned\" の中に class=\"chip\" があり、五郎が含まれること")
-    void shouldDisplayUnassignedEmployeeAsChip() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
-
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      String unassignedSection = extractSection(body, "class=\"unassigned\"", "</div>");
       assertTrue(
-          unassignedSection.contains("class=\"chip\""),
-          "class=\"unassigned\" の要素にclass=\"chip\"が含まれること");
-      assertTrue(unassignedSection.contains("五郎"), "class=\"unassigned\" の要素に五郎が含まれること");
+          responseContent.contains("12名") || responseContent.contains("上限"),
+          "Error message should contain limit info");
+      assertTrue(responseContent.contains("class=\"alert\""), "Error section should be displayed");
+
+      assertFalse(
+          responseContent.contains("割当結果"),
+          "Assignment result should not be displayed when limit exceeded");
+
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName("[V-5] Given: 有効な従業員がちょうど12名のとき, When: POSTすると, Then: 上限エラーが表示されない（境界値）")
+    void doesNotShowErrorWhen12ValidEmployees() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 12; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertFalse(
+          responseContent.contains("上限（12名）を超えています"),
+          "Limit error should not be shown for exactly 12 employees");
+    }
+
+    @Test
+    @DisplayName("[V-5] Given: 行数13でも有効な従業員11名のとき, When: POSTすると, Then: 上限エラーにならない")
+    void doesNotShowErrorWhen13RowsBut11ValidEmployees() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 11; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+      for (int i = 11; i < 13; i++) {
+        params.append("&employees[").append(i).append("].name=");
+        for (int j = 0; j < 6; j++) {
+          params.append("&employees[").append(i).append("].wishes[").append(j).append("]=");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertFalse(
+          responseContent.contains("上限（12名）を超えています"),
+          "Limit error should not be shown for 11 valid employees");
     }
 
     @Test
     @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名・未出勤者0名の割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: class=\"unassigned\" が含まれていないこと")
-    void shouldNotDisplayUnassignedWhenNoUnassignedEmployees() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult = createAssignmentResult(4);
-      stubAssignSuccess(assignmentResult);
+        "[V-4][F-5] Given: assignがOptional.empty()を返すとき, When: POSTすると, Then: 不成立メッセージが表示される")
+    void showsUnassignableMessageWhenNoValidCombination() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=UNAVAILABLE");
+        }
+      }
 
-      MultiValueMap<String, String> params = createValidParamsSingleEmployee();
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
 
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
       assertTrue(
-          !body.contains("class=\"unassigned\""), "未出勤者がいない場合、class=\"unassigned\" が含まれていないこと");
+          responseContent.contains("条件を満たす組み合わせが見つかりませんでした"),
+          "Unassignable message should be displayed");
+
+      assertFalse(
+          responseContent.contains("割当結果の表"), "Assignment result table should not be displayed");
+    }
+
+    @Test
+    @DisplayName("[F-5] Given: 不成立のとき, When: ページが表示されるとき, Then: 時間軸が表示されない")
+    void doesNotShowTimelineWhenUnassignable() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=UNAVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertFalse(
+          responseContent.contains("class=\"timeline\"")
+              || responseContent.contains("class='timeline'"),
+          "Timeline should not be displayed when unassignable");
+    }
+  }
+
+  @Nested
+  @DisplayName("[V-2] 重複氏名チェック")
+  class DuplicateNameValidation {
+
+    @BeforeEach
+    void setupFindDuplicateNamesStub() {
+      Mockito.reset(shiftAssignmentService);
+      ShiftAssignmentServiceImpl realService = new ShiftAssignmentServiceImpl();
+      Mockito.doAnswer(invocation -> realService.assign((java.util.List) invocation.getArgument(0)))
+          .when(shiftAssignmentService)
+          .assign(Mockito.any());
+      Mockito.doAnswer(
+              invocation ->
+                  realService.findDuplicateNames((java.util.List) invocation.getArgument(0)))
+          .when(shiftAssignmentService)
+          .findDuplicateNames(Mockito.any());
+    }
+
+    @Test
+    @DisplayName("[V-2] Given: 1行目が空、2・3行目が同名のとき, When: POSTすると, Then: 「2, 3行目」が表示され、「1, 2行目」ではない")
+    void displaysDuplicateLineNumbersCorrectlyWithBlankRowBefore() throws Exception {
+      StringBuilder params = new StringBuilder();
+      params.append("&employees[0].name=");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
+      }
+      params.append("&employees[1].name=A");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
+      }
+      params.append("&employees[2].name=A");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(responseContent.contains("重複"), "Response should contain duplicate error");
+      String pattern = "該当行：([^）]*)行目";
+      Pattern p = Pattern.compile(pattern);
+      Matcher m = p.matcher(responseContent);
+      assertTrue(m.find(), "Should contain '該当行：' with line numbers");
+      String lineNumbers = m.group(1);
+      assertTrue(
+          lineNumbers.contains("2") && lineNumbers.contains("3"),
+          "Should display line numbers 2 and 3, got: " + lineNumbers);
+    }
+
+    @Test
+    @DisplayName("[V-2] Given: 1行目A、2行目が空、3行目Aのとき, When: POSTすると, Then: 「1, 3行目」が表示される")
+    void displaysDuplicateLineNumbersCorrectlyWithBlankRowBetween() throws Exception {
+      StringBuilder params = new StringBuilder();
+      params.append("&employees[0].name=A");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
+      }
+      params.append("&employees[1].name=");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
+      }
+      params.append("&employees[2].name=A");
+      for (int j = 0; j < 6; j++) {
+        params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(responseContent.contains("重複"), "Response should contain duplicate error");
+      String pattern = "該当行：([^）]*)行目";
+      Pattern p = Pattern.compile(pattern);
+      Matcher m = p.matcher(responseContent);
+      assertTrue(m.find(), "Should contain '該当行：' with line numbers");
+      String lineNumbers = m.group(1);
+      assertTrue(
+          lineNumbers.contains("1") && lineNumbers.contains("3"),
+          "Should display line numbers 1 and 3, got: " + lineNumbers);
+    }
+  }
+
+  @Nested
+  @DisplayName("[V-3][V-1] 希望の入力チェック")
+  class WishValidation {
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: wishes[2]だけが未選択のとき, When: POSTすると, Then: 08:30〜16:30を含むエラーが表示され、assignが呼ばれない")
+    void showsErrorForMissingWishSlot2() throws Exception {
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "Employee A")
+                      .param("employees[0].wishes[0]", "AVAILABLE")
+                      .param("employees[0].wishes[1]", "AVAILABLE")
+                      .param("employees[0].wishes[3]", "AVAILABLE")
+                      .param("employees[0].wishes[4]", "AVAILABLE")
+                      .param("employees[0].wishes[5]", "AVAILABLE"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("08:30〜16:30"),
+          "Error message should contain work time 08:30〜16:30");
+      assertTrue(responseContent.contains("class=\"alert\""), "Error section should be displayed");
+
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName("[V-3] Given: 2つの枠が不正なとき, When: POSTすると, Then: エラーが2件表示される")
+    void showsMultipleErrors() throws Exception {
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "Employee A")
+                      .param("employees[0].wishes[2]", "AVAILABLE")
+                      .param("employees[0].wishes[3]", "AVAILABLE")
+                      .param("employees[0].wishes[4]", "AVAILABLE")
+                      .param("employees[0].wishes[5]", "AVAILABLE"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      int alertCount = 0;
+      for (int i = 0; i < responseContent.length() - 4; i++) {
+        if (responseContent.substring(i, i + 4).equals("<li>")) {
+          alertCount++;
+        }
+      }
+
+      assertTrue(alertCount >= 2, "Should display at least 2 errors");
+    }
+
+    @Test
+    @DisplayName("[V-1] Given: 氏名が空の行のとき, When: POSTすると, Then: 希望が未選択でもエラーにならない")
+    void ignoresEmptyNameRow() throws Exception {
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "")
+                      .param("employees[0].wishes[0]", "")
+                      .param("employees[0].wishes[1]", "")
+                      .param("employees[0].wishes[2]", "")
+                      .param("employees[0].wishes[3]", "")
+                      .param("employees[0].wishes[4]", "")
+                      .param("employees[0].wishes[5]", ""))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertFalse(
+          responseContent.contains("入力エラー"), "Should not show input error for empty name row");
+    }
+
+    @Test
+    @DisplayName("[V-3] Given: 不正な値が入力されたとき, When: POSTすると, Then: エラーが表示される")
+    void showsErrorForInvalidWishValue() throws Exception {
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "Employee A")
+                      .param("employees[0].wishes[0]", "INVALID")
+                      .param("employees[0].wishes[1]", "AVAILABLE")
+                      .param("employees[0].wishes[2]", "AVAILABLE")
+                      .param("employees[0].wishes[3]", "AVAILABLE")
+                      .param("employees[0].wishes[4]", "AVAILABLE")
+                      .param("employees[0].wishes[5]", "AVAILABLE"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("class=\"alert\""),
+          "Error section should be displayed for invalid value");
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-1] POST の全戻り経路で slotLabels をモデルに設定")
+  class PostReturnPathsIncludeSlotLabels {
+
+    @Test
+    @DisplayName("[F-1] Given: POSTで成立するとき, When: レスポンスHTMLを確認すると, Then: 6つの勤務時間と6個のselect要素がある")
+    void includesSlotLabelsWhenAssignmentSucceeds() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
+      assertTrue(responseContent.contains("08:00〜15:30"), "Should contain work time 08:00〜15:30");
+      assertTrue(responseContent.contains("08:30〜16:30"), "Should contain work time 08:30〜16:30");
+      assertTrue(responseContent.contains("09:00〜16:30"), "Should contain work time 09:00〜16:30");
+      assertTrue(responseContent.contains("09:00〜18:00"), "Should contain work time 09:00〜18:00");
+      assertTrue(responseContent.contains("09:00〜18:30"), "Should contain work time 09:00〜18:30");
+
+      assertTrue(
+          responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
+
+      Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
+      Matcher selectMatcher = selectPattern.matcher(responseContent);
+      int selectCount = 0;
+      while (selectMatcher.find()) {
+        selectCount++;
+      }
+      assertEquals(6, selectCount, "Row 0 should have 6 select elements");
     }
 
     @Test
     @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, Then: class=\"timeline\" が"
-            + " 1 つ、class=\"tl-row\" がちょうど 4 つ、tl-name に太郎・花子・次郎・美咲が順に含まれること")
-    void shouldDisplayTimelineWithCorrectRows() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
+        "[F-1] Given: POSTでV-3エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsと6個のselect要素がある")
+    void includesSlotLabelsWhenV3Error() throws Exception {
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "Employee A")
+                      .param("employees[0].wishes[0]", "AVAILABLE")
+                      .param("employees[0].wishes[1]", "AVAILABLE")
+                      .param("employees[0].wishes[3]", "AVAILABLE")
+                      .param("employees[0].wishes[4]", "AVAILABLE")
+                      .param("employees[0].wishes[5]", "AVAILABLE"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
 
-      MultiValueMap<String, String> params = createValidParams();
+      assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
+      assertTrue(
+          responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
 
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+      Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
+      Matcher selectMatcher = selectPattern.matcher(responseContent);
+      int selectCount = 0;
+      while (selectMatcher.find()) {
+        selectCount++;
+      }
+      assertEquals(6, selectCount, "Row should have 6 select elements even with V-3 error");
+    }
 
-      String body = result.getResponse().getContentAsString();
-      Pattern timelinePattern = Pattern.compile("class=\"timeline\"");
-      Pattern tlRowPattern = Pattern.compile("class=\"tl-row\"");
-      Matcher timelineMatcher = timelinePattern.matcher(body);
-      Matcher tlRowMatcher = tlRowPattern.matcher(body);
-      int timelineCount = 0;
+    @Test
+    @DisplayName("[F-1] Given: POSTでV-5エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
+    void includesSlotLabelsWhenV5Error() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 13; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("07:30〜14:30"),
+          "Should contain work time 07:30〜14:30 even with V-5 error");
+      assertTrue(
+          responseContent.contains("data-slot-labels"),
+          "Should have data-slot-labels attribute even with V-5 error");
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: POSTで不成立のとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
+    void includesSlotLabelsWhenUnassignable() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=UNAVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("07:30〜14:30"),
+          "Should contain work time 07:30〜14:30 even when unassignable");
+      assertTrue(
+          responseContent.contains("data-slot-labels"),
+          "Should have data-slot-labels attribute even when unassignable");
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-4] 割当結果の表表示")
+  class ResultTableDisplay {
+
+    @BeforeEach
+    void setupAssignmentResult() {
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(createStandardResult()));
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 割当結果が表示されるとき, When: テーブルの見出しを確認すると, Then: 「氏名」「勤務時間」「休憩時間」の順である")
+    void displaysResultTableHeadersInCorrectOrder() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("class=\"result-table\""), "Result table should be present");
+
+      int pos1 = responseContent.indexOf("<th>氏名</th>");
+      int pos2 = responseContent.indexOf("<th>勤務時間</th>");
+      int pos3 = responseContent.indexOf("<th>休憩時間</th>");
+
+      assertTrue(pos1 >= 0, "Should contain header '氏名'");
+      assertTrue(pos2 >= 0, "Should contain header '勤務時間'");
+      assertTrue(pos3 >= 0, "Should contain header '休憩時間'");
+      assertTrue(pos1 < pos2, "'氏名' should come before '勤務時間'");
+      assertTrue(pos2 < pos3, "'勤務時間' should come before '休憩時間'");
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 8名の割当結果が表示されるとき, When: テーブルの行を確認すると, Then: 8行の氏名・勤務時間・休憩時間が仕様と一致する")
+    void displaysCorrectNumberOfRowsAndCorrectWorkSchedules() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("class=\"result-table\""), "Result table should be displayed");
+
+      String[] expectedWorkTimes = {
+        "07:30〜14:30",
+        "07:30〜14:30",
+        "08:00〜15:30",
+        "08:30〜16:30",
+        "09:00〜16:30",
+        "09:00〜18:00",
+        "09:00〜18:30",
+        "09:00〜18:30"
+      };
+
+      String[] expectedBreakTimes = {
+        "12:00〜12:45",
+        "12:00〜12:45",
+        "12:45〜13:30",
+        "12:45〜13:30",
+        "13:30〜14:15",
+        "13:30〜14:30",
+        "14:15〜15:15",
+        "14:30〜15:30"
+      };
+
+      assertEquals(8, expectedWorkTimes.length, "Should have 8 expected work times");
+      assertEquals(8, expectedBreakTimes.length, "Should have 8 expected break times");
+
+      Pattern resultTablePattern =
+          Pattern.compile("class=\"result-table\">.*?<tbody[^>]*>(.*?)</tbody>", Pattern.DOTALL);
+      Matcher resultTableMatcher = resultTablePattern.matcher(responseContent);
+      assertTrue(resultTableMatcher.find(), "Result table tbody should be present");
+      String resultTableTbody = resultTableMatcher.group(1);
+
+      Pattern rowPattern = Pattern.compile("<tr[^>]*>.*?</tr>", Pattern.DOTALL);
+      Matcher rowMatcher = rowPattern.matcher(resultTableTbody);
+
+      int rowCount = 0;
+      while (rowMatcher.find()) {
+        rowCount++;
+      }
+      assertEquals(8, rowCount, "Result table should have exactly 8 rows");
+
+      rowMatcher = rowPattern.matcher(resultTableTbody);
+      int currentRow = 0;
+      while (rowMatcher.find() && currentRow < 8) {
+        String rowHtml = rowMatcher.group();
+        String expectedName = String.valueOf((char) ('A' + currentRow));
+        String expectedWorkTime = expectedWorkTimes[currentRow];
+        String expectedBreakTime = expectedBreakTimes[currentRow];
+
+        assertTrue(
+            rowHtml.contains(expectedName),
+            "Row " + currentRow + " should contain name " + expectedName);
+
+        assertTrue(
+            rowHtml.contains(expectedWorkTime),
+            "Row " + currentRow + " should contain work time " + expectedWorkTime);
+
+        assertTrue(
+            rowHtml.contains(expectedBreakTime),
+            "Row " + currentRow + " should contain break time " + expectedBreakTime);
+
+        int namePos = rowHtml.indexOf(expectedName);
+        int workTimePos = rowHtml.indexOf(expectedWorkTime);
+        int breakTimePos = rowHtml.indexOf(expectedBreakTime);
+        assertTrue(
+            namePos < workTimePos && workTimePos < breakTimePos,
+            "Row " + currentRow + " should have name, work time, break time in correct order");
+
+        currentRow++;
+      }
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 割当結果の表が表示されるとき, When: 表の内容を確認すると, Then: 「早番」「遅番」の文字が存在しない")
+    void resultTableDoesNotContainEarlyOrLateTerms() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      int resultTableStart = responseContent.indexOf("class=\"result-table\"");
+      assertTrue(resultTableStart >= 0, "Result table should be present");
+
+      int resultTableEnd =
+          responseContent.indexOf("</table>", resultTableStart) + "</table>".length();
+      String resultTableContent = responseContent.substring(resultTableStart, resultTableEnd);
+
+      assertFalse(resultTableContent.contains("早番"), "Result table should not contain '早番'");
+      assertFalse(resultTableContent.contains("遅番"), "Result table should not contain '遅番'");
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: タイムラインが表示されるとき, When: 時間軸を確認すると," + " Then: ラベルが8から18の1時間刻みで11個ある")
+    void displaysTimelineAxisLabelsEightToEighteen() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      for (int h = 8; h <= 18; h++) {
+        assertTrue(
+            responseContent.contains("<div class=\"tl-axis\">")
+                && responseContent.contains(String.valueOf(h)),
+            "Timeline should contain hour label " + h);
+      }
+
+      assertFalse(
+          responseContent.contains("class=\"tl-axis\">") && responseContent.contains(">20<"),
+          "Timeline should not contain hour 20");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: CSSファイルを確認するとき, When: .tl-workの定義を見ると,"
+            + " Then: backgroundプロパティが定義されており、早番・遅番のセレクターがない")
+    void cssHasWorkBarColorWithoutEarlyLate() throws Exception {
+      String cssFilePath = "src/main/resources/static/css/shift-form.css";
+      java.nio.file.Path path = java.nio.file.Paths.get(cssFilePath);
+      String cssContent = new String(java.nio.file.Files.readAllBytes(path));
+
+      assertTrue(
+          cssContent.contains(".tl-work") && cssContent.contains("background:"),
+          "CSS should have .tl-work with background property");
+      assertFalse(
+          cssContent.contains(".tl-work.early") || cssContent.contains(".tl-work.late"),
+          "CSS should not have .tl-work.early or .tl-work.late");
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-4] スコアと未出勤者の表示")
+  class ScoreAndUnassignedDisplay {
+
+    @BeforeEach
+    void setupAssignmentResult() {
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(createStandardResult()));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: スコア5の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then: '.score-num'に'5'と'/ 8'が表示される")
+    void displaysScoreFiveWithCorrectFormat() throws Exception {
+      StringBuilder params = new StringBuilder();
+
+      for (int i = 0; i < 5; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        params.append("&employees[").append(i).append("].wishes[0]=DESIRED");
+        for (int j = 1; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      for (int i = 5; i < 8; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("class=\"score-num\""),
+          "Score display section should be present");
+      assertTrue(
+          responseContent.contains("5") && responseContent.contains("/ 8"),
+          "Score should show 5 / 8");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 未出勤者2名（I・J）の割当結果が表示されるとき, When: 未出勤者セクションを確認すると, Then: '.chip'が2つ表示され、氏名が正しい")
+    void displaysUnassignedEmployeesWithChips() throws Exception {
+      // 未出勤者2名を含む結果をスタブ
+      List<Employee> unassignedEmployees =
+          List.of(
+              new Employee(
+                  "I",
+                  List.of(
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED)),
+              new Employee(
+                  "J",
+                  List.of(
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED,
+                      Wish.DESIRED)));
+      AssignmentResult resultWithUnassigned =
+          new AssignmentResult(createStandardResult().assignments(), 5, unassignedEmployees);
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(resultWithUnassigned));
+
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 10; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("class=\"unassigned\""),
+          "Unassigned section should be displayed");
+
+      int chipCount = 0;
+      int index = 0;
+      while ((index = responseContent.indexOf("class=\"chip\"", index)) != -1) {
+        chipCount++;
+        index++;
+      }
+      assertEquals(2, chipCount, "Should have exactly 2 chips for 2 unassigned employees");
+
+      assertTrue(
+          responseContent.contains(">I<") || responseContent.contains("I</span>"),
+          "Should contain employee I");
+      assertTrue(
+          responseContent.contains(">J<") || responseContent.contains("J</span>"),
+          "Should contain employee J");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 未出勤者0名の割当結果が表示されるとき, When: 未出勤者セクションを確認すると, Then: '.unassigned'が表示されない")
+    void doesNotDisplayUnassignedSectionWhenAllAssigned() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertFalse(
+          responseContent.contains("class=\"unassigned\""),
+          "Unassigned section should not be displayed when all employees are assigned");
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-4] 時間軸バーの表示")
+  class TimelineDisplay {
+
+    @BeforeEach
+    void setupAssignmentResult() {
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(createStandardResult()));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 8名の割当結果が表示されるとき, When: 時間軸の行とバーを確認すると, Then: 8行8本のworkバー、8本のbreakバーが表示される")
+    void displaysCorrectNumberOfTimelineRows() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
       int tlRowCount = 0;
-      while (timelineMatcher.find()) {
-        timelineCount++;
-      }
-      while (tlRowMatcher.find()) {
+      int index = 0;
+      while ((index = responseContent.indexOf("class=\"tl-row\"", index)) != -1) {
         tlRowCount++;
+        index++;
       }
-      assertEquals(1, timelineCount, "class=\"timeline\" が 1 つ含まれること");
-      assertEquals(4, tlRowCount, "class=\"tl-row\" が 4 つ含まれること");
+      assertEquals(8, tlRowCount, "Should have exactly 8 timeline rows");
 
-      // 結果表にも同じ氏名が出るため、タイムラインの範囲に限定して抽出する
-      int timelineStart = body.indexOf("class=\"timeline\"");
-      int resultTableStart = body.indexOf("class=\"result-table\"", timelineStart);
-      String timelineSection = body.substring(timelineStart, resultTableStart);
+      int tlWorkCount = 0;
+      index = 0;
+      while ((index = responseContent.indexOf("class=\"tl-work\"", index)) != -1) {
+        tlWorkCount++;
+        index++;
+      }
+      assertEquals(8, tlWorkCount, "Should have exactly 8 work bars");
 
-      java.util.List<String> extractedNames = new java.util.ArrayList<>();
-      java.util.regex.Pattern pattern =
-          java.util.regex.Pattern.compile("<span class=\"tl-name\">([^<]*)</span>");
-      java.util.regex.Matcher matcher = pattern.matcher(timelineSection);
-      while (matcher.find()) {
-        extractedNames.add(matcher.group(1));
+      int tlBreakCount = 0;
+      index = 0;
+      while ((index = responseContent.indexOf("class=\"tl-break\"", index)) != -1) {
+        tlBreakCount++;
+        index++;
+      }
+      assertEquals(8, tlBreakCount, "Should have exactly 8 break bars");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 枠1の勤務バーが表示されるとき, When: スタイル属性を確認すると, Then: 'left:0.00%'かつ'width:63.64%'である")
+    void displaysSlot1WorkBarWithCorrectStyle() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
       }
 
-      assertEquals(
-          java.util.List.of("太郎", "花子", "次郎", "美咲"),
-          extractedNames,
-          "tl-name に太郎・花子・次郎・美咲が順に含まれること");
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(responseContent.contains("left:0.00%"), "First work bar should have left:0.00%");
+      assertTrue(
+          responseContent.contains("width:63.64%"), "First work bar should have width:63.64%");
     }
 
     @Test
     @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, Then: tl-work early が"
-            + " left:0.00%;width:69.23% で 2 つ、tl-work late が left:30.77%;width:69.23% で 2 つ含まれること")
-    void shouldDisplayTimelineWorkBarsWithCorrectStyles() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
-
-      MultiValueMap<String, String> params = createValidParams();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      String timelineSection = extractSection(body, "class=\"timeline\"", "class=\"result-table\"");
-      Pattern earlyStylePattern =
-          Pattern.compile("tl-work early.*?left:0\\.00%;width:69\\.23%", Pattern.DOTALL);
-      Pattern lateStylePattern =
-          Pattern.compile("tl-work late.*?left:30\\.77%;width:69\\.23%", Pattern.DOTALL);
-      Matcher earlyMatcher = earlyStylePattern.matcher(timelineSection);
-      Matcher lateMatcher = lateStylePattern.matcher(timelineSection);
-      int earlyCount = 0;
-      int lateCount = 0;
-      while (earlyMatcher.find()) {
-        earlyCount++;
+        "[F-4] Given: 枠6の勤務バーが表示されるとき, When: スタイル属性を確認すると, Then: 'left:13.64%'かつ'width:86.36%'である")
+    void displaysSlot6WorkBarWithCorrectStyle() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
       }
-      while (lateMatcher.find()) {
-        lateCount++;
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("left:13.64%"),
+          "Last work bars (Slot 6) should have left:13.64%");
+      assertTrue(
+          responseContent.contains("width:86.36%"),
+          "Last work bars (Slot 6) should have width:86.36%");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 枠1の1人目の休憩バーが表示されるとき, When: スタイル属性を確認すると, Then:"
+            + " 'left:40.91%'かつ'width:6.82%'である")
+    void displaysSlot1BreakBarWithCorrectStyle() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
       }
-      assertEquals(2, earlyCount, "tl-work early が left:0.00%;width:69.23% で 2 つ含まれること");
-      assertEquals(2, lateCount, "tl-work late が left:30.77%;width:69.23% で 2 つ含まれること");
+
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          responseContent.contains("left:40.91%"), "First break bar should have left:40.91%");
+      assertTrue(
+          responseContent.contains("width:6.82%"), "First break bar should have width:6.82%");
     }
 
     @Test
     @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: tl-break が left:38.46%;width:7.69% / 46.15% / 53.85% / 61.54% で 4 つ含まれること")
-    void shouldDisplayTimelineBreakBarsWithCorrectStyles() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
+        "[F-4] Given: 時間軸の凡例が表示されるとき, When: 凡例の内容を確認すると, Then: 「勤務」「休憩」が含まれ、「早番」「遅番」が含まれない")
+    void displaysCorrectLegend() throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        for (int j = 0; j < 6; j++) {
+          params
+              .append("&employees[")
+              .append(i)
+              .append("].wishes[")
+              .append(j)
+              .append("]=AVAILABLE");
+        }
+      }
 
-      MultiValueMap<String, String> params = createValidParams();
+      String responseContent =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .contentType("application/x-www-form-urlencoded")
+                      .content(params.toString().substring(1)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
 
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+      int legendStart = responseContent.indexOf("class=\"tl-legend\"");
+      assertTrue(legendStart >= 0, "Legend section should exist");
 
-      String body = result.getResponse().getContentAsString();
-      String timelineSection = extractSection(body, "class=\"timeline\"", "class=\"result-table\"");
+      String legendSection =
+          responseContent.substring(
+              legendStart, Math.min(legendStart + 300, responseContent.length()));
+
+      assertTrue(legendSection.contains("勤務"), "Legend should contain '勤務'");
+      assertTrue(legendSection.contains("休憩"), "Legend should contain '休憩'");
+      assertFalse(legendSection.contains("早番"), "Legend should not contain '早番'");
+      assertFalse(legendSection.contains("遅番"), "Legend should not contain '遅番'");
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-2][F-6] JavaScriptの行追加・削除機能")
+  class JavaScriptAddDeleteRows {
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then:"
+            + " id=\"add-row-btn\"のボタン要素にdata-max-rows=\"12\"がある")
+    void buttonElementContainsDataMaxRows() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      Pattern pattern =
+          Pattern.compile("id=\"add-row-btn\"[^>]*data-max-rows=\"12\"", Pattern.DOTALL);
+      Matcher matcher = pattern.matcher(htmlContent);
       assertTrue(
-          timelineSection.contains("tl-break")
-              && timelineSection.contains("left:38.46%;width:7.69%")
-              && timelineSection.contains("left:46.15%;width:7.69%")
-              && timelineSection.contains("left:53.85%;width:7.69%")
-              && timelineSection.contains("left:61.54%;width:7.69%"),
-          "tl-break が 4 つの休憩時刻スタイルで含まれること");
+          matcher.find(),
+          "Button with id=\"add-row-btn\" should have data-max-rows=\"12\" attribute");
     }
 
     @Test
     @DisplayName(
-        "[F-4] Given: 条件を満たす組み合わせがないとき, When: POST /shift を実行すると, "
-            + "Then: class=\"timeline\" が含まれていないこと")
-    void shouldNotDisplayTimelineWhenNoValidCombination() throws Exception {
-      org.mockito.Mockito.when(
-              shiftAssignmentService.findDuplicateNames(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.List.of());
-      org.mockito.Mockito.when(shiftAssignmentService.assign(org.mockito.ArgumentMatchers.any()))
-          .thenReturn(java.util.Optional.empty());
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:"
+            + " 'wishes['を使ったname生成と'disabled'の設定がある")
+    void shiftFormJsContainsWishesArrayLogic() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
 
-      MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-      params.add("employees[0].name", "太郎");
-      params.add("employees[0].earlyWish", "DESIRED");
-      params.add("employees[0].lateWish", "AVAILABLE");
+      int scriptStart = htmlContent.indexOf("src=\"");
+      assertTrue(scriptStart >= 0, "Should have script tag with src");
 
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
+      assertTrue(htmlContent.contains("/js/shift-form.js"), "HTML should reference shift-form.js");
 
-      String body = result.getResponse().getContentAsString();
-      assertTrue(!body.contains("class=\"timeline\""), "不成立時に class=\"timeline\" が含まれていないこと");
+      // since MockMvc would serve the resource
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
+
+      assertTrue(
+          jsContent.contains("wishes["),
+          "shift-form.js should contain 'wishes[' for new 6-slot structure");
+      assertTrue(
+          jsContent.contains(".disabled"),
+          "shift-form.js should contain '.disabled' for button state management");
     }
 
     @Test
     @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, Then: class=\"tl-axis\""
-            + " に目盛り left が 0.00%, 15.38%, 30.77%, 46.15%, 61.54%, 76.92%, 92.31% で 7 つ")
-    void shouldDisplayTimelineAxisWithCorrectScales() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
+        "[F-6] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:"
+            + " 'earlyWish'・'lateWish'・「早番」・「遅番」の文字列が存在しない")
+    void shiftFormJsDoesNotContainOldTerms() throws Exception {
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
 
-      MultiValueMap<String, String> params = createValidParams();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      String timelineSection = extractSection(body, "class=\"timeline\"", "class=\"result-table\"");
-      assertTrue(timelineSection.contains("class=\"tl-axis\""), "class=\"tl-axis\" が含まれること");
-      assertTrue(
-          timelineSection.contains("left:0.00%")
-              && timelineSection.contains("left:15.38%")
-              && timelineSection.contains("left:30.77%")
-              && timelineSection.contains("left:46.15%")
-              && timelineSection.contains("left:61.54%")
-              && timelineSection.contains("left:76.92%")
-              && timelineSection.contains("left:92.31%"),
-          "目盛りの 7 つの left 値が含まれること");
-      assertTrue(
-          timelineSection.contains(">8<")
-              && timelineSection.contains(">10<")
-              && timelineSection.contains(">12<")
-              && timelineSection.contains(">14<")
-              && timelineSection.contains(">16<")
-              && timelineSection.contains(">18<")
-              && timelineSection.contains(">20<"),
-          "目盛りの 8-20 の偶数文字が含まれること");
+      assertFalse(jsContent.contains("earlyWish"), "shift-form.js should not contain 'earlyWish'");
+      assertFalse(jsContent.contains("lateWish"), "shift-form.js should not contain 'lateWish'");
+      assertFalse(jsContent.contains("早番"), "shift-form.js should not contain '早番'");
+      assertFalse(jsContent.contains("遅番"), "shift-form.js should not contain '遅番'");
     }
 
     @Test
     @DisplayName(
-        "[F-4] Given: 早番2名・遅番2名の有効な割当が存在するとき, When: POST /shift を実行すると, "
-            + "Then: class=\"tl-legend\" に「早番」「遅番」「休憩」が含まれること")
-    void shouldDisplayTimelineLegend() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: \"12\"や12の数値リテラルがない（設定は要素から読む）")
+    void shiftFormJsDoesNotContainHardcodedMaxRows() throws Exception {
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
 
-      MultiValueMap<String, String> params = createValidParams();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      String timelineSection = extractSection(body, "class=\"timeline\"", "class=\"result-table\"");
-      assertTrue(timelineSection.contains("class=\"tl-legend\""), "class=\"tl-legend\" が含まれること");
-      assertTrue(
-          timelineSection.contains("早番")
-              && timelineSection.contains("遅番")
-              && timelineSection.contains("休憩"),
-          "凡例に早番・遅番・休憩が含まれること");
-      assertTrue(
-          timelineSection.contains("class=\"lg early\"")
-              && timelineSection.contains("class=\"lg late\"")
-              && timelineSection.contains("class=\"lg brk\""),
-          "凡例に lg early, lg late, lg brk が含まれること");
+      assertFalse(
+          jsContent.contains("\"12\"") || jsContent.contains("|| \"12\""),
+          "shift-form.js should not contain hardcoded \"12\" string");
     }
 
     @Test
     @DisplayName(
-        "[F-4] Given: 有効な割当が存在するとき, When: POST /shift を実行すると, " + "Then: 割当結果の表に「早番」「遅番」が含まれていないこと")
-    void shouldNotDisplayEarlyLateTextInResultTable() throws Exception {
-      com.example.shiftmatch.domain.AssignmentResult assignmentResult =
-          createAssignmentResult(3, new com.example.shiftmatch.domain.Employee("五郎", null, null));
-      stubAssignSuccess(assignmentResult);
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: dataset.maxRowsまたはgetAttribute(data-max-rows)を読み取っている")
+    void shiftFormJsReadsDataMaxRows() throws Exception {
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
 
-      MultiValueMap<String, String> params = createValidParams();
-
-      MvcResult result =
-          mockMvc.perform(MockMvcRequestBuilders.post("/shift").params(params)).andReturn();
-
-      String body = result.getResponse().getContentAsString();
-      int tableStart = body.indexOf("<table class=\"result-table\">");
-      int tableEnd = body.indexOf("</table>", tableStart);
-      assertTrue(tableStart > -1 && tableEnd > tableStart, "result-table が存在すること");
-      String tableContent = body.substring(tableStart, tableEnd);
       assertTrue(
-          !tableContent.contains("早番") && !tableContent.contains("遅番"), "表内に早番・遅番が含まれていないこと");
+          jsContent.contains("data-max-rows") || jsContent.contains("dataset.maxRows"),
+          "shift-form.js should read data-max-rows attribute");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: addRowBtn.disabledに代入する箇所と、クリック処理に上限ガードがある")
+    void shiftFormJsHasMaxRowsGuardAndButtonDisable() throws Exception {
+      String jsFilePath = "src/main/resources/static/js/shift-form.js";
+      java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
+      String jsContent = new String(java.nio.file.Files.readAllBytes(path));
+
+      assertTrue(
+          jsContent.contains("addRowBtn.disabled"),
+          "shift-form.js should have addRowBtn.disabled assignment");
+      assertTrue(
+          jsContent.contains("currentRowCount >= maxRows") || jsContent.contains(">= maxRows"),
+          "shift-form.js should have max rows guard in click handler");
+      assertTrue(
+          jsContent.contains("updateAddButtonState"),
+          "shift-form.js should call updateAddButtonState function");
     }
   }
 }

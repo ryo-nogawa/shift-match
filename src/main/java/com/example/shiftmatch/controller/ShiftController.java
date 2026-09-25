@@ -3,8 +3,11 @@ package com.example.shiftmatch.controller;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.InvalidWishError;
+import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.domain.Wish;
 import com.example.shiftmatch.service.ShiftAssignmentService;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,7 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 @Controller
 public class ShiftController {
 
-  private static final int MAX_EMPLOYEE_COUNT = 20;
+  private static final int MAX_EMPLOYEE_COUNT = 12;
 
   private final ShiftAssignmentService shiftAssignmentService;
 
@@ -33,6 +36,25 @@ public class ShiftController {
   @Autowired
   public ShiftController(ShiftAssignmentService shiftAssignmentService) {
     this.shiftAssignmentService = shiftAssignmentService;
+  }
+
+  /**
+   * 枠ラベルをモデルに設定します。
+   *
+   * <p>GET と POST の全経路でモデルに含まれるよう、{@code @ModelAttribute} を使用します。
+   *
+   * @return 枠ラベルのリスト
+   */
+  @ModelAttribute("slotLabels")
+  public List<String> slotLabels() {
+    List<String> labels = new ArrayList<>();
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+    for (ShiftSlot slot : ShiftSlot.values()) {
+      LocalTime start = slot.startTime();
+      LocalTime end = slot.endTime();
+      labels.add(start.format(formatter) + "〜" + end.format(formatter));
+    }
+    return labels;
   }
 
   /**
@@ -50,6 +72,7 @@ public class ShiftController {
     }
     shiftForm.setEmployees(employees);
     model.addAttribute("shiftForm", shiftForm);
+
     return "index";
   }
 
@@ -62,20 +85,6 @@ public class ShiftController {
    */
   @PostMapping("/shift")
   public String createShift(@ModelAttribute("shiftForm") ShiftForm shiftForm, Model model) {
-    // 入力行数が上限を超える場合は、DoS 攻撃への耐性を保つため処理を中断する
-    int validEmployeeCount = 0;
-    for (EmployeeForm employee : shiftForm.getEmployees()) {
-      if (employee.getName() != null && !employee.getName().isBlank()) {
-        validEmployeeCount++;
-      }
-    }
-    if (validEmployeeCount > MAX_EMPLOYEE_COUNT) {
-      model.addAttribute(
-          "limitExceededError", "従業員の入力行数が上限（" + MAX_EMPLOYEE_COUNT + "名）を超えています。入力行を減らしてください。");
-      model.addAttribute("shiftForm", shiftForm);
-      return "index";
-    }
-
     // 仕様上、入力表には最低 1 行を残す必要があるため、行が 1 件も送られなかった場合だけ空行を補う
     if (shiftForm.getEmployees().isEmpty()) {
       shiftForm.getEmployees().add(new EmployeeForm());
@@ -83,39 +92,52 @@ public class ShiftController {
 
     List<Employee> employees = convertToEmployees(shiftForm);
 
+    List<Employee> validEmployees =
+        employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
+
+    List<String> slotLabelsForError = slotLabels();
+
+    // 空行を含む元のリストを渡す。サービス側が空行を除外しつつ元のインデックスを保持する
     List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
 
-    // V-1 では氏名が空の行をエラーにせず処理対象から除く必要があるため、V-3 のチェック時も空行は対象外とする
     List<InvalidWishError> wishErrors = new ArrayList<>();
+
     for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
       EmployeeForm employee = shiftForm.getEmployees().get(i);
       if (employee.getName() == null || employee.getName().isBlank()) {
         continue;
       }
 
-      if (!isValidWish(employee.getEarlyWish())) {
-        wishErrors.add(new InvalidWishError(i, "早番希望"));
-      }
-
-      if (!isValidWish(employee.getLateWish())) {
-        wishErrors.add(new InvalidWishError(i, "遅番希望"));
-      }
-    }
-
-    // V-2・V-3 いずれのエラーもない場合のみ assign を呼び出し、割当案を算出する
-    if (wishErrors.isEmpty() && duplicateErrors.isEmpty()) {
-      var result = shiftAssignmentService.assign(employees);
-      if (result.isPresent()) {
-        model.addAttribute("assignmentResult", result.get());
-      } else {
-        model.addAttribute("unassignable", true);
+      List<String> wishes = employee.getWishes();
+      for (int j = 0; j < slotLabelsForError.size(); j++) {
+        String wish = (wishes != null && j < wishes.size()) ? wishes.get(j) : null;
+        if (!isValidWish(wish)) {
+          wishErrors.add(new InvalidWishError(i, slotLabelsForError.get(j)));
+        }
       }
     }
 
-    model.addAttribute("wishErrors", wishErrors);
-    model.addAttribute("duplicateErrors", duplicateErrors);
+    boolean limitExceeded = validEmployees.size() > MAX_EMPLOYEE_COUNT;
+    if (limitExceeded) {
+      model.addAttribute(
+          "limitExceededError", "従業員の入力行数が上限（" + MAX_EMPLOYEE_COUNT + "名）を超えています。入力行を減らしてください。");
+    }
+
+    if (!duplicateErrors.isEmpty() || !wishErrors.isEmpty() || limitExceeded) {
+      model.addAttribute("wishErrors", wishErrors);
+      model.addAttribute("duplicateErrors", duplicateErrors);
+      model.addAttribute("shiftForm", shiftForm);
+      return "index";
+    }
+
+    var result = shiftAssignmentService.assign(validEmployees);
+    if (result.isPresent()) {
+      model.addAttribute("assignmentResult", result.get());
+    } else {
+      model.addAttribute("unassignable", true);
+    }
+
     model.addAttribute("shiftForm", shiftForm);
-
     return "index";
   }
 
@@ -128,9 +150,13 @@ public class ShiftController {
   private List<Employee> convertToEmployees(ShiftForm shiftForm) {
     List<Employee> employees = new ArrayList<>();
     for (EmployeeForm form : shiftForm.getEmployees()) {
-      Wish earlyWish = convertStringToWish(form.getEarlyWish());
-      Wish lateWish = convertStringToWish(form.getLateWish());
-      employees.add(new Employee(form.getName(), earlyWish, lateWish));
+      List<Wish> wishes = new ArrayList<>();
+      List<String> wishStrings = form.getWishes();
+      for (int i = 0; i < ShiftSlot.values().length; i++) {
+        String wish = (wishStrings != null && i < wishStrings.size()) ? wishStrings.get(i) : null;
+        wishes.add(convertStringToWish(wish));
+      }
+      employees.add(new Employee(form.getName(), wishes));
     }
     return employees;
   }
