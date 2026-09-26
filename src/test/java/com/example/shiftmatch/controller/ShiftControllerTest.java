@@ -2501,5 +2501,45 @@ class ShiftControllerTest {
     void allowsCrossSiteGetRequest() throws Exception {
       mockMvc.perform(get("/").header("Sec-Fetch-Site", "cross-site")).andExpect(status().isOk());
     }
+
+    @Test
+    @DisplayName(
+        "Given: Origin: null, Host: localhost:8080 のとき, When: POST /shift すると, Then: 403で"
+            + " save/assign が呼ばれない")
+    void rejectsRequestWithNullOrigin() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .header("Origin", "null")
+                  .header("Host", "localhost:8080")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30"))
+          .andExpect(status().isForbidden());
+
+      verify(shiftAssignmentService, never()).assign(any());
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName(
+        "Given: Origin: file:///x (ホスト抽出不可), Host: localhost:8080 のとき, When: POST /shift すると,"
+            + " Then: 403で save/assign が呼ばれない")
+    void rejectsRequestWithNoHostOrigin() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .header("Origin", "file:///x")
+                  .header("Host", "localhost:8080")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30"))
+          .andExpect(status().isForbidden());
+
+      verify(shiftAssignmentService, never()).assign(any());
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
   }
 }

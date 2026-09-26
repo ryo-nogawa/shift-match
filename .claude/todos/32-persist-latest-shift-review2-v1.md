@@ -14,7 +14,7 @@
 
 ## Todo
 
-- [ ] **T1. `Origin: null` などホストを持たない Origin を 403 にする**
+- [x] **T1. `Origin: null` などホストを持たない Origin を 403 にする**
   - 依頼事項：`src/main/java/com/example/shiftmatch/config/SameOriginInterceptor.java` で、`Origin` から取り出したホストが `null`（`Origin: null`、ホストを抽出できない値）のとき、`NullPointerException` にせず拒否（403）する。構文が不正で `URI` を作れない値も 403 のままであること。テストを先に書く：`Origin: null` と `Host: localhost:8080` で `POST /shift` → 403（RED：今は 500）、`Origin: file:///x` のようにホストのない構文上有効な値 → 403。いずれも `save`・`assign` が呼ばれない
   - 対象ファイル：`SameOriginInterceptor.java`、T4 で追加した同インターセプターのテストがあるファイル（`ShiftControllerTest.java` または `SameOriginInterceptorTest.java`）
   - 完了条件：

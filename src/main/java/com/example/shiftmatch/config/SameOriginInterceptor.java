@@ -63,7 +63,7 @@ public class SameOriginInterceptor implements HandlerInterceptor {
       if (hostHeader != null) {
         // Origin ヘッダから host[:port] を抽出
         String originHost = extractHostFromOrigin(origin);
-        return originHost.equalsIgnoreCase(hostHeader);
+        return originHost != null && originHost.equalsIgnoreCase(hostHeader);
       }
       return false;
     }
