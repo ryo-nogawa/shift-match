@@ -51,6 +51,19 @@
       </ul>
     </section>
 
+    <section
+      class="alert"
+      role="alert"
+      th:if="${employmentTypeErrors != null && !employmentTypeErrors.isEmpty()}"
+    >
+      <h2>入力エラー</h2>
+      <ul>
+        <li th:each="error : ${employmentTypeErrors}">
+          <span th:text="|${error.rowIndex() + 1}行目 ${error.message()}|"></span>
+        </li>
+      </ul>
+    </section>
+
     <form
       method="post"
       th:action="@{/shift}"
@@ -69,6 +82,7 @@
           <tr>
             <th></th>
             <th>氏名</th>
+            <th>区分</th>
             <th>休み</th>
             <th>開始</th>
             <th>終了</th>
@@ -87,6 +101,13 @@
                 th:field="*{employees[__${stat.index}__].name}"
                 placeholder="氏名を入力"
               />
+            </td>
+            <td data-label="区分">
+              <select th:field="*{employees[__${stat.index}__].employmentType}">
+                <option value="FULL_TIME">常勤</option>
+                <option value="PART_TIME">パート</option>
+                <option value="MANAGER">管理職</option>
+              </select>
             </td>
             <td data-label="休み">
               <input type="checkbox" class="off-checkbox" th:field="*{employees[__${stat.index}__].off}" />
@@ -164,6 +185,7 @@
         <thead>
           <tr>
             <th>氏名</th>
+            <th>区分</th>
             <th>勤務時間</th>
             <th>休憩時間</th>
             <th>希望時間帯</th>
@@ -172,6 +194,7 @@
         <tbody>
           <tr th:each="assignment : ${assignmentResult.assignments()}">
             <td th:text="${assignment.employee().name()}"></td>
+            <td th:text="${assignment.employee().employmentType().label()}"></td>
             <td>
               <span class="pill" data-duration="work"
                 th:text="|${#temporals.format(assignment.slot().startTime(), 'HH:mm')}〜${#temporals.format(assignment.slot().endTime(), 'HH:mm')}|"
@@ -192,7 +215,7 @@
       <div class="unassigned" th:if="${assignmentResult.unassignedEmployees().size() > 0}">
         <b>未出勤者</b>
         <div class="unassigned-item" th:each="employee : ${assignmentResult.unassignedEmployees()}">
-          <span class="chip" th:text="${employee.name()}"></span>
+          <span class="chip" th:text="|${employee.name()}（${employee.employmentType().label()}）|"></span>
           <span class="reason" th:text="${assignmentResult.unassignedReasonLabel(employee)}"></span>
         </div>
       </div>

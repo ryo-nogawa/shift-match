@@ -3,6 +3,8 @@ package com.example.shiftmatch.controller;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.InvalidEmploymentTypeError;
 import com.example.shiftmatch.domain.InvalidNameError;
 import com.example.shiftmatch.domain.InvalidTimeRangeError;
 import com.example.shiftmatch.domain.ShiftAssignment;
@@ -80,6 +82,18 @@ public class ShiftController {
   }
 
   /**
+   * 雇用区分の選択肢（常勤、パート、管理職）をモデルに設定します。
+   *
+   * <p>GET と POST の全経路でモデルに含まれるよう、{@code @ModelAttribute} を使用します。
+   *
+   * @return 雇用区分の選択肢のリスト
+   */
+  @ModelAttribute("employmentTypes")
+  public List<EmploymentType> employmentTypes() {
+    return List.of(EmploymentType.FULL_TIME, EmploymentType.PART_TIME, EmploymentType.MANAGER);
+  }
+
+  /**
    * 初期フォームを表示します。保存済みの従業員入力がある場合は復元します。
    *
    * @param model モデルオブジェクト
@@ -97,6 +111,7 @@ public class ShiftController {
     for (Employee savedEmployee : savedEmployees) {
       EmployeeForm form = new EmployeeForm();
       form.setName(savedEmployee.name());
+      form.setEmploymentType(savedEmployee.employmentType().name());
       form.setOff(savedEmployee.off());
       if (!savedEmployee.off()) {
         form.setStart(savedEmployee.start().format(TIME_FORMATTER));
@@ -110,7 +125,9 @@ public class ShiftController {
 
     // 不足分を空行で補う（最大12行）
     while (employees.size() < MAX_EMPLOYEE_COUNT) {
-      employees.add(new EmployeeForm());
+      EmployeeForm emptyEmployee = new EmployeeForm();
+      emptyEmployee.setEmploymentType("FULL_TIME"); // 空行の区分は常勤（既定値）
+      employees.add(emptyEmployee);
     }
 
     shiftForm.setEmployees(employees);
@@ -134,7 +151,9 @@ public class ShiftController {
       Model model) {
     // 仕様上、入力表には最低 1 行を残す必要があるため、行が 1 件も送られなかった場合だけ空行を補う
     if (shiftForm.getEmployees().isEmpty()) {
-      shiftForm.getEmployees().add(new EmployeeForm());
+      EmployeeForm emptyEmployee = new EmployeeForm();
+      emptyEmployee.setEmploymentType("FULL_TIME"); // 空行の区分は常勤（既定値）
+      shiftForm.getEmployees().add(emptyEmployee);
     }
 
     List<Employee> employees = convertToEmployees(shiftForm);
@@ -149,6 +168,8 @@ public class ShiftController {
 
     List<InvalidNameError> nameErrors = toNameErrors(bindingResult);
 
+    List<InvalidEmploymentTypeError> employmentTypeErrors = toEmploymentTypeErrors(shiftForm);
+
     boolean limitExceeded = validEmployees.size() > MAX_EMPLOYEE_COUNT;
     if (limitExceeded) {
       model.addAttribute(
@@ -158,10 +179,12 @@ public class ShiftController {
     if (!duplicateErrors.isEmpty()
         || !timeRangeErrors.isEmpty()
         || !nameErrors.isEmpty()
+        || !employmentTypeErrors.isEmpty()
         || limitExceeded) {
       model.addAttribute("duplicateErrors", duplicateErrors);
       model.addAttribute("timeRangeErrors", timeRangeErrors);
       model.addAttribute("nameErrors", nameErrors);
+      model.addAttribute("employmentTypeErrors", employmentTypeErrors);
       model.addAttribute("shiftForm", shiftForm);
       return "index";
     }
@@ -309,6 +332,34 @@ public class ShiftController {
   }
 
   /**
+   * 雇用区分の入力エラーを検証します（V-7）。
+   *
+   * <p>従業員名が入力された行で、雇用区分が FULL_TIME, PART_TIME, MANAGER 以外の場合（未送信を含む）はエラーです。
+   * 従業員名が空の行の不正な区分はエラーにしません。
+   *
+   * @param shiftForm フォームデータ
+   * @return 雇用区分エラーのリスト
+   */
+  private List<InvalidEmploymentTypeError> toEmploymentTypeErrors(ShiftForm shiftForm) {
+    List<InvalidEmploymentTypeError> errors = new ArrayList<>();
+
+    for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
+      EmployeeForm form = shiftForm.getEmployees().get(i);
+      // 従業員名が空の行は検査しない（V-1で除外）
+      if (form.getName() == null || form.getName().isBlank()) {
+        continue;
+      }
+      // 雇用区分が未送信（null）または 3 択以外の場合はエラー
+      if (form.getEmploymentType() == null
+          || EmploymentType.parse(form.getEmploymentType()).isEmpty()) {
+        errors.add(new InvalidEmploymentTypeError(i, "雇用区分は「常勤」「パート」「管理職」から選択してください。"));
+      }
+    }
+
+    return errors;
+  }
+
+  /**
    * ShiftForm を Employee のリストに変換します。
    *
    * <p>開始・終了は {@code HH:mm} として解析し、空・不正な文字列は {@code null} にします。休みの行は開始・終了を無視します。
@@ -322,7 +373,13 @@ public class ShiftController {
       boolean off = form.isOff();
       LocalTime start = off ? null : parseTimeOrNull(form.getStart());
       LocalTime end = off ? null : parseTimeOrNull(form.getEnd());
-      employees.add(new Employee(form.getName(), off, start, end));
+      EmploymentType employmentType =
+          EmploymentType.parse(form.getEmploymentType()).orElse(EmploymentType.FULL_TIME);
+      if (off) {
+        employees.add(Employee.onLeave(form.getName(), employmentType));
+      } else {
+        employees.add(Employee.working(form.getName(), employmentType, start, end));
+      }
     }
     return employees;
   }

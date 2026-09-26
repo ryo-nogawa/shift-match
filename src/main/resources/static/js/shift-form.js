@@ -68,6 +68,30 @@ document.addEventListener("DOMContentLoaded", function () {
     return select;
   }
 
+  function createEmploymentTypeSelect(name) {
+    const select = document.createElement("select");
+    select.name = name;
+
+    const types = [
+      { value: "FULL_TIME", label: "常勤" },
+      { value: "PART_TIME", label: "パート" },
+      { value: "MANAGER", label: "管理職" },
+    ];
+
+    types.forEach((type) => {
+      const option = document.createElement("option");
+      option.value = type.value;
+      option.textContent = type.label;
+      // Default to FULL_TIME for new rows
+      if (type.value === "FULL_TIME") {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+
+    return select;
+  }
+
   function createCell(label, element) {
     const cell = document.createElement("td");
     cell.setAttribute("data-label", label);
@@ -76,11 +100,15 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // 休みの人は割り当て対象外（H-3）で開始・終了を使わないため、8 章の画面仕様どおり選択できなくする
+  // ただし、雇用区分（employmentType）は常に選択可能（割り当てに影響しないため）
   function updateTimeSelectsState(row) {
     const offCheckbox = row.querySelector(".off-checkbox");
     const off = offCheckbox !== null && offCheckbox.checked;
     row.querySelectorAll("select").forEach((select) => {
-      select.disabled = off;
+      // 雇用区分（name に employmentType を含む）は常に有効
+      if (!select.name.includes("employmentType")) {
+        select.disabled = off;
+      }
     });
   }
 
@@ -130,6 +158,10 @@ document.addEventListener("DOMContentLoaded", function () {
     nameInput.name = prefix + ".name";
     nameInput.placeholder = "氏名を入力";
     newRow.appendChild(createCell("氏名", nameInput));
+
+    newRow.appendChild(
+        createCell("区分", createEmploymentTypeSelect(prefix + ".employmentType"))
+    );
 
     const offCell = document.createElement("td");
     offCell.setAttribute("data-label", "休み");

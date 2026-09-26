@@ -133,6 +133,75 @@ class ShiftAssignmentServiceImplTest {
 
       assertFalse(result.isPresent(), "Should return empty when only 7 valid employees remain");
     }
+
+    @Test
+    @DisplayName(
+        "[H-1][H-3][5.3] Given: 12名を\"全員常勤\"と\"常勤・パート・管理職を混在\"で割り当てるとき, When: assignを実行すると, Then:"
+            + " 採用される案（各枠の氏名、スコア）が同一である")
+    void assignmentResultIsIndependentOfEmploymentType() {
+      LocalTime start = LocalTime.of(7, 30);
+      LocalTime end = LocalTime.of(18, 30);
+
+      // パターン1：全員常勤
+      List<Employee> allFullTime = new ArrayList<>();
+      for (int i = 0; i < 12; i++) {
+        allFullTime.add(Employee.working("Employee" + i, start, end));
+      }
+
+      // パターン2：常勤・パート・管理職を混在（常勤6名、パート3名、管理職3名）
+      List<Employee> mixed = new ArrayList<>();
+      for (int i = 0; i < 6; i++) {
+        mixed.add(Employee.working("Employee" + i, start, end));
+      }
+      for (int i = 6; i < 9; i++) {
+        mixed.add(
+            Employee.working(
+                "Employee" + i,
+                com.example.shiftmatch.domain.EmploymentType.PART_TIME,
+                start,
+                end));
+      }
+      for (int i = 9; i < 12; i++) {
+        mixed.add(
+            Employee.working(
+                "Employee" + i, com.example.shiftmatch.domain.EmploymentType.MANAGER, start, end));
+      }
+
+      ShiftAssignmentService service1 = new ShiftAssignmentServiceImpl();
+      ShiftAssignmentService service2 = new ShiftAssignmentServiceImpl();
+
+      Optional<AssignmentResult> resultFullTime = service1.assign(allFullTime);
+      Optional<AssignmentResult> resultMixed = service2.assign(mixed);
+
+      assertTrue(resultFullTime.isPresent(), "全員常勤の割り当てが成立すべき");
+      assertTrue(resultMixed.isPresent(), "混在の割り当てが成立すべき");
+
+      // スコアが同じであることを確認
+      assertEquals(
+          resultFullTime.get().score(), resultMixed.get().score(), "雇用区分が異なる場合、スコアが同じであるべき");
+
+      // 割り当てられた各人の枠が同じであることを確認（入力順の名前は異なるが、枠の構成は同じ）
+      Map<ShiftSlot, Set<Integer>> slotsFullTime = extractSlotAssignments(resultFullTime.get());
+      Map<ShiftSlot, Set<Integer>> slotsMixed = extractSlotAssignments(resultMixed.get());
+
+      for (ShiftSlot slot : ShiftSlot.values()) {
+        assertEquals(
+            slotsFullTime.get(slot), slotsMixed.get(slot), "枠 " + slot + " の割り当て人数が同じであるべき");
+      }
+    }
+
+    private Map<ShiftSlot, Set<Integer>> extractSlotAssignments(AssignmentResult result) {
+      Map<ShiftSlot, Set<Integer>> slotsMap = new HashMap<>();
+      for (ShiftSlot slot : ShiftSlot.values()) {
+        slotsMap.put(slot, new HashSet<>());
+      }
+      for (var assignment : result.assignments()) {
+        slotsMap
+            .get(assignment.slot())
+            .add(Integer.parseInt(assignment.employee().name().replaceAll("[^0-9]", "")));
+      }
+      return slotsMap;
+    }
   }
 
   @Nested
