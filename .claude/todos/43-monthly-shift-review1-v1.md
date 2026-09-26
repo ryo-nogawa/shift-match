@@ -25,7 +25,7 @@
     - 休みの個別変更は時刻が null でもエラーにならない、氏名が一致しない個別変更は不正な値でもエラーにならないテストがある
     - `./mvnw test -Dtest=MonthlyInputValidatorTest` が成功する
 
-- [ ] **R2. 欠損入力（名前が null、対象月が null）をエラーとして扱う（MUST・V-1、V-8）**
+- [x] **R2. 欠損入力（名前が null、対象月が null）をエラーとして扱う（MUST・V-1、V-8）**
   - 依頼事項：従業員名が null の行は、`isBlank()` の前に null を判定して V-1 の除外対象にする（`NullPointerException` にしない）。`MonthlyInputValidator` と `MonthlyShiftServiceImpl`（`WishResolver` を含む、氏名を扱う箇所すべて）で null 安全にする。`input.month()` が null の場合は `HolidayService` を呼ばずに V-8 のエラーとし、V-9 の検証は行わない（対象月がないため）。その場合 `MonthlyShiftServiceImpl.create` は `InvalidMonthlyInputException` を投げる
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/MonthlyInputValidator.java`、`MonthlyShiftServiceImpl.java`、`WishResolver.java`（必要な場合）、対応するテスト
   - 完了条件：

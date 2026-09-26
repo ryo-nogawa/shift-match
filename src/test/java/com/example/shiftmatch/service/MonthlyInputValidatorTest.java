@@ -3,6 +3,7 @@ package com.example.shiftmatch.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -819,5 +820,102 @@ class MonthlyInputValidatorTest {
     List<InputError> errors = validator.validate(input);
 
     assertTrue(errors.isEmpty());
+  }
+
+  @Test
+  @DisplayName("[V-1] 従業員名が null の行は除外される")
+  void testNullNameNotError() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile taroProfile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+    EmployeeProfile nullNameProfile =
+        new EmployeeProfile(null, EmploymentType.FULL_TIME, baseShifts);
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(
+            YearMonth.of(2024, 9), List.of(taroProfile, nullNameProfile), new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    assertTrue(errors.isEmpty());
+  }
+
+  @Test
+  @DisplayName("[V-8] 対象月が null のときエラー")
+  void testNullMonthError() {
+    HolidayService holidayService = mock(HolidayService.class);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+
+    MonthlyShiftInput input = new MonthlyShiftInput(null, List.of(profile), new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    assertEquals(1, errors.size());
+    assertEquals("V-8", errors.get(0).code());
+  }
+
+  @Test
+  @DisplayName("[V-8] 対象月が null のとき HolidayService が呼ばれない")
+  void testNullMonthSkipsHolidayService() {
+    HolidayService holidayService = mock(HolidayService.class);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+
+    MonthlyShiftInput input = new MonthlyShiftInput(null, List.of(profile), new ArrayList<>());
+
+    validator.validate(input);
+
+    verify(holidayService, never()).isSupported(any());
+    verify(holidayService, never()).businessDays(any());
   }
 }

@@ -85,7 +85,7 @@ public class MonthlyInputValidator {
   private List<EmployeeProfile> getValidEmployees(List<EmployeeProfile> employees) {
     List<EmployeeProfile> valid = new ArrayList<>();
     for (EmployeeProfile profile : employees) {
-      if (!profile.name().isBlank()) {
+      if (profile.name() != null && !profile.name().isBlank()) {
         valid.add(profile);
       }
     }
@@ -251,7 +251,10 @@ public class MonthlyInputValidator {
 
   private List<InputError> validateMonthSupport(YearMonth month) {
     List<InputError> errors = new ArrayList<>();
-    if (!holidayService.isSupported(month)) {
+    if (month == null) {
+      String message = "対象月が指定されていません";
+      errors.add(new InputError("V-8", message));
+    } else if (!holidayService.isSupported(month)) {
       String message = String.format("対象月 %s の祝日データが利用できません", month);
       errors.add(new InputError("V-8", message));
     }
