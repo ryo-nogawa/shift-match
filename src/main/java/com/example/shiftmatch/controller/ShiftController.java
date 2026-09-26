@@ -2,6 +2,7 @@ package com.example.shiftmatch.controller;
 
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.InvalidNameError;
 import com.example.shiftmatch.domain.InvalidTimeRangeError;
 import com.example.shiftmatch.persistence.LatestShiftRepository;
 import com.example.shiftmatch.service.ShiftAssignmentService;
@@ -40,6 +41,8 @@ public class ShiftController {
 
   private static final Pattern TIME_RANGE_FIELD_PATTERN =
       Pattern.compile("employees\\[(\\d+)\\]\\.(start|end)");
+
+  private static final Pattern NAME_FIELD_PATTERN = Pattern.compile("employees\\[(\\d+)\\]\\.name");
 
   private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -140,15 +143,21 @@ public class ShiftController {
 
     List<InvalidTimeRangeError> timeRangeErrors = toTimeRangeErrors(bindingResult);
 
+    List<InvalidNameError> nameErrors = toNameErrors(bindingResult);
+
     boolean limitExceeded = validEmployees.size() > MAX_EMPLOYEE_COUNT;
     if (limitExceeded) {
       model.addAttribute(
           "limitExceededError", "従業員の入力行数が上限（" + MAX_EMPLOYEE_COUNT + "名）を超えています。入力行を減らしてください。");
     }
 
-    if (!duplicateErrors.isEmpty() || !timeRangeErrors.isEmpty() || limitExceeded) {
+    if (!duplicateErrors.isEmpty()
+        || !timeRangeErrors.isEmpty()
+        || !nameErrors.isEmpty()
+        || limitExceeded) {
       model.addAttribute("duplicateErrors", duplicateErrors);
       model.addAttribute("timeRangeErrors", timeRangeErrors);
+      model.addAttribute("nameErrors", nameErrors);
       model.addAttribute("shiftForm", shiftForm);
       return "index";
     }
@@ -204,6 +213,33 @@ public class ShiftController {
   }
 
   /**
+   * BindingResult から氏名のエラーを InvalidNameError のリストに変換します。
+   *
+   * <p>行番号の昇順で並べられます。
+   *
+   * @param bindingResult バリデーション結果
+   * @return 氏名のエラーリスト（行順）
+   */
+  private List<InvalidNameError> toNameErrors(BindingResult bindingResult) {
+    List<NameFieldError> fieldErrors = new ArrayList<>();
+
+    for (FieldError error : bindingResult.getFieldErrors()) {
+      Matcher matcher = NAME_FIELD_PATTERN.matcher(error.getField());
+      if (matcher.matches()) {
+        fieldErrors.add(
+            new NameFieldError(Integer.parseInt(matcher.group(1)), error.getDefaultMessage()));
+      }
+    }
+
+    // 行番号の昇順で並べる
+    fieldErrors.sort(Comparator.comparingInt(fieldError -> fieldError.rowIndex()));
+
+    return fieldErrors.stream()
+        .map(fieldError -> new InvalidNameError(fieldError.rowIndex(), fieldError.message()))
+        .toList();
+  }
+
+  /**
    * ShiftForm を Employee のリストに変換します。
    *
    * <p>開始・終了は {@code HH:mm} として解析し、空・不正な文字列は {@code null} にします。休みの行は開始・終了を無視します。
@@ -247,4 +283,12 @@ public class ShiftController {
    * @param message エラーメッセージ
    */
   private record TimeRangeFieldError(int rowIndex, String property, String message) {}
+
+  /**
+   * 氏名のフィールドエラーを、並べ替えのために行番号とあわせて保持するレコードです。
+   *
+   * @param rowIndex 行番号（0 始まり）
+   * @param message エラーメッセージ
+   */
+  private record NameFieldError(int rowIndex, String message) {}
 }

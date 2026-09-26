@@ -1,5 +1,6 @@
 package com.example.shiftmatch.controller;
 
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,6 +13,7 @@ import lombok.Setter;
 public class EmployeeForm {
 
   /** 従業員の名前。 */
+  @Size(max = 255, message = "氏名は255文字以内で入力してください。")
   private String name;
 
   /** 休みのチェック。true の場合は休み。 */
