@@ -3,14 +3,21 @@ package com.example.shiftmatch.persistence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.example.shiftmatch.domain.AssignmentResult;
+import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.DailyWish;
+import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
+import com.example.shiftmatch.service.ShiftAssignmentService;
+import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -238,6 +245,119 @@ class MonthlyShiftRepositoryTest {
       @DisplayName("[F-7] Given: 何も保存していないとき, When: 個別変更を復元すると, Then: 空のリストが返る")
       void returnsEmptyWhenNothingSaved() {
         assertTrue(repository.findAdjustments().isEmpty());
+      }
+    }
+  }
+
+  @Nested
+  @DisplayName("決定したシフト")
+  class DecidedShift {
+
+    private final ShiftAssignmentService assignmentService = new ShiftAssignmentServiceImpl();
+
+    private List<Employee> employees() {
+      List<Employee> employees = new ArrayList<>();
+      employees.add(Employee.working("A", EmploymentType.FULL_TIME, time(7, 30), time(14, 30)));
+      employees.add(Employee.working("B", EmploymentType.PART_TIME, time(7, 30), time(15, 0)));
+      employees.add(Employee.working("C", EmploymentType.MANAGER, time(8, 0), time(15, 30)));
+      employees.add(Employee.working("D", EmploymentType.FULL_TIME, time(8, 30), time(16, 30)));
+      employees.add(Employee.working("E", EmploymentType.FULL_TIME, time(9, 0), time(16, 30)));
+      employees.add(Employee.working("F", EmploymentType.PART_TIME, time(9, 0), time(18, 0)));
+      employees.add(Employee.working("G", EmploymentType.FULL_TIME, time(9, 0), time(18, 30)));
+      employees.add(Employee.working("H", EmploymentType.FULL_TIME, time(9, 0), time(18, 30)));
+      employees.add(Employee.working("I", EmploymentType.FULL_TIME, time(7, 30), time(18, 30)));
+      employees.add(Employee.onLeave("J", EmploymentType.MANAGER));
+      employees.add(Employee.working("K", EmploymentType.PART_TIME, time(10, 0), time(12, 0)));
+      return employees;
+    }
+
+    private LocalTime time(int hour, int minute) {
+      return LocalTime.of(hour, minute);
+    }
+
+    private AssignmentResult assign(List<Employee> employees) {
+      return assignmentService.assign(employees).orElseThrow();
+    }
+
+    private MonthlyShiftResult monthOf(YearMonth month, DailyShiftResult... days) {
+      return new MonthlyShiftResult(month, List.of(days));
+    }
+
+    private DailyShiftResult successDay(LocalDate date, List<Employee> employees) {
+      return new DailyShiftResult(date, 9, Optional.of(assign(employees)));
+    }
+
+    @Nested
+    class 正常系 {
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 実際に算出した結果を保存したとき, When: 復元すると, Then: 結果と従業員名が等しく理由文言も一致する")
+      void restoresRealAssignmentResult() {
+        List<Employee> employees = employees();
+        AssignmentResult original = assign(employees);
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                new DailyShiftResult(LocalDate.of(2026, 10, 1), 9, Optional.of(original)));
+        List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K");
+
+        repository.saveShift(result, names);
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals(result, saved.result());
+        assertEquals(names, saved.employeeNames());
+        AssignmentResult restored = saved.result().days().get(0).assignment().orElseThrow();
+        assertEquals(original.assignments(), restored.assignments());
+        assertEquals(original.score(), restored.score());
+        assertEquals(original.unassignedEmployees(), restored.unassignedEmployees());
+        for (Employee employee : original.unassignedEmployees()) {
+          assertEquals(
+              original.unassignedReasonLabel(employee), restored.unassignedReasonLabel(employee));
+        }
+      }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 他の月の決定シフトがあるとき, When: 対象月を保存すると, Then: 他の月の分が残る")
+      void keepsShiftsOfOtherMonths() {
+        MonthlyShiftResult september =
+            monthOf(YearMonth.of(2026, 9), successDay(LocalDate.of(2026, 9, 1), employees()));
+        MonthlyShiftResult october =
+            monthOf(YearMonth.of(2026, 10), successDay(LocalDate.of(2026, 10, 1), employees()));
+        repository.saveShift(september, List.of("A"));
+
+        repository.saveShift(october, List.of("B"));
+
+        assertEquals(september, repository.findShift(YearMonth.of(2026, 9)).orElseThrow().result());
+        assertEquals(october, repository.findShift(YearMonth.of(2026, 10)).orElseThrow().result());
+      }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 同じ月を保存済みのとき, When: 再保存すると, Then: 置き換わる")
+      void replacesSameMonth() {
+        MonthlyShiftResult first =
+            monthOf(
+                YearMonth.of(2026, 10),
+                successDay(LocalDate.of(2026, 10, 1), employees()),
+                successDay(LocalDate.of(2026, 10, 2), employees()));
+        MonthlyShiftResult second =
+            monthOf(YearMonth.of(2026, 10), successDay(LocalDate.of(2026, 10, 5), employees()));
+        repository.saveShift(first, List.of("A", "B"));
+
+        repository.saveShift(second, List.of("C"));
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals(second, saved.result());
+        assertEquals(List.of("C"), saved.employeeNames());
+      }
+    }
+
+    @Nested
+    class 異常系 {
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 保存がない月のとき, When: 復元すると, Then: 空が返る")
+      void returnsEmptyWhenMonthNotSaved() {
+        assertTrue(repository.findShift(YearMonth.of(2026, 10)).isEmpty());
       }
     }
   }

@@ -1,9 +1,15 @@
 package com.example.shiftmatch.persistence;
 
+import com.example.shiftmatch.domain.AssignmentResult;
+import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.DailyWish;
+import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
+import com.example.shiftmatch.domain.ShiftAssignment;
+import com.example.shiftmatch.domain.ShiftSlot;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -189,5 +195,171 @@ public class MonthlyShiftRepository {
                         rs.getObject("start_time", LocalTime.class),
                         rs.getObject("end_time", LocalTime.class))))
         .list();
+  }
+
+  /**
+   * 対象月の決定したシフトを置き換えて保存します。
+   *
+   * @param result 月間シフトの結果
+   * @param employeeNames シフトを作成した時点の従業員名（入力順）
+   */
+  @Transactional
+  public void saveShift(MonthlyShiftResult result, List<String> employeeNames) {
+    String targetMonth = result.month().toString();
+    deleteShift(targetMonth);
+    for (int index = 0; index < employeeNames.size(); index++) {
+      jdbcClient
+          .sql("INSERT INTO saved_month_employee (target_month, row_index, name) VALUES (?, ?, ?)")
+          .params(targetMonth, index, employeeNames.get(index))
+          .update();
+    }
+    for (DailyShiftResult day : result.days()) {
+      if (day.assignment().isEmpty()) {
+        continue;
+      }
+      AssignmentResult assignment = day.assignment().get();
+      jdbcClient
+          .sql(
+              "INSERT INTO saved_day (day_date, target_month, available_count, score)"
+                  + " VALUES (?, ?, ?, ?)")
+          .params(day.date(), targetMonth, day.availableCount(), assignment.score())
+          .update();
+      insertAssignments(day.date(), assignment.assignments());
+      insertUnassigned(day.date(), assignment.unassignedEmployees());
+    }
+  }
+
+  private void deleteShift(String targetMonth) {
+    String dayDates = "(SELECT day_date FROM saved_day WHERE target_month = ?)";
+    jdbcClient
+        .sql("DELETE FROM saved_day_assignment WHERE day_date IN " + dayDates)
+        .param(targetMonth)
+        .update();
+    jdbcClient
+        .sql("DELETE FROM saved_day_unassigned WHERE day_date IN " + dayDates)
+        .param(targetMonth)
+        .update();
+    jdbcClient.sql("DELETE FROM saved_day WHERE target_month = ?").param(targetMonth).update();
+    jdbcClient
+        .sql("DELETE FROM saved_month_employee WHERE target_month = ?")
+        .param(targetMonth)
+        .update();
+  }
+
+  private void insertAssignments(LocalDate date, List<ShiftAssignment> assignments) {
+    for (int index = 0; index < assignments.size(); index++) {
+      ShiftAssignment assignment = assignments.get(index);
+      Employee employee = assignment.employee();
+      jdbcClient
+          .sql(
+              "INSERT INTO saved_day_assignment (day_date, assignment_index, employee_name,"
+                  + " employment_type, wish_start, wish_end, slot, break_start, break_end)"
+                  + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+          .params(
+              date,
+              index,
+              employee.name(),
+              employee.employmentType().name(),
+              employee.start(),
+              employee.end(),
+              assignment.slot().name(),
+              assignment.breakStart(),
+              assignment.breakEnd())
+          .update();
+    }
+  }
+
+  private void insertUnassigned(LocalDate date, List<Employee> unassignedEmployees) {
+    for (int index = 0; index < unassignedEmployees.size(); index++) {
+      Employee employee = unassignedEmployees.get(index);
+      jdbcClient
+          .sql(
+              "INSERT INTO saved_day_unassigned (day_date, unassigned_index, employee_name,"
+                  + " employment_type, off, wish_start, wish_end, reason)"
+                  + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+          .params(
+              date,
+              index,
+              employee.name(),
+              employee.employmentType().name(),
+              employee.off(),
+              employee.start(),
+              employee.end(),
+              employee.unassignedReason().name())
+          .update();
+    }
+  }
+
+  /**
+   * 指定した月の保存済みシフトを復元します。
+   *
+   * @param month 対象月
+   * @return 保存済みのシフト（保存がなければ空）
+   */
+  public Optional<SavedMonthlyShift> findShift(YearMonth month) {
+    String targetMonth = month.toString();
+    List<String> employeeNames =
+        jdbcClient
+            .sql("SELECT name FROM saved_month_employee WHERE target_month = ? ORDER BY row_index")
+            .param(targetMonth)
+            .query(String.class)
+            .list();
+    List<DailyShiftResult> days =
+        jdbcClient
+            .sql(
+                "SELECT day_date, available_count, score FROM saved_day WHERE target_month = ?"
+                    + " ORDER BY day_date")
+            .param(targetMonth)
+            .query(
+                (rs, rowNum) -> {
+                  LocalDate date = rs.getObject("day_date", LocalDate.class);
+                  Integer score = rs.getObject("score", Integer.class);
+                  Optional<AssignmentResult> assignment =
+                      score == null ? Optional.empty() : Optional.of(findAssignment(date, score));
+                  return new DailyShiftResult(date, rs.getInt("available_count"), assignment);
+                })
+            .list();
+    if (days.isEmpty() && employeeNames.isEmpty()) {
+      return Optional.empty();
+    }
+    return Optional.of(new SavedMonthlyShift(new MonthlyShiftResult(month, days), employeeNames));
+  }
+
+  private AssignmentResult findAssignment(LocalDate date, int score) {
+    List<ShiftAssignment> assignments =
+        jdbcClient
+            .sql(
+                "SELECT employee_name, employment_type, wish_start, wish_end, slot, break_start,"
+                    + " break_end FROM saved_day_assignment WHERE day_date = ?"
+                    + " ORDER BY assignment_index")
+            .param(date)
+            .query(
+                (rs, rowNum) ->
+                    new ShiftAssignment(
+                        Employee.working(
+                            rs.getString("employee_name"),
+                            EmploymentType.valueOf(rs.getString("employment_type")),
+                            rs.getObject("wish_start", LocalTime.class),
+                            rs.getObject("wish_end", LocalTime.class)),
+                        ShiftSlot.valueOf(rs.getString("slot")),
+                        rs.getObject("break_start", LocalTime.class),
+                        rs.getObject("break_end", LocalTime.class)))
+            .list();
+    List<Employee> unassigned =
+        jdbcClient
+            .sql(
+                "SELECT employee_name, employment_type, off, wish_start, wish_end"
+                    + " FROM saved_day_unassigned WHERE day_date = ? ORDER BY unassigned_index")
+            .param(date)
+            .query(
+                (rs, rowNum) ->
+                    new Employee(
+                        rs.getString("employee_name"),
+                        EmploymentType.valueOf(rs.getString("employment_type")),
+                        rs.getBoolean("off"),
+                        rs.getObject("wish_start", LocalTime.class),
+                        rs.getObject("wish_end", LocalTime.class)))
+            .list();
+    return new AssignmentResult(assignments, score, unassigned);
   }
 }
