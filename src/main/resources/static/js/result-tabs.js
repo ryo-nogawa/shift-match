@@ -8,6 +8,9 @@
 
   const TABS = ["calendar", "employees", "detail"];
 
+  // 画面 2 の入力カレンダーも calendar-day を使うため、結果カレンダー配下に限定する
+  const RESULT_CALENDAR_DAY_SELECTOR = "#tab-calendar .calendar-day";
+
   /**
    * 指定したタブのパネルだけを表示し、そのタブのボタンを選択状態にする。
    * 未知のタブなら何も変えずに false を返す。
@@ -48,7 +51,7 @@
   }
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { switchTab, formatDuration, showDay };
+    module.exports = { switchTab, formatDuration, showDay, RESULT_CALENDAR_DAY_SELECTOR };
   }
 
   if (typeof document === "undefined") {
@@ -92,7 +95,7 @@
     }
     // カレンダーの日付ボタンを押すと、その日の日別詳細を開く（8.3 節）
     document.addEventListener("click", function (event) {
-      const dayButton = event.target.closest(".calendar-day");
+      const dayButton = event.target.closest(RESULT_CALENDAR_DAY_SELECTOR);
       if (dayButton) {
         openDetail(dayButton.getAttribute("data-date"));
       }

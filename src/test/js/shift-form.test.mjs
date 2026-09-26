@@ -235,6 +235,12 @@ describe("step-nav.js", () => {
 });
 
 describe("result-tabs.js", () => {
+  test("[8.3節] 日別詳細を開く対象は結果カレンダー配下の日付ボタンに限る", () => {
+    // Given: 画面 2 の入力カレンダーと同じ calendar-day クラスを使う結果カレンダー
+    // When / Then: セレクターは結果カレンダー（#tab-calendar）配下に限定されている
+    assert.equal(resultTabs.RESULT_CALENDAR_DAY_SELECTOR, "#tab-calendar .calendar-day");
+  });
+
   function fakeButton(tab) {
     const classes = new Set();
     const attributes = { "data-tab": tab };

@@ -139,8 +139,8 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 /* カレンダー表示 */
 .calendar-grid { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 6px }
 .calendar-head { text-align: center; font-weight: 600; font-size: 13px; color: var(--sub) }
-.calendar-cell, .holiday { min-height: 84px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); font-size: 12px }
-.holiday { color: var(--sub); background: transparent }
+#tab-calendar .calendar-cell, #tab-calendar .holiday { min-height: 84px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); font-size: 12px }
+#tab-calendar .holiday { color: var(--sub); background: transparent }
 .calendar-date { font-weight: 600 }
 #tab-calendar .calendar-day { height: auto; padding: 2px 10px; background: transparent; font-weight: 600 }
 #tab-calendar .calendar-day:hover { color: inherit; background: transparent; border-color: var(--accent) }
