@@ -145,6 +145,30 @@ document.addEventListener("DOMContentLoaded", function () {
         updateRowCount();
       }
     }
+
+    if (event.target.classList.contains("move-up-btn")) {
+      const row = event.target.closest("tr");
+      if (row) {
+        const previousRow = row.previousElementSibling;
+        if (previousRow) {
+          employeeRows.insertBefore(row, previousRow);
+          renumberInputIndices();
+        }
+      }
+    }
+
+    if (event.target.classList.contains("move-down-btn")) {
+      const row = event.target.closest("tr");
+      if (row) {
+        const nextRow = row.nextElementSibling;
+        if (nextRow && nextRow.nextElementSibling) {
+          employeeRows.insertBefore(row, nextRow.nextElementSibling);
+        } else if (nextRow) {
+          employeeRows.appendChild(row);
+        }
+        renumberInputIndices();
+      }
+    }
   });
 
   employeeRows.addEventListener("change", function (event) {

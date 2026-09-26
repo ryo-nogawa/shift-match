@@ -1692,6 +1692,24 @@ class ShiftControllerTest {
       assertEquals(rowCount, moveUpCount, "move-up-btn count should match input row count");
       assertEquals(rowCount, moveDownCount, "move-down-btn count should match input row count");
     }
+
+    @Test
+    @DisplayName(
+        "[F-8] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: move-up-btn・move-down-btn・insertBefore の記述があり、移動処理から"
+            + " renumberInputIndices を呼ぶ処理がある")
+    void shiftFormJsHandlesMoveUpAndDownButtons() throws Exception {
+      String jsContent = readShiftFormJs();
+
+      assertTrue(jsContent.contains("move-up-btn"), "shift-form.js should handle move-up-btn");
+      assertTrue(jsContent.contains("move-down-btn"), "shift-form.js should handle move-down-btn");
+      assertTrue(
+          jsContent.contains("insertBefore"),
+          "shift-form.js should use insertBefore for row movement");
+      assertTrue(
+          jsContent.contains("renumberInputIndices()"),
+          "shift-form.js should call renumberInputIndices after moving rows");
+    }
   }
 
   @Nested
