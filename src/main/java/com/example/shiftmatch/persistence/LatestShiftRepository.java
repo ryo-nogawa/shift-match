@@ -2,6 +2,7 @@ package com.example.shiftmatch.persistence;
 
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -46,11 +47,13 @@ public class LatestShiftRepository {
       Employee employee = employees.get(i);
       jdbcClient
           .sql(
-              "INSERT INTO saved_employee (row_index, name, off, start_time, end_time)"
-                  + " VALUES (?, ?, ?, ?, ?)")
+              "INSERT INTO saved_employee"
+                  + " (row_index, name, employment_type, off, start_time, end_time)"
+                  + " VALUES (?, ?, ?, ?, ?, ?)")
           .params(
               i,
               employee.name(),
+              employee.employmentType().name(),
               employee.off(),
               employee.off() ? null : employee.start(),
               employee.off() ? null : employee.end())
@@ -94,15 +97,20 @@ public class LatestShiftRepository {
   public List<Employee> findEmployees() {
     return jdbcClient
         .sql(
-            "SELECT row_index, name, off, start_time, end_time FROM saved_employee"
-                + " ORDER BY row_index")
+            "SELECT row_index, name, employment_type, off, start_time, end_time"
+                + " FROM saved_employee ORDER BY row_index")
         .query(
-            (rs, rowNum) ->
-                new Employee(
-                    rs.getString("name"),
-                    rs.getBoolean("off"),
-                    rs.getObject("start_time", LocalTime.class),
-                    rs.getObject("end_time", LocalTime.class)))
+            (rs, rowNum) -> {
+              String employmentTypeStr = rs.getString("employment_type");
+              EmploymentType employmentType =
+                  EmploymentType.parse(employmentTypeStr).orElse(EmploymentType.FULL_TIME);
+              return new Employee(
+                  rs.getString("name"),
+                  employmentType,
+                  rs.getBoolean("off"),
+                  rs.getObject("start_time", LocalTime.class),
+                  rs.getObject("end_time", LocalTime.class));
+            })
         .list();
   }
 }

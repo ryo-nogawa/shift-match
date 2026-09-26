@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
 import java.time.LocalTime;
@@ -98,6 +99,33 @@ class LatestShiftRepositoryTest {
       assertEquals(2, found.size());
       assertEquals("David", found.get(0).name());
       assertEquals("Emma", found.get(1).name());
+    }
+
+    @Test
+    @DisplayName("[F-7] Given: 3つの異なる雇用区分の従業員を保存するとき, When: 読み出すと, Then: 区分が復元される")
+    void savesAndFindsEmploymentTypes() {
+      List<Employee> employees =
+          List.of(
+              Employee.working(
+                  "Alice", EmploymentType.FULL_TIME, LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working(
+                  "Bob", EmploymentType.PART_TIME, LocalTime.of(8, 0), LocalTime.of(16, 0)),
+              Employee.working(
+                  "Charlie", EmploymentType.MANAGER, LocalTime.of(8, 30), LocalTime.of(16, 30)));
+
+      repository.save(employees, Optional.empty());
+
+      List<Employee> found = repository.findEmployees();
+      assertEquals(3, found.size());
+
+      assertEquals("Alice", found.get(0).name());
+      assertEquals(EmploymentType.FULL_TIME, found.get(0).employmentType());
+
+      assertEquals("Bob", found.get(1).name());
+      assertEquals(EmploymentType.PART_TIME, found.get(1).employmentType());
+
+      assertEquals("Charlie", found.get(2).name());
+      assertEquals(EmploymentType.MANAGER, found.get(2).employmentType());
     }
   }
 
