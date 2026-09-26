@@ -38,7 +38,7 @@
     - 1 章・3 章・8 章など他の章の記述と矛盾がない（7 章以外を変えた場合は、その変更が整合のためだけであることを実行ログに書く）
     - コード・テストは変更していない（`git diff --stat` が `docs/` と `README.md` のみ）
     - コミットした（例：`docs: 出力仕様に選定根拠の表示を追加する`）
-- [ ] **T2. `Employee#workableSlots()` を TDD で実装する**
+- [x] **T2. `Employee#workableSlots()` を TDD で実装する**
   - 依頼事項：`EmployeeTest`（`src/test/java/com/example/shiftmatch/domain/`）にテストを **先に** 書く。(1) 7:30〜18:30 の人は 6 枠すべてを枠 1 → 6 の順で返す、(2) 9:00〜16:30 の人は枠 4 だけを返す（例：枠 1（7:30 開始）・枠 5（18:00 終了）は含まれない）、(3) 休みの人は空、(4) 開始・終了が `null` の人は空、(5) 枠の勤務時間が入力時間帯と境界で一致するとき（例：8:00〜15:30 の人で枠 2）は含まれる。RED（アサーションでの失敗）を確認してから実装する。`Employee#canWork` を使い、`ShiftSlot.values()` を順に調べる。テストの `@DisplayName` の先頭に `[H-3]` を付ける
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/Employee.java`、`src/test/java/com/example/shiftmatch/domain/EmployeeTest.java`
   - 完了条件：
@@ -117,6 +117,5 @@
 
 ## 実行ログ
 
-<!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
-
 - T1：implementer はガードフック（`.claude/hooks/guard-implementer.sh`）により `docs/` の変更を禁止されているため、メインエージェントが `docs/specifications.md` の 7 章と `README.md` を更新した（Todo の再作成ではないので版は v1 のまま）。**implementer は T1 をやり直さず、T2 から実装すること**（`docs/` は変更しない）
+- T2 試行 1/4：成功 — 実装前に `./mvnw test -Dtest=EmployeeTest` でコンパイルエラーが発生してからテストが RED（失敗）になったことを確認した。実装後、Spotless と Checkstyle の違反を修正して、`./mvnw test -Dtest=EmployeeTest` が成功（Tests run: 15, Failures: 0, Errors: 0）した
