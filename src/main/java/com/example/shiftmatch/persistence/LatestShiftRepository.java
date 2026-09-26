@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 最新 1 件のシフト決定結果を永続化するリポジトリ。
@@ -35,6 +36,7 @@ public class LatestShiftRepository {
    * @param employees 従業員リスト（名前が空でない従業員のみ）
    * @param result 割り当て結果（空の場合は従業員入力のみ保存）
    */
+  @Transactional
   public void save(List<Employee> employees, Optional<AssignmentResult> result) {
     // 全削除
     jdbcClient.sql("DELETE FROM saved_employee").update();

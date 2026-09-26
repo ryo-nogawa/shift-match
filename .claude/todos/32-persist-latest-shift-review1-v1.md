@@ -18,7 +18,7 @@
 
 ## Todo
 
-- [ ] **T1. `save` を 1 つのトランザクションにし、途中失敗でロールバックされる**
+- [x] **T1. `save` を 1 つのトランザクションにし、途中失敗でロールバックされる**
   - 依頼事項：`LatestShiftRepository#save` に `org.springframework.transaction.annotation.Transactional` を付け、「全削除 → 全挿入」を単一トランザクションにする。テストを先に書く：既存データ（従業員 2 名）を保存した状態で、256 文字の氏名を含む従業員リストを `save` すると `DataAccessException` が出て、旧データ（2 名、割り当て・スコア）がそのまま残ること（RED：今はトランザクションがなく旧データが消える）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/persistence/LatestShiftRepository.java`、`src/test/java/com/example/shiftmatch/persistence/LatestShiftRepositoryTest.java`
   - 完了条件：

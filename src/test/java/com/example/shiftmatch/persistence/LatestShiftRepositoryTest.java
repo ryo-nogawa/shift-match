@@ -1,6 +1,7 @@
 package com.example.shiftmatch.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.domain.AssignmentResult;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 @SpringBootTest
@@ -96,6 +98,61 @@ class LatestShiftRepositoryTest {
       assertEquals(2, found.size());
       assertEquals("David", found.get(0).name());
       assertEquals("Emma", found.get(1).name());
+    }
+  }
+
+  @Nested
+  @DisplayName("保存がトランザクションで保護されている")
+  class Transaction {
+
+    @Test
+    @DisplayName("Given: 既存データがあるとき, When: 256文字の氏名で保存に失敗すると, Then: 既存データが保持される")
+    void rollsBackWhenSaveFails() {
+      // 初期データを保存（8人の従業員と対応する割り当て）
+      List<Employee> initialEmployees =
+          List.of(
+              Employee.working("Alice", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Bob", LocalTime.of(8, 0), LocalTime.of(16, 0)),
+              Employee.working("Charlie", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("David", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Emma", LocalTime.of(8, 0), LocalTime.of(16, 0)),
+              Employee.working("Frank", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("Grace", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Henry", LocalTime.of(8, 0), LocalTime.of(16, 0)));
+
+      List<ShiftAssignment> initialAssignments = new ArrayList<>();
+      for (int i = 0; i < ShiftSlot.totalEmployees(); i++) {
+        ShiftSlot slot = ShiftSlot.values()[i % ShiftSlot.values().length];
+        initialAssignments.add(
+            new ShiftAssignment(
+                initialEmployees.get(i), slot, LocalTime.of(12, 0), LocalTime.of(12, 45)));
+      }
+      AssignmentResult initialResult = new AssignmentResult(initialAssignments, 50, List.of());
+      repository.save(initialEmployees, Optional.of(initialResult));
+
+      // 256 文字の氏名を含む従業員リストで保存を試みる（失敗する）
+      String longName = "A".repeat(256);
+      List<Employee> invalidEmployees =
+          List.of(Employee.working(longName, LocalTime.of(9, 0), LocalTime.of(17, 0)));
+      assertThrows(
+          DataAccessException.class, () -> repository.save(invalidEmployees, Optional.empty()));
+
+      // 既存データが保持されていることを確認
+      List<Employee> foundEmployees = repository.findEmployees();
+      assertEquals(8, foundEmployees.size());
+      assertEquals("Alice", foundEmployees.get(0).name());
+
+      // 割り当てとスコアも保持されていることを確認
+      Integer assignmentCount =
+          jdbcClient.sql("SELECT COUNT(*) FROM saved_assignment").query(Integer.class).single();
+      assertEquals(8, assignmentCount);
+
+      Integer score =
+          jdbcClient
+              .sql("SELECT score FROM saved_score WHERE id = 1")
+              .query(Integer.class)
+              .single();
+      assertEquals(50, score);
     }
   }
 
