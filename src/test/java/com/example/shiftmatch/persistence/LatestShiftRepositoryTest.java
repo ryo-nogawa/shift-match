@@ -40,7 +40,7 @@ class LatestShiftRepositoryTest {
   class SaveAndFind {
 
     @Test
-    @DisplayName("従業員入力を保存して読み出せる")
+    @DisplayName("Given: 従業員3名があるとき, When: 保存して読み出すと, Then: 入力データが復元される")
     void savesAndFindsEmployees() {
       List<Employee> employees =
           List.of(
@@ -69,14 +69,14 @@ class LatestShiftRepositoryTest {
     }
 
     @Test
-    @DisplayName("保存がなければ空")
+    @DisplayName("Given: 保存がないとき, When: 読み出すと, Then: 空のリストが返される")
     void returnsEmptyWhenNoSave() {
       List<Employee> found = repository.findEmployees();
       assertTrue(found.isEmpty());
     }
 
     @Test
-    @DisplayName("2 回目の保存は最新データで上書きされる")
+    @DisplayName("Given: 1回目の保存があるとき, When: 2回目を保存すると, Then: 最新データで上書きされる")
     void secondSaveOverwritesPreviousData() {
       // 1 回目: 3 名を保存
       List<Employee> employees1 =
@@ -161,7 +161,7 @@ class LatestShiftRepositoryTest {
   class SaveAssignmentAndScore {
 
     @Test
-    @DisplayName("保存すると 8 件と得点が入る")
+    @DisplayName("Given: 割り当て結果があるとき, When: 保存すると, Then: 8件の割り当てと得点が入る")
     void savesAssignmentAndScore() {
       List<Employee> employees =
           List.of(
@@ -244,7 +244,7 @@ class LatestShiftRepositoryTest {
     }
 
     @Test
-    @DisplayName("2 回保存しても 8 件のまま")
+    @DisplayName("Given: 1回目の割り当て保存があるとき, When: 2回目を保存すると, Then: 8件のままでスコアが更新される")
     void multiplesSavesKeepEightAssignments() {
       List<Employee> employees =
           List.of(
@@ -291,7 +291,7 @@ class LatestShiftRepositoryTest {
     }
 
     @Test
-    @DisplayName("不成立（空）で割り当て・得点が消え、従業員入力は残る")
+    @DisplayName("Given: 割り当て結果があるとき, When: 不成立（空）で保存すると, Then: 割り当て・得点が消え従業員入力は残る")
     void clearsAssignmentAndScoreWhenResultIsEmpty() {
       // 従業員と割り当て結果を保存
       List<Employee> employees =
