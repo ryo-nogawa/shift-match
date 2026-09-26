@@ -918,4 +918,176 @@ class MonthlyInputValidatorTest {
     verify(holidayService, never()).isSupported(any());
     verify(holidayService, never()).businessDays(any());
   }
+
+  @Test
+  @DisplayName("[V-3] 1 行目が空で 2 行目が不正なとき、V-3 のメッセージが 2 行目を示す")
+  void testLineNumberWithEmptyFirstRow() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    baseShifts.put(DayOfWeek.MONDAY, wish);
+    baseShifts.put(DayOfWeek.TUESDAY, wish);
+    baseShifts.put(DayOfWeek.WEDNESDAY, wish);
+    baseShifts.put(DayOfWeek.THURSDAY, wish);
+    // FRIDAY が missing
+
+    EmployeeProfile emptyProfile = new EmployeeProfile("", EmploymentType.FULL_TIME, baseShifts);
+    EmployeeProfile taroProfile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(
+            YearMonth.of(2024, 9), List.of(emptyProfile, taroProfile), new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    // V-3 エラーのメッセージに「2 行目」が含まれていることを確認
+    boolean hasLineTwo = false;
+    for (InputError error : errors) {
+      if ("V-3".equals(error.code()) && error.message().contains("2")) {
+        hasLineTwo = true;
+        break;
+      }
+    }
+    assertTrue(hasLineTwo, "V-3 エラーのメッセージが 2 行目を示していません");
+  }
+
+  @Test
+  @DisplayName("[V-6] 1 行目が空で 2 行目の名前が長いとき、V-6 のメッセージが 2 行目を示す")
+  void testNameLengthWithEmptyFirstRow() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile emptyProfile = new EmployeeProfile("", EmploymentType.FULL_TIME, baseShifts);
+    String longName = "a".repeat(256);
+    EmployeeProfile longNameProfile =
+        new EmployeeProfile(longName, EmploymentType.FULL_TIME, baseShifts);
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(
+            YearMonth.of(2024, 9), List.of(emptyProfile, longNameProfile), new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    // V-6 エラーのメッセージに「2 行目」が含まれていることを確認
+    boolean hasLineTwo = false;
+    for (InputError error : errors) {
+      if ("V-6".equals(error.code()) && error.message().contains("2")) {
+        hasLineTwo = true;
+        break;
+      }
+    }
+    assertTrue(hasLineTwo, "V-6 エラーのメッセージが 2 行目を示していません");
+  }
+
+  @Test
+  @DisplayName("[V-7] 1 行目が空で 2 行目の雇用区分が null のとき、V-7 のメッセージが 2 行目を示す")
+  void testEmploymentTypeWithEmptyFirstRow() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile emptyProfile = new EmployeeProfile("", EmploymentType.FULL_TIME, baseShifts);
+    EmployeeProfile invalidProfile = new EmployeeProfile("Taro", null, baseShifts);
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(
+            YearMonth.of(2024, 9), List.of(emptyProfile, invalidProfile), new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    // V-7 エラーのメッセージに「2 行目」が含まれていることを確認
+    boolean hasLineTwo = false;
+    for (InputError error : errors) {
+      if ("V-7".equals(error.code()) && error.message().contains("2")) {
+        hasLineTwo = true;
+        break;
+      }
+    }
+    assertTrue(hasLineTwo, "V-7 エラーのメッセージが 2 行目を示していません");
+  }
+
+  @Test
+  @DisplayName("[V-2] 空行を挟んで 2 行目と 4 行目が重複しているとき、メッセージに両方の行番号が含まれる")
+  void testDuplicateNameWithEmptyRowsInBetween() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    // 1 行目が空行、2 行目が「Taro」、3 行目が空行、4 行目が「Taro」
+    EmployeeProfile emptyProfile1 = new EmployeeProfile("", EmploymentType.FULL_TIME, baseShifts);
+    EmployeeProfile profile1 = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+    EmployeeProfile emptyProfile2 = new EmployeeProfile("", EmploymentType.FULL_TIME, baseShifts);
+    EmployeeProfile profile2 = new EmployeeProfile("Taro", EmploymentType.PART_TIME, baseShifts);
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(
+            YearMonth.of(2024, 9),
+            List.of(emptyProfile1, profile1, emptyProfile2, profile2),
+            new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    // V-2 エラーのメッセージに「2」と「4」の行番号が含まれていることを確認
+    String v2Message = "";
+    for (InputError error : errors) {
+      if ("V-2".equals(error.code())) {
+        v2Message = error.message();
+        break;
+      }
+    }
+    assertTrue(
+        v2Message.contains("2") && v2Message.contains("4"),
+        "V-2 エラーのメッセージが 2 行目と 4 行目の両方を示していません: " + v2Message);
+  }
 }

@@ -46,8 +46,8 @@ public class MonthlyInputValidator {
   public List<InputError> validate(MonthlyShiftInput input) {
     List<InputError> errors = new ArrayList<>();
 
-    // 有効な従業員（名前が空でない）のリストを作成
-    List<EmployeeProfile> validEmployees = getValidEmployees(input.employees());
+    // 有効な従業員（名前が空でない）のリストを作成（元のインデックスを保持）
+    List<ValidEmployeeInfo> validEmployees = getValidEmployees(input.employees());
 
     // V-2: 従業員名の重複チェック
     List<InputError> v2Errors = validateDuplicateNames(validEmployees);
@@ -82,51 +82,62 @@ public class MonthlyInputValidator {
     return errors;
   }
 
-  private List<EmployeeProfile> getValidEmployees(List<EmployeeProfile> employees) {
-    List<EmployeeProfile> valid = new ArrayList<>();
-    for (EmployeeProfile profile : employees) {
+  private List<ValidEmployeeInfo> getValidEmployees(List<EmployeeProfile> employees) {
+    List<ValidEmployeeInfo> valid = new ArrayList<>();
+    for (int i = 0; i < employees.size(); i++) {
+      EmployeeProfile profile = employees.get(i);
       if (profile.name() != null && !profile.name().isBlank()) {
-        valid.add(profile);
+        valid.add(new ValidEmployeeInfo(profile, i));
       }
     }
     return valid;
   }
 
-  private List<InputError> validateDuplicateNames(List<EmployeeProfile> validEmployees) {
+  private List<InputError> validateDuplicateNames(List<ValidEmployeeInfo> validEmployees) {
     List<InputError> errors = new ArrayList<>();
     Set<String> seen = new HashSet<>();
-    Set<String> duplicates = new HashSet<>();
+    java.util.Map<String, java.util.List<Integer>> duplicateLines = new java.util.HashMap<>();
 
-    for (EmployeeProfile profile : validEmployees) {
-      if (seen.contains(profile.name())) {
-        duplicates.add(profile.name());
+    for (ValidEmployeeInfo info : validEmployees) {
+      String name = info.profile().name();
+      if (seen.contains(name)) {
+        duplicateLines.computeIfAbsent(name, k -> new ArrayList<>()).add(info.originalIndex() + 1);
+      } else {
+        duplicateLines.computeIfAbsent(name, k -> new ArrayList<>()).add(info.originalIndex() + 1);
       }
-      seen.add(profile.name());
+      seen.add(name);
     }
 
-    if (!duplicates.isEmpty()) {
-      String message = "従業員名が重複しています: " + String.join(", ", duplicates);
-      errors.add(new InputError("V-2", message));
+    // 2 回以上出現した名前がある場合のみエラー
+    for (java.util.Map.Entry<String, java.util.List<Integer>> entry : duplicateLines.entrySet()) {
+      if (entry.getValue().size() >= 2) {
+        String lineNumbers =
+            entry.getValue().stream()
+                .map(n -> String.valueOf(n))
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("");
+        String message = String.format("従業員名が重複しています: %s（%s 行目）", entry.getKey(), lineNumbers);
+        errors.add(new InputError("V-2", message));
+      }
     }
 
     return errors;
   }
 
   private List<InputError> validateTimeRanges(
-      List<EmployeeProfile> validEmployees, MonthlyShiftInput input) {
+      List<ValidEmployeeInfo> validEmployees, MonthlyShiftInput input) {
     List<InputError> errors = new ArrayList<>();
 
     // 基本シフトの検証
-    for (int i = 0; i < validEmployees.size(); i++) {
-      EmployeeProfile profile = validEmployees.get(i);
-      List<InputError> profileErrors = validateBaseShifts(profile, i + 1);
+    for (ValidEmployeeInfo info : validEmployees) {
+      List<InputError> profileErrors = validateBaseShifts(info.profile(), info.originalIndex() + 1);
       errors.addAll(profileErrors);
     }
 
     // 有効な従業員名の集合を作成
     Set<String> validNames = new HashSet<>();
-    for (EmployeeProfile profile : validEmployees) {
-      validNames.add(profile.name());
+    for (ValidEmployeeInfo info : validEmployees) {
+      validNames.add(info.profile().name());
     }
 
     // 個別変更の時間帯検証
@@ -213,7 +224,7 @@ public class MonthlyInputValidator {
     };
   }
 
-  private List<InputError> validateEmployeeCount(List<EmployeeProfile> validEmployees) {
+  private List<InputError> validateEmployeeCount(List<ValidEmployeeInfo> validEmployees) {
     List<InputError> errors = new ArrayList<>();
     if (validEmployees.size() >= 13) {
       String message = "有効な従業員が 13 名以上です";
@@ -222,27 +233,26 @@ public class MonthlyInputValidator {
     return errors;
   }
 
-  private List<InputError> validateNameLength(List<EmployeeProfile> validEmployees) {
+  private List<InputError> validateNameLength(List<ValidEmployeeInfo> validEmployees) {
     List<InputError> errors = new ArrayList<>();
-    for (int i = 0; i < validEmployees.size(); i++) {
-      EmployeeProfile profile = validEmployees.get(i);
-      if (profile.name().length() > 255) {
-        String message = String.format("従業員名が 255 文字を超えています（%d 行目）", i + 1);
+    for (ValidEmployeeInfo info : validEmployees) {
+      if (info.profile().name().length() > 255) {
+        String message = String.format("従業員名が 255 文字を超えています（%d 行目）", info.originalIndex() + 1);
         errors.add(new InputError("V-6", message));
       }
     }
     return errors;
   }
 
-  private List<InputError> validateEmploymentType(List<EmployeeProfile> validEmployees) {
+  private List<InputError> validateEmploymentType(List<ValidEmployeeInfo> validEmployees) {
     List<InputError> errors = new ArrayList<>();
-    for (int i = 0; i < validEmployees.size(); i++) {
-      EmployeeProfile profile = validEmployees.get(i);
-      if (profile.employmentType() == null
-          || (profile.employmentType() != EmploymentType.FULL_TIME
-              && profile.employmentType() != EmploymentType.PART_TIME
-              && profile.employmentType() != EmploymentType.MANAGER)) {
-        String message = String.format("雇用区分が不正です（%d 行目）", i + 1);
+    for (ValidEmployeeInfo info : validEmployees) {
+      EmploymentType type = info.profile().employmentType();
+      if (type == null
+          || (type != EmploymentType.FULL_TIME
+              && type != EmploymentType.PART_TIME
+              && type != EmploymentType.MANAGER)) {
+        String message = String.format("雇用区分が不正です（%d 行目）", info.originalIndex() + 1);
         errors.add(new InputError("V-7", message));
       }
     }
@@ -304,11 +314,11 @@ public class MonthlyInputValidator {
   }
 
   private List<InputError> validateAdjustmentDates(
-      List<EmployeeProfile> validEmployees, MonthlyShiftInput input) {
+      List<ValidEmployeeInfo> validEmployees, MonthlyShiftInput input) {
     List<InputError> errors = new ArrayList<>();
     Set<String> validNames = new HashSet<>();
-    for (EmployeeProfile profile : validEmployees) {
-      validNames.add(profile.name());
+    for (ValidEmployeeInfo info : validEmployees) {
+      validNames.add(info.profile().name());
     }
 
     List<LocalDate> businessDays = holidayService.businessDays(input.month());

@@ -33,7 +33,7 @@
     - `[V-1]` 従業員名が null の行が除外され例外にならない（`validate` と `create` の両方）、`[V-8]` 対象月が null のとき V-8 のエラーになり `HolidayService` が呼ばれないテストがある
     - `./mvnw test -Dtest=MonthlyInputValidatorTest+MonthlyShiftServiceImplTest` が成功する
 
-- [ ] **R3. エラーの行番号を、空行を除く前の入力行で示す（MUST・V-2、V-3、V-6、V-7）**
+- [x] **R3. エラーの行番号を、空行を除く前の入力行で示す（MUST・V-2、V-3、V-6、V-7）**
   - 依頼事項：V-1 で空行を除外する前の、元のリストでの位置（0 始まり）を従業員と対にして保持し、表示するときだけ 1 を足す（`message` は元の入力行の 1 始まりの行番号）。V-2 のメッセージには重複した全ての行番号を含める。V-3（基本シフト）・V-6・V-7 も元の行番号を示す。先頭や途中に空行がある入力でも行番号がずれないようにする
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/MonthlyInputValidator.java`、`src/test/java/com/example/shiftmatch/service/MonthlyInputValidatorTest.java`
   - 完了条件：
