@@ -41,7 +41,7 @@
             </div>
 
             <!-- 従業員一覧 -->
-            <div class="employees-section">
+            <div class="employees-section scroll">
               <table class="employee-table">
                 <thead>
                   <tr>
@@ -59,10 +59,10 @@
                       <button type="button" class="move-down-btn">▼</button>
                     </td>
                     <td>
-                      <input type="text" th:field="*{employees[__${iter.index}__].name}" />
+                      <input type="text" class="name-input" th:field="*{employees[__${iter.index}__].name}" />
                     </td>
                     <td>
-                      <select th:field="*{employees[__${iter.index}__].employmentType}">
+                      <select class="type-select" th:field="*{employees[__${iter.index}__].employmentType}">
                         <option value="FULL_TIME">常勤</option>
                         <option value="PART_TIME">パート</option>
                         <option value="MANAGER">管理職</option>
@@ -79,7 +79,7 @@
             </div>
 
             <!-- 基本シフトパネル -->
-            <div id="base-panels">
+            <div id="base-panels" class="scroll">
               <div th:each="employee,iter : ${shiftForm.employees}" class="base-panel" th:attr="data-row-id=${iter.index}" hidden>
                 <table>
                   <thead>
@@ -92,19 +92,19 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr th:each="day,dayIter : ${employee.days}">
+                    <tr class="day-row" th:each="day,dayIter : ${employee.days}">
                       <td th:text="${dayIter.index == 0 ? '月' : dayIter.index == 1 ? '火' : dayIter.index == 2 ? '水' : dayIter.index == 3 ? '木' : '金'}"></td>
                       <td>
-                        <input type="checkbox" th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].off}" />
+                        <input type="checkbox" class="off-input" th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].off}" />
                       </td>
                       <td>
-                        <select th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].start}">
+                        <select class="start-select" th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].start}">
                           <option value="">-- 未選択 --</option>
                           <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}"></option>
                         </select>
                       </td>
                       <td>
-                        <select th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].end}">
+                        <select class="end-select" th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].end}">
                           <option value="">-- 未選択 --</option>
                           <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}"></option>
                         </select>
