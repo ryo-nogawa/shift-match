@@ -22,7 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
-@SpringBootTest
+@SpringBootTest(properties = "holiday.refresh-on-startup=false")
 class LatestShiftRepositoryTest {
 
   @Autowired private LatestShiftRepository repository;
