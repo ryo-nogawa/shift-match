@@ -11,55 +11,65 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("MonthlyShiftInput")
 class MonthlyShiftInputTest {
 
-  @Test
-  @DisplayName("従業員リストの変更が MonthlyShiftInput に反映されない")
-  void testImmutableEmployees() {
-    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-    LocalTime start = LocalTime.of(9, 0);
-    LocalTime end = LocalTime.of(18, 0);
-    DailyWish wish = new DailyWish(false, start, end);
-    baseShifts.put(DayOfWeek.MONDAY, wish);
-    baseShifts.put(DayOfWeek.TUESDAY, wish);
-    baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-    baseShifts.put(DayOfWeek.THURSDAY, wish);
-    baseShifts.put(DayOfWeek.FRIDAY, wish);
+  @Nested
+  class 正常系 {
 
-    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
-    List<EmployeeProfile> employees = new ArrayList<>();
-    employees.add(profile);
+    @Test
+    @DisplayName(
+        "Given: 従業員リストを与えるとき, When: MonthlyShiftInput を作成してから元のリストを変更すると, Then: MonthlyShiftInput"
+            + " に変更が反映されない")
+    void employeesAreImmutable() {
+      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+      LocalTime start = LocalTime.of(9, 0);
+      LocalTime end = LocalTime.of(18, 0);
+      DailyWish wish = new DailyWish(false, start, end);
+      baseShifts.put(DayOfWeek.MONDAY, wish);
+      baseShifts.put(DayOfWeek.TUESDAY, wish);
+      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
+      baseShifts.put(DayOfWeek.THURSDAY, wish);
+      baseShifts.put(DayOfWeek.FRIDAY, wish);
 
-    List<ShiftAdjustment> adjustments = new ArrayList<>();
-    MonthlyShiftInput input = new MonthlyShiftInput(YearMonth.of(2024, 9), employees, adjustments);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+      List<EmployeeProfile> employees = new ArrayList<>();
+      employees.add(profile);
 
-    // 元のリストを変更
-    employees.clear();
+      List<ShiftAdjustment> adjustments = new ArrayList<>();
+      MonthlyShiftInput input =
+          new MonthlyShiftInput(YearMonth.of(2024, 9), employees, adjustments);
 
-    // MonthlyShiftInput の従業員リストは変わらない
-    assertEquals(1, input.employees().size());
-    assertEquals("Taro", input.employees().get(0).name());
-  }
+      // 元のリストを変更
+      employees.clear();
 
-  @Test
-  @DisplayName("個別変更リストの変更が MonthlyShiftInput に反映されない")
-  void testImmutableAdjustments() {
-    List<EmployeeProfile> employees = new ArrayList<>();
-    List<ShiftAdjustment> adjustments = new ArrayList<>();
-    LocalDate date = LocalDate.of(2024, 9, 2);
-    DailyWish wish = new DailyWish(true, null, null);
-    adjustments.add(new ShiftAdjustment(date, "Taro", wish));
+      // MonthlyShiftInput の従業員リストは変わらない
+      assertEquals(1, input.employees().size());
+      assertEquals("Taro", input.employees().get(0).name());
+    }
 
-    YearMonth month = YearMonth.of(2024, 9);
-    MonthlyShiftInput input = new MonthlyShiftInput(month, employees, adjustments);
+    @Test
+    @DisplayName(
+        "Given: 個別変更リストを与えるとき, When: MonthlyShiftInput を作成してから元のリストを変更すると, Then: MonthlyShiftInput"
+            + " に変更が反映されない")
+    void adjustmentsAreImmutable() {
+      List<EmployeeProfile> employees = new ArrayList<>();
+      List<ShiftAdjustment> adjustments = new ArrayList<>();
+      LocalDate date = LocalDate.of(2024, 9, 2);
+      DailyWish wish = new DailyWish(true, null, null);
+      adjustments.add(new ShiftAdjustment(date, "Taro", wish));
 
-    // 元のリストを変更
-    adjustments.clear();
+      YearMonth month = YearMonth.of(2024, 9);
+      MonthlyShiftInput input = new MonthlyShiftInput(month, employees, adjustments);
 
-    // MonthlyShiftInput の個別変更リストは変わらない
-    assertEquals(1, input.adjustments().size());
+      // 元のリストを変更
+      adjustments.clear();
+
+      // MonthlyShiftInput の個別変更リストは変わらない
+      assertEquals(1, input.adjustments().size());
+    }
   }
 }
