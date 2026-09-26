@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 const employeeList = require("../../main/resources/static/js/employee-list.js");
 const dayAdjustments = require("../../main/resources/static/js/day-adjustments.js");
 const stepNav = require("../../main/resources/static/js/step-nav.js");
+const resultTabs = require("../../main/resources/static/js/result-tabs.js");
 
 describe("employee-list.js", () => {
   test("[8.5節] 並べ替え後の 3 行は、行の入力とパネルの入力が 0,1,2 に振り直される", () => {
@@ -230,5 +231,81 @@ describe("step-nav.js", () => {
     assert.equal(stepNav.navState(2).nextType, "submit");
     assert.equal(stepNav.navState(2).nextLabel, "1 か月分のシフトを作成");
     assert.equal(stepNav.navState(3).nextHidden, true);
+  });
+});
+
+describe("result-tabs.js", () => {
+  test("[8.3節] 日別詳細を開く対象は結果カレンダー配下の日付ボタンに限る", () => {
+    // Given: 画面 2 の入力カレンダーと同じ calendar-day クラスを使う結果カレンダー
+    // When / Then: セレクターは結果カレンダー（#tab-calendar）配下に限定されている
+    assert.equal(resultTabs.RESULT_CALENDAR_DAY_SELECTOR, "#tab-calendar .calendar-day");
+  });
+
+  function fakeButton(tab) {
+    const classes = new Set();
+    const attributes = { "data-tab": tab };
+    return {
+      classes,
+      attributes,
+      getAttribute: (name) => attributes[name],
+      setAttribute: (name, value) => {
+        attributes[name] = value;
+      },
+      classList: {
+        toggle: (name, force) => (force ? classes.add(name) : classes.delete(name)),
+      },
+    };
+  }
+
+  test("[7.1節] switchTab は指定したタブのパネルだけを表示し、ボタンを選択状態にする", () => {
+    const buttons = ["calendar", "employees", "detail"].map(fakeButton);
+    const panels = ["calendar", "employees", "detail"].map((tab) => ({
+      id: "tab-" + tab,
+      hidden: tab !== "calendar",
+    }));
+
+    const switched = resultTabs.switchTab("employees", buttons, panels);
+
+    assert.equal(switched, true);
+    assert.deepEqual(
+      panels.map((p) => p.hidden),
+      [true, false, true]
+    );
+    assert.deepEqual(
+      buttons.map((b) => b.classes.has("active")),
+      [false, true, false]
+    );
+    assert.deepEqual(
+      buttons.map((b) => b.attributes["aria-selected"]),
+      ["false", "true", "false"]
+    );
+  });
+
+  test("[7.1節] switchTab は未知のタブなら何も変えない", () => {
+    const buttons = [fakeButton("calendar")];
+    const panels = [{ id: "tab-calendar", hidden: false }];
+
+    assert.equal(resultTabs.switchTab("unknown", buttons, panels), false);
+    assert.equal(panels[0].hidden, false);
+  });
+
+  test("[7.2節] formatDuration は開始と終了の差を hh:mm で返す", () => {
+    assert.equal(resultTabs.formatDuration("07:30", "14:30"), "07:00");
+    assert.equal(resultTabs.formatDuration("12:00", "12:45"), "00:45");
+    assert.equal(resultTabs.formatDuration("09:00", "18:30"), "09:30");
+  });
+
+  test("[7.2節] showDay は選んだ日付のセクションだけを表示する", () => {
+    const sections = ["2026-10-01", "2026-10-02"].map((date) => ({
+      getAttribute: () => date,
+      hidden: true,
+    }));
+
+    resultTabs.showDay("2026-10-02", sections);
+
+    assert.deepEqual(
+      sections.map((section) => section.hidden),
+      [true, false]
+    );
   });
 });

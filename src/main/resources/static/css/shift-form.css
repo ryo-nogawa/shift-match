@@ -20,47 +20,15 @@ body { font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; line
 section[hidden] { display: none }
 h1, h2 { margin: 0 }
 table { border-collapse: collapse; width: 100% }
-.actions { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap }
-.btn { font: inherit; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: .15s }
-.btn:focus-visible, input:focus-visible, select:focus-visible, .delete-row-btn:focus-visible, .move-up-btn:focus-visible, .move-down-btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 1px }
-.delete-row-btn:disabled, .move-up-btn:disabled, .move-down-btn:disabled { opacity: .3; cursor: not-allowed }
-.empty { text-align: center; padding: 24px 0 }
-.empty p { margin: 8px 0 2px; font-weight: 600 }
-.empty small { opacity: .65 }
-.empty-icon { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; font-weight: 700; font-size: 20px }
-.unassigned { margin-top: 16px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center }
-.chip { padding: 2px 12px; border-radius: 999px; font-size: 13px }
-.pill { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--d-bg); color: var(--d-fg) }
 .alert h2 { font-size: 15px; margin-bottom: 4px }
 .alert ul { margin: 0; padding-left: 1.2em; font-size: 14px }
-.hero .lead { margin: 6px 0 0; font-size: 14px }
-.eyebrow { margin: 0 0 4px; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase }
-.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px }
-.card-head h2 { font-size: 17px }
-.count { font-size: 13px }
-.result-table th, .result-table td { text-align: left; padding: 10px 12px }
-.input-table th { text-align: left; padding: 8px 8px; font-size: 12px }
-.input-table td { padding: 6px 6px }
-.input-table td:last-child, .input-table td.move-cell { white-space: nowrap }
 input[type=text], select { width: 100%; font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--field); color: var(--text) }
 select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px }
-.off-checkbox { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer }
 select:disabled { opacity: .45; cursor: not-allowed }
-.delete-row-btn, .move-up-btn, .move-down-btn { font: inherit; font-size: 13px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--sub); cursor: pointer }
-.delete-row-btn:hover:not(:disabled), .move-up-btn:hover:not(:disabled), .move-down-btn:hover:not(:disabled) { color: var(--u-fg); border-color: var(--u-fg) }
-
-/* スマホ：1 行を 1 枚のカードに */
-@media (max-width: 640px) {
-  .input-table thead { display: none }
-  .input-table, .input-table tbody { display: block }
-  .input-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 14px }
-  .input-table td { padding: 0; display: block }
-  .input-table td.move-cell { grid-column: 1 / -1 }
-  .input-table td:nth-child(2) { grid-column: 1 / -1 }
-  .input-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; margin-bottom: 2px; color: var(--sub) }
-  .input-table td:last-child { grid-column: 1 / -1; text-align: right }
-  .actions .btn { flex: 1 }
-}
+input:focus-visible, select:focus-visible, .move-up-btn:focus-visible, .move-down-btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 1px }
+.move-up-btn:disabled, .move-down-btn:disabled { opacity: .3; cursor: not-allowed }
+.move-up-btn, .move-down-btn { font: inherit; font-size: 13px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--sub); cursor: pointer }
+.move-up-btn:hover:not(:disabled), .move-down-btn:hover:not(:disabled) { color: var(--u-fg); border-color: var(--u-fg) }
 
 :root {
   --bg: #faf7f2;
@@ -77,38 +45,12 @@ select:disabled { opacity: .45; cursor: not-allowed }
 }
 
 body { background: var(--bg); color: var(--text) }
-.app { max-width: 900px }
-.eyebrow { color: var(--accent) }
-h1 { font-size: 32px; font-weight: 800; letter-spacing: -.02em }
-.hero { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 2px solid var(--text) }
-.hero .lead { color: var(--sub) }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px; margin-bottom: 20px }
-.count { color: var(--sub) }
-.count b { color: var(--text); font-size: 18px }
-.input-table th { color: var(--sub); border-bottom: 1px solid var(--line) }
 input[type=text], select { border-radius: 8px }
 input[type=text]:focus, select:focus { border-color: var(--accent) }
-.actions { margin-top: 16px }
-.btn { padding: 12px 22px; border-radius: 8px }
-.btn.primary { background: var(--text); color: #fff }
-.btn.primary:hover { background: var(--accent) }
-.btn.ghost { background: transparent; color: var(--text); border: 1px dashed var(--sub) }
-.btn.ghost:hover { border-color: var(--accent); color: var(--accent) }
 .alert { background: #fbeeea; border-left: 4px solid var(--u-fg); color: #7a2f20; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px }
-.result-table { margin-top: 20px }
-.result-table thead th { font-size: 12px; color: var(--sub); border-bottom: 1px solid var(--line) }
-.result-table td { border-bottom: 1px solid var(--line) }
-.result-table th, .result-table td:not(:last-child) { white-space: nowrap }
-.result-table td:first-child { max-width: 12em; overflow: hidden; text-overflow: ellipsis }
-@media (max-width: 640px) { .result-table { display: block; overflow-x: auto } }
-.result-table tr:last-child td { border-bottom: 0 }
-.chip { background: #efe8dc; color: var(--sub) }
-.empty-icon { background: #fdf1d6; color: #8a6100 }
 
 /* タイムライン */
 .timeline { position: relative; padding: 22px 0 4px 96px; margin-top: 8px }
-.tl-axis { position: absolute; left: 96px; right: 0; top: 0; height: 18px; font-size: 11px; color: var(--sub) }
-.tl-axis span { position: absolute; transform: translateX(-50%) }
 .tl-row { position: relative; display: flex; align-items: center; height: 34px }
 .tl-name { position: absolute; left: -96px; width: 88px; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .tl-track { position: relative; flex: 1; height: 22px; background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px calc(100% / 11)); border-radius: 6px }
@@ -133,15 +75,10 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
     --d-fg: #7fd89b;
     --u-fg: #ff9a86;
   }
-  .btn.primary { color: #1a1714; background: #f1ebe1 }
   .alert { background: #2e1a16; color: #ffcbbd }
-  .chip { background: #2d2822 }
-  .empty-icon { background: #3a2f12; color: #f0c25a }
   .tl-break { background: repeating-linear-gradient(45deg, #000 0 3px, #0006 3px 6px); border-color: #fff5 }
 }
 
-.unassigned-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px }
-.reason { font-size: 13px; color: var(--sub) }
 .duration { margin-left: 6px; font-size: 12px; color: var(--sub) }
 
 /* カレンダーと個別変更パネル */
@@ -160,9 +97,6 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 .day-panel-row label { display: flex; align-items: center; gap: 4px }
 .day-panel-row select { flex: 1; min-width: 100px }
 .day-panel-row button { padding: 6px 12px; font-size: 12px; white-space: nowrap }
-.reset-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; cursor: pointer }
-.reset-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent) }
-.reset-btn:disabled { opacity: 0.3; cursor: not-allowed }
 .reset-all-btn { margin-top: 12px; padding: 10px 16px; background: transparent; border: 1px dashed var(--sub); border-radius: 6px; cursor: pointer; width: 100% }
 .reset-all-btn:hover { border-color: var(--accent); color: var(--accent) }
 
@@ -193,3 +127,31 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
   #screen-1:not([hidden]) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr) }
   #screen-2:not([hidden]) { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) }
 }
+
+/* 画面 3：結果のタブ */
+.result-summary { margin: 0 0 12px; font-size: 14px; font-weight: 600 }
+.tab-buttons { display: flex; gap: 8px; margin-bottom: 12px }
+.tab-btn { padding: 8px 16px; border: 1px solid var(--line); border-radius: 8px; background: transparent; cursor: pointer; font-size: 14px }
+.tab-btn.active { background: var(--text); color: #fff; border-color: var(--text) }
+.tab-panels { max-height: calc(100vh - 260px); overflow: auto }
+.tab-panel[hidden] { display: none }
+
+/* カレンダー表示 */
+.calendar-grid { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 6px }
+.calendar-head { text-align: center; font-weight: 600; font-size: 13px; color: var(--sub) }
+#tab-calendar .calendar-cell, #tab-calendar .holiday { min-height: 84px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); font-size: 12px }
+#tab-calendar .holiday { color: var(--sub); background: transparent }
+.calendar-date { font-weight: 600 }
+#tab-calendar .calendar-day { height: auto; padding: 2px 10px; background: transparent; font-weight: 600 }
+#tab-calendar .calendar-day:hover { color: inherit; background: transparent; border-color: var(--accent) }
+.work-group { margin-top: 2px }
+.failed { margin-top: 4px; color: var(--u-fg); font-weight: 600 }
+
+/* 従業員別表示 */
+.employee-result-table th, .employee-result-table td { padding: 6px 10px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--line); font-size: 13px }
+.employee-result-table .sticky-col { position: sticky; left: 0; background: var(--card); text-align: left; z-index: 1 }
+.employee-result-table .work-days { font-weight: 600 }
+
+/* 日別詳細 */
+.detail-table th, .detail-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px }
+.unassigned-list { margin: 4px 0 12px; padding-left: 1.2em; font-size: 13px }
