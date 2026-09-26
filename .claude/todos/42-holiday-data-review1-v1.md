@@ -48,7 +48,7 @@
     - `HolidayRepository.replaceAll` の `@Transactional` を一時的に外すとテストが失敗した（RED の確認）。確認後に戻した
     - `./mvnw test -Dtest=HolidayRepositoryTest` が成功する
 
-- [ ] **R5. テストメソッドの `@DisplayName` の先頭に仕様 ID を付ける（MUST、test.md）**
+- [x] **R5. テストメソッドの `@DisplayName` の先頭に仕様 ID を付ける（MUST、test.md）**
   - 依頼事項：次の 5 つのテストクラスで、`@Test` メソッドの `@DisplayName` の先頭に、対応する仕様 ID を付ける。例：`[F-10] Given: ...`。`@Nested` クラスにだけ ID があってもメソッド側には必要。isSupported や V-8 に対応するテストには `[V-8]`、複数に対応するものには `[F-10][V-8]`。既存の `Given/When/Then` の文言は変えない
   - 対象ファイル：`src/test/java/com/example/shiftmatch/config/HolidayStartupRunnerTest.java`、`src/test/java/com/example/shiftmatch/persistence/HolidayRepositoryTest.java`、`src/test/java/com/example/shiftmatch/service/HolidayCsvParserTest.java`、`src/test/java/com/example/shiftmatch/service/HolidayServiceImplTest.java`、`src/test/java/com/example/shiftmatch/service/HttpHolidayCsvFetcherTest.java`
   - 完了条件：

@@ -1,5 +1,6 @@
 package com.example.shiftmatch.service;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class HttpHolidayCsvFetcher implements HolidayCsvFetcher {
 
-  private final String url;
+  private final URI uri;
   private final int timeoutSeconds;
 
   /**
@@ -24,12 +25,17 @@ public class HttpHolidayCsvFetcher implements HolidayCsvFetcher {
    *
    * @param url CSV の URL
    * @param timeoutSeconds タイムアウト時間（秒）
+   * @throws IllegalArgumentException URL が不正な場合
    */
   public HttpHolidayCsvFetcher(
       @Value("${holiday.csv.url:https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv}")
           String url,
       @Value("${holiday.csv.timeout-seconds:10}") int timeoutSeconds) {
-    this.url = url;
+    try {
+      this.uri = URI.create(url).toURL().toURI();
+    } catch (Exception e) {
+      throw new IllegalArgumentException("URL の形式が不正です: " + url, e);
+    }
     this.timeoutSeconds = timeoutSeconds;
   }
 
@@ -47,10 +53,7 @@ public class HttpHolidayCsvFetcher implements HolidayCsvFetcher {
     try {
       HttpClient client = HttpClient.newHttpClient();
       HttpRequest request =
-          HttpRequest.newBuilder(URI.create(url))
-              .timeout(Duration.ofSeconds(timeoutSeconds))
-              .GET()
-              .build();
+          HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(timeoutSeconds)).GET().build();
 
       HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
@@ -62,10 +65,10 @@ public class HttpHolidayCsvFetcher implements HolidayCsvFetcher {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new HolidayFetchException("CSV 取得がインタラプトされました", e);
+    } catch (IOException e) {
+      throw new HolidayFetchException("CSV 取得に失敗しました: " + e.getMessage(), e);
     } catch (HolidayFetchException e) {
       throw e;
-    } catch (Exception e) {
-      throw new HolidayFetchException("CSV 取得に失敗しました: " + e.getMessage(), e);
     }
   }
 }
