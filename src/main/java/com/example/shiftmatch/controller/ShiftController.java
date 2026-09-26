@@ -3,6 +3,7 @@ package com.example.shiftmatch.controller;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.InvalidTimeRangeError;
+import com.example.shiftmatch.persistence.LatestShiftRepository;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import jakarta.validation.Valid;
 import java.time.LocalTime;
@@ -39,14 +40,19 @@ public class ShiftController {
 
   private final ShiftAssignmentService shiftAssignmentService;
 
+  private final LatestShiftRepository latestShiftRepository;
+
   /**
    * コンストラクタです。
    *
    * @param shiftAssignmentService シフト算出サービス
+   * @param latestShiftRepository 最新シフト結果リポジトリ
    */
   @Autowired
-  public ShiftController(ShiftAssignmentService shiftAssignmentService) {
+  public ShiftController(
+      ShiftAssignmentService shiftAssignmentService, LatestShiftRepository latestShiftRepository) {
     this.shiftAssignmentService = shiftAssignmentService;
+    this.latestShiftRepository = latestShiftRepository;
   }
 
   /**
@@ -62,7 +68,7 @@ public class ShiftController {
   }
 
   /**
-   * 初期フォームを表示します。
+   * 初期フォームを表示します。保存済みの従業員入力がある場合は復元します。
    *
    * @param model モデルオブジェクト
    * @return ビュー名
@@ -71,9 +77,30 @@ public class ShiftController {
   public String index(Model model) {
     ShiftForm shiftForm = new ShiftForm();
     List<EmployeeForm> employees = new ArrayList<>();
-    for (int i = 0; i < MAX_EMPLOYEE_COUNT; i++) {
+
+    // 保存済みの従業員を読み出す
+    List<Employee> savedEmployees = latestShiftRepository.findEmployees();
+
+    // 保存済みの従業員をフォームに詰める
+    for (Employee savedEmployee : savedEmployees) {
+      EmployeeForm form = new EmployeeForm();
+      form.setName(savedEmployee.name());
+      form.setOff(savedEmployee.off());
+      if (!savedEmployee.off()) {
+        form.setStart(savedEmployee.start().format(TIME_FORMATTER));
+        form.setEnd(savedEmployee.end().format(TIME_FORMATTER));
+      } else {
+        form.setStart("");
+        form.setEnd("");
+      }
+      employees.add(form);
+    }
+
+    // 不足分を空行で補う（最大12行）
+    while (employees.size() < MAX_EMPLOYEE_COUNT) {
       employees.add(new EmployeeForm());
     }
+
     shiftForm.setEmployees(employees);
     model.addAttribute("shiftForm", shiftForm);
 

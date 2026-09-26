@@ -17,6 +17,7 @@ import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
+import com.example.shiftmatch.persistence.LatestShiftRepository;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.LocalTime;
@@ -46,6 +47,8 @@ class ShiftControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private ShiftAssignmentService shiftAssignmentService;
+
+  @MockitoBean private LatestShiftRepository latestShiftRepository;
 
   /**
    * 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（小文字）。
@@ -1917,6 +1920,57 @@ class ShiftControllerTest {
           postWith(new AssignmentResult(createStandardResult().assignments(), 8, unassigned));
 
       assertEquals(3, html.split("class=\"chip\"", -1).length - 1);
+    }
+  }
+
+  @Nested
+  @DisplayName("画面表示時に保存済みの従業員入力を復元する")
+  class RestoreLatestShift {
+
+    @Test
+    @DisplayName("保存済み従業員を復元して表示する")
+    void restoresAndDisplaysSavedEmployees() throws Exception {
+      List<Employee> savedEmployees =
+          List.of(
+              Employee.working("Alice", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.onLeave("Bob"));
+      when(latestShiftRepository.findEmployees()).thenReturn(savedEmployees);
+
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+
+      String html = result.getResponse().getContentAsString();
+
+      // 12行あることを確認
+      assertTrue(html.contains("id=\"row-count\""));
+
+      // 1行目: 名前「Alice」、休み off、開始「09:00」、終了「17:00」
+      assertTrue(html.contains("value=\"Alice\""));
+      Matcher row0 = Pattern.compile("employees\\[0\\]\\.name[^>]*value=\"Alice\"").matcher(html);
+      assertTrue(row0.find());
+
+      // 2行目: 名前「Bob」、休み on、開始・終了は空
+      assertTrue(html.contains("value=\"Bob\""));
+      Matcher row1 = Pattern.compile("employees\\[1\\]\\.name[^>]*value=\"Bob\"").matcher(html);
+      assertTrue(row1.find());
+
+      // 開始・終了は09:00と17:00（HH:mm形式）で表示
+      assertTrue(html.contains("value=\"09:00\""));
+      assertTrue(html.contains("value=\"17:00\""));
+    }
+
+    @Test
+    @DisplayName("保存がなければ空の12行")
+    void showsEmptyRowsWhenNoSavedData() throws Exception {
+      when(latestShiftRepository.findEmployees()).thenReturn(List.of());
+
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+
+      String html = result.getResponse().getContentAsString();
+
+      // 12行の空行を確認
+      assertTrue(html.contains("id=\"row-count\""));
+      assertTrue(html.contains("name=\"employees[11].name\""));
+      assertFalse(html.contains("name=\"employees[12].name\""));
     }
   }
 }
