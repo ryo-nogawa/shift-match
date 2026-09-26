@@ -48,9 +48,10 @@ public class HolidayCsvParser {
 
     String headerLine = lines[0].trim();
     String[] headerParts = headerLine.split(",");
-    if (headerParts.length != 2
-        || !headerParts[0].trim().equals("国民の祝日・休日月日")
-        || !headerParts[1].trim().equals("国民の祝日・休日名称")) {
+    String[] expectedParts = EXPECTED_HEADER.split(",");
+    if (headerParts.length != expectedParts.length
+        || !headerParts[0].trim().equals(expectedParts[0].trim())
+        || !headerParts[1].trim().equals(expectedParts[1].trim())) {
       throw new IllegalArgumentException("見出し行が不正です: " + headerLine);
     }
 

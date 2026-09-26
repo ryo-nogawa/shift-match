@@ -23,7 +23,7 @@
     - `IsSupported` の 3 つのテストメソッドの `@DisplayName` が `[V-8]` で始まる（`grep -n "DisplayName" src/test/java/com/example/shiftmatch/service/HolidayServiceImplTest.java` で確認）
     - `./mvnw test -Dtest=HolidayServiceImplTest` が成功する
 
-- [ ] **S2. 未使用の見出し定数 `EXPECTED_HEADER` を使う（SHOULD）**
+- [x] **S2. 未使用の見出し定数 `EXPECTED_HEADER` を使う（SHOULD）**
   - 依頼事項：`HolidayCsvParser.java` の `EXPECTED_HEADER` は宣言されているが使われておらず、見出しの検証（52〜53 行目付近）に同じ文字列がリテラルで書かれている。見出しの文字列の定義元を 1 つにするため、検証の比較で `EXPECTED_HEADER` を使い、重複したリテラルを取り除く（見出しの列ごとに別々の定数があるなら、どれか 1 つの方式に統一し、未使用の定数を残さない）。振る舞いは変えない
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HolidayCsvParser.java`
   - 完了条件：
