@@ -64,6 +64,42 @@ class AssignmentResultTest {
     }
   }
 
+  @Nested
+  @DisplayName("[F-4] ずれの合計をリストで返す")
+  class GapMinutesList {
+
+    @Test
+    @DisplayName("[F-4] Given: 8件の割り当てのとき, When: gapMinutesListを呼ぶと, Then: 8件のずれを返す")
+    void gapMinutesListReturnsSameCount() {
+      List<ShiftAssignment> assignments = createStandardAssignments();
+      int score = 0;
+      List<Employee> unassigned = new ArrayList<>();
+      AssignmentResult result = new AssignmentResult(assignments, score, unassigned);
+
+      var gapList = result.gapMinutesList();
+
+      assertEquals(8, gapList.size());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 各割り当てのずれが計算されるとき, When: gapMinutesListを呼ぶと, Then:" + " 合計がscoreに一致する")
+    void gapMinutesListSumEqualsScore() {
+      List<ShiftAssignment> assignments = createStandardAssignments();
+      // すべての従業員が 7:30-18:30（660分）で、各枠に割り当てられた場合のずれ：
+      // createStandardAssignments() の各割り当ての計算結果が、
+      // gapMinutesList() の合計と一致することを確認する
+      // 実装と計算結果が一致することが条件
+      int expectedScore = 1230;
+      AssignmentResult result = new AssignmentResult(assignments, expectedScore, new ArrayList<>());
+
+      var gapList = result.gapMinutesList();
+      int sumOfGaps = gapList.stream().mapToInt(i -> i.intValue()).sum();
+
+      assertEquals(expectedScore, sumOfGaps);
+    }
+  }
+
   private List<ShiftAssignment> createStandardAssignments() {
     List<ShiftAssignment> assignments = new ArrayList<>();
     for (int i = 0; i < 8; i++) {

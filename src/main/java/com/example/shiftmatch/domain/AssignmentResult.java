@@ -28,4 +28,15 @@ public record AssignmentResult(
     assignments = List.copyOf(assignments);
     unassignedEmployees = List.copyOf(unassignedEmployees);
   }
+
+  /**
+   * 各割り当てのずれ（分）をリストで返します。
+   *
+   * <p>{@link #assignments()} と同じ順序・同じ件数で返します。
+   *
+   * @return 各人のずれのリスト
+   */
+  public List<Integer> gapMinutesList() {
+    return assignments.stream().map(a -> a.gapMinutes()).toList();
+  }
 }
