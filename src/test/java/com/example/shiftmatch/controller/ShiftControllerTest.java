@@ -20,17 +20,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
+import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
+import com.example.shiftmatch.domain.ShiftAdjustment;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.domain.ShiftStorageException;
 import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
+import com.example.shiftmatch.service.SavedInput;
 import com.example.shiftmatch.service.ShiftStorageService;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -38,10 +42,12 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -56,7 +62,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 /** 変換は実物の {@link MonthlyFormConverter} を使い、算出（{@link MonthlyShiftService}）だけをモックにします。 */
 @WebMvcTest(ShiftController.class)
-@Import({MonthlyFormConverter.class, MonthlyResultViewFactory.class})
+@Import({MonthlyFormConverter.class, MonthlyResultViewFactory.class, SavedInputFormConverter.class})
 class ShiftControllerTest {
 
   /** 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（ソース検索で誤検出しないよう分割）。 */
@@ -69,6 +75,12 @@ class ShiftControllerTest {
   @MockitoBean private HolidayService holidayService;
 
   @MockitoBean private ShiftStorageService shiftStorageService;
+
+  @BeforeEach
+  void stubEmptySavedInput() {
+    when(shiftStorageService.loadInput())
+        .thenReturn(new SavedInput(List.of(), List.of(), Optional.empty()));
+  }
 
   private static final List<ShiftSlot> SLOTS_IN_ORDER =
       List.of(
@@ -646,6 +658,63 @@ class ShiftControllerTest {
       int screen3 = html.indexOf("id=\"screen-3\"");
       int alert = html.indexOf("role=\"alert\"", screen3);
       assertTrue(alert > screen3);
+    }
+  }
+
+  @Nested
+  class 復元 {
+
+    private EmployeeProfile savedProfile(String name) {
+      Map<DayOfWeek, DailyWish> shifts = new EnumMap<>(DayOfWeek.class);
+      shifts.put(DayOfWeek.MONDAY, new DailyWish(true, null, null));
+      shifts.put(DayOfWeek.TUESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      shifts.put(
+          DayOfWeek.WEDNESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      shifts.put(DayOfWeek.THURSDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      shifts.put(DayOfWeek.FRIDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      return new EmployeeProfile(name, EmploymentType.PART_TIME, shifts);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.1節] Given: 従業員・個別変更・最後の対象月が保存済み, When: GET / を呼ぶと,"
+            + " Then: 先頭に復元され残りは空で計 12 行、個別変更と最後の対象月が入る")
+    void restoresSavedInputOnGet() throws Exception {
+      when(shiftStorageService.loadInput())
+          .thenReturn(
+              new SavedInput(
+                  List.of(savedProfile("佐藤"), savedProfile("鈴木")),
+                  List.of(
+                      new ShiftAdjustment(
+                          LocalDate.of(2026, 11, 2), "佐藤", new DailyWish(true, null, null))),
+                  Optional.of(YearMonth.of(2026, 11))));
+
+      MvcResult result = perform(get("/"));
+
+      ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
+      assertEquals("2026-11", form.getTargetMonth());
+      assertEquals(12, form.getEmployees().size());
+      assertEquals("佐藤", form.getEmployees().get(0).getName());
+      assertEquals("鈴木", form.getEmployees().get(1).getName());
+      assertEquals("PART_TIME", form.getEmployees().get(1).getEmploymentType());
+      assertTrue(form.getEmployees().get(0).getDays().get(0).isOff());
+      assertEquals("", form.getEmployees().get(2).getName());
+      assertEquals(1, form.getAdjustments().size());
+      assertEquals("2026-11-02", form.getAdjustments().get(0).getDate());
+      assertTrue(bodyOf(result).contains("value=\"佐藤\""));
+    }
+
+    @Test
+    @DisplayName("[F-7][8.1節] Given: 何も保存していない, When: GET / を呼ぶと, Then: 空の 12 行と今月になる")
+    void returnsEmptyRowsAndCurrentMonthWhenNothingSaved() throws Exception {
+      MvcResult result = perform(get("/"));
+
+      ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
+      assertEquals(
+          YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM")), form.getTargetMonth());
+      assertEquals(12, form.getEmployees().size());
+      assertEquals("", form.getEmployees().get(0).getName());
+      assertTrue(form.getAdjustments().isEmpty());
     }
   }
 }

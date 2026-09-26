@@ -8,7 +8,6 @@ import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
 import com.example.shiftmatch.service.ShiftStorageService;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
@@ -30,13 +29,9 @@ public class ShiftController {
 
   private static final String SAVE_ERROR_MESSAGE = "保存に失敗しました。もう一度シフトを作成して保存し直してください";
 
-  private static final int DEFAULT_EMPLOYEE_COUNT = 12;
-
   private static final String DEFAULT_START_TIME = "07:30";
 
   private static final String DEFAULT_END_TIME = "18:30";
-
-  private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
   private final MonthlyShiftService monthlyShiftService;
 
@@ -48,6 +43,8 @@ public class ShiftController {
 
   private final ShiftStorageService shiftStorageService;
 
+  private final SavedInputFormConverter savedInputFormConverter;
+
   /**
    * コンストラクタです。
    *
@@ -56,6 +53,7 @@ public class ShiftController {
    * @param holidayService 祝日サービス
    * @param monthlyResultViewFactory 結果画面の表示モデルの生成
    * @param shiftStorageService シフトの保存・復元サービス
+   * @param savedInputFormConverter 保存済みの入力をフォームへ変換するコンバーター
    */
   @Autowired
   public ShiftController(
@@ -63,12 +61,14 @@ public class ShiftController {
       MonthlyFormConverter monthlyFormConverter,
       HolidayService holidayService,
       MonthlyResultViewFactory monthlyResultViewFactory,
-      ShiftStorageService shiftStorageService) {
+      ShiftStorageService shiftStorageService,
+      SavedInputFormConverter savedInputFormConverter) {
     this.monthlyShiftService = monthlyShiftService;
     this.monthlyFormConverter = monthlyFormConverter;
     this.holidayService = holidayService;
     this.monthlyResultViewFactory = monthlyResultViewFactory;
     this.shiftStorageService = shiftStorageService;
+    this.savedInputFormConverter = savedInputFormConverter;
   }
 
   /**
@@ -103,33 +103,8 @@ public class ShiftController {
    */
   @GetMapping("/")
   public String index(Model model) {
-    ShiftForm shiftForm = new ShiftForm();
-
-    // 対象月は今月に設定
-    shiftForm.setTargetMonth(YearMonth.now().format(MONTH_FORMATTER));
-
-    // 12 行の従業員フォームを初期化
-    List<EmployeeForm> employees = new ArrayList<>();
-    for (int i = 0; i < DEFAULT_EMPLOYEE_COUNT; i++) {
-      EmployeeForm employee = new EmployeeForm();
-      employee.setName(""); // 名前は空
-      employee.setEmploymentType("FULL_TIME"); // 区分は常勤
-
-      // 月〜金の 5 日分の基本シフト（デフォルト：休みなし、07:30〜18:30）
-      List<DayForm> days = new ArrayList<>();
-      for (int d = 0; d < 5; d++) {
-        DayForm day = new DayForm();
-        day.setOff(false);
-        day.setStart(DEFAULT_START_TIME);
-        day.setEnd(DEFAULT_END_TIME);
-        days.add(day);
-      }
-      employee.setDays(days);
-
-      employees.add(employee);
-    }
-
-    shiftForm.setEmployees(employees);
+    ShiftForm shiftForm =
+        savedInputFormConverter.toForm(shiftStorageService.loadInput(), YearMonth.now());
     model.addAttribute("shiftForm", shiftForm);
     model.addAttribute("initialStep", 1);
 
