@@ -7,8 +7,8 @@ h1, h2 { margin: 0 }
 table { border-collapse: collapse; width: 100% }
 .actions { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap }
 .btn { font: inherit; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: .15s }
-.btn:focus-visible, input:focus-visible, select:focus-visible, .delete-row-btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 1px }
-.delete-row-btn:disabled { opacity: .3; cursor: not-allowed }
+.btn:focus-visible, input:focus-visible, select:focus-visible, .delete-row-btn:focus-visible, .move-up-btn:focus-visible, .move-down-btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 1px }
+.delete-row-btn:disabled, .move-up-btn:disabled, .move-down-btn:disabled { opacity: .3; cursor: not-allowed }
 .empty { text-align: center; padding: 24px 0 }
 .empty p { margin: 8px 0 2px; font-weight: 600 }
 .empty small { opacity: .65 }
@@ -26,12 +26,13 @@ table { border-collapse: collapse; width: 100% }
 .result-table th, .result-table td { text-align: left; padding: 10px 12px }
 .input-table th { text-align: left; padding: 8px 8px; font-size: 12px }
 .input-table td { padding: 6px 6px }
+.input-table td:last-child { white-space: nowrap }
 input[type=text], select { width: 100%; font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--field); color: var(--text) }
 select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px }
 .off-checkbox { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer }
 select:disabled { opacity: .45; cursor: not-allowed }
-.delete-row-btn { font: inherit; font-size: 13px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--sub); cursor: pointer }
-.delete-row-btn:hover:not(:disabled) { color: var(--u-fg); border-color: var(--u-fg) }
+.delete-row-btn, .move-up-btn, .move-down-btn { font: inherit; font-size: 13px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--sub); cursor: pointer }
+.delete-row-btn:hover:not(:disabled), .move-up-btn:hover:not(:disabled), .move-down-btn:hover:not(:disabled) { color: var(--u-fg); border-color: var(--u-fg) }
 
 /* スマホ：1 行を 1 枚のカードに */
 @media (max-width: 640px) {
