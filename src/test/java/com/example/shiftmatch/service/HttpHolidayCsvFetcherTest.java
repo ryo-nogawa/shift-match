@@ -37,7 +37,7 @@ class HttpHolidayCsvFetcherTest {
 
     @Test
     @DisplayName(
-        "Given: サーバーが 200 OK で Shift_JIS の CSV を返すとき, When: fetch すると, Then: バイト列がそのまま返される")
+        "[F-10] Given: サーバーが 200 OK で Shift_JIS の CSV を返すとき, When: fetch すると, Then: バイト列がそのまま返される")
     void fetchesSuccessfullyWithStatus200() throws IOException {
       String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/1/1,元日\n";
       byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
@@ -62,7 +62,7 @@ class HttpHolidayCsvFetcherTest {
     }
 
     @Test
-    @DisplayName("Given: サーバーが 500 を返すとき, When: fetch すると, Then: HolidayFetchException を投げる")
+    @DisplayName("[F-10] Given: サーバーが 500 を返すとき, When: fetch すると, Then: HolidayFetchException を投げる")
     void throwsWhenStatus500() {
       httpServer.createContext(
           "/error",
@@ -79,7 +79,7 @@ class HttpHolidayCsvFetcherTest {
     }
 
     @Test
-    @DisplayName("Given: サーバーが起動していないとき, When: fetch すると, Then: HolidayFetchException を投げる")
+    @DisplayName("[F-10] Given: サーバーが起動していないとき, When: fetch すると, Then: HolidayFetchException を投げる")
     void throwsWhenConnectionFails() {
       stopServer();
 

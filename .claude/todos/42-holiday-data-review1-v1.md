@@ -40,7 +40,7 @@
     - テストを先に書き、RED を確認した。`[F-10]` を先頭に付けた `@DisplayName` のテストで、`HolidayRepository.replaceAll` が `DataAccessException` のサブクラス（例：`org.springframework.dao.DataIntegrityViolationException`）を投げるスタブ（または Mockito のモック）にしたとき、`refresh()` が例外を外に出さないことを確認している
     - `./mvnw test -Dtest=HolidayServiceImplTest` が成功する
 
-- [ ] **R4. `replaceAll` の失敗時に既存データが残ることをテストする（MUST）**
+- [x] **R4. `replaceAll` の失敗時に既存データが残ることをテストする（MUST）**
   - 依頼事項：`HolidayRepositoryTest` に、既存データを保存したあと、同じ日付を 2 件含むリストを `replaceAll` に渡して `DuplicateKeyException`（`DataAccessException` のサブクラス）が出ること、その後も既存データが全件残ることを検証するテストを追加する。`@JdbcTest` はテストメソッドをトランザクションで包んでロールバックするため、`HolidayRepository` の `@Transactional` の効果を確かめるには、このテストだけ `@Transactional(propagation = Propagation.NOT_SUPPORTED)` を付け、テストの後始末（`DELETE FROM holiday`）を `@AfterEach` などで行う。`@Transactional` を `replaceAll` から外すと、このテストが失敗することを一度確かめてから戻す（確かめた結果は実行ログに書く）
   - 対象ファイル：`src/test/java/com/example/shiftmatch/persistence/HolidayRepositoryTest.java`
   - 完了条件：

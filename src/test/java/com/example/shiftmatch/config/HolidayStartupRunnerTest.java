@@ -28,7 +28,8 @@ class HolidayStartupRunnerTest {
 
     @Test
     @DisplayName(
-        "Given: holiday.refresh-on-startup=true のとき, When: 起動すると, Then: refresh() がちょうど 1 回呼ばれる")
+        "[F-10] Given: holiday.refresh-on-startup=true のとき, When: 起動すると, Then: refresh() がちょうど 1"
+            + " 回呼ばれる")
     void callsRefreshWhenPropertyIsTrue() {
       HolidayService holidayService = mock(HolidayService.class);
       ApplicationArguments args = mock(ApplicationArguments.class);
@@ -40,7 +41,8 @@ class HolidayStartupRunnerTest {
     }
 
     @Test
-    @DisplayName("Given: holiday.refresh-on-startup=false のとき, When: 起動すると, Then: Bean が作られない")
+    @DisplayName(
+        "[F-10] Given: holiday.refresh-on-startup=false のとき, When: 起動すると, Then: Bean が作られない")
     void beanNotCreatedWhenPropertyIsFalse() {
       contextRunner
           .withPropertyValues("holiday.refresh-on-startup=false")

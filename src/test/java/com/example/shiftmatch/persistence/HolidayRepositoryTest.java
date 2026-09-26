@@ -43,7 +43,8 @@ class HolidayRepositoryTest {
   class SaveAndFind {
 
     @Test
-    @DisplayName("Given: 複数の祝日があるとき, When: replaceAll で保存して findByYear で取得すると, Then: 年ごとに日付順で返される")
+    @DisplayName(
+        "[F-10] Given: 複数の祝日があるとき, When: replaceAll で保存して findByYear で取得すると, Then: 年ごとに日付順で返される")
     void savesAndFindsHolidaysByYear() {
       List<Holiday> holidays =
           List.of(
@@ -65,7 +66,7 @@ class HolidayRepositoryTest {
     }
 
     @Test
-    @DisplayName("Given: 異なる年の祝日があるとき, When: findByYear で取得すると, Then: 指定した年のデータだけが返される")
+    @DisplayName("[F-10] Given: 異なる年の祝日があるとき, When: findByYear で取得すると, Then: 指定した年のデータだけが返される")
     void findsByYearCorrectly() {
       List<Holiday> holidays =
           List.of(
@@ -86,7 +87,7 @@ class HolidayRepositoryTest {
     }
 
     @Test
-    @DisplayName("Given: データが保存されていないとき, When: findByYear で取得すると, Then: 空のリストが返される")
+    @DisplayName("[F-10] Given: データが保存されていないとき, When: findByYear で取得すると, Then: 空のリストが返される")
     void returnsEmptyListWhenNoData() {
       List<Holiday> found = repository.findByYear(2026);
       assertTrue(found.isEmpty());
@@ -98,7 +99,7 @@ class HolidayRepositoryTest {
   class ReplaceAll {
 
     @Test
-    @DisplayName("Given: 既存データがあるとき, When: replaceAll で新しいデータを保存すると, Then: 既存データが全て置き換わる")
+    @DisplayName("[F-10] Given: 既存データがあるとき, When: replaceAll で新しいデータを保存すると, Then: 既存データが全て置き換わる")
     void replacesAllData() {
       List<Holiday> holidays1 =
           List.of(
@@ -154,7 +155,7 @@ class HolidayRepositoryTest {
   class ExistsInYear {
 
     @Test
-    @DisplayName("Given: 祝日が保存されているとき, When: existsInYear で確認すると, Then: true が返される")
+    @DisplayName("[F-10] Given: 祝日が保存されているとき, When: existsInYear で確認すると, Then: true が返される")
     void returnsTrueWhenYearExists() {
       List<Holiday> holidays =
           List.of(
@@ -166,7 +167,7 @@ class HolidayRepositoryTest {
     }
 
     @Test
-    @DisplayName("Given: 祝日が保存されていないとき, When: existsInYear で確認すると, Then: false が返される")
+    @DisplayName("[F-10] Given: 祝日が保存されていないとき, When: existsInYear で確認すると, Then: false が返される")
     void returnsFalseWhenYearNotExists() {
       List<Holiday> holidays = List.of(new Holiday(LocalDate.of(2026, 1, 1), "元日"));
       repository.replaceAll(holidays);
@@ -175,7 +176,7 @@ class HolidayRepositoryTest {
     }
 
     @Test
-    @DisplayName("Given: テーブルが空のとき, When: existsInYear で確認すると, Then: false が返される")
+    @DisplayName("[F-10] Given: テーブルが空のとき, When: existsInYear で確認すると, Then: false が返される")
     void returnsFalseWhenTableEmpty() {
       assertFalse(repository.existsInYear(2026));
     }
