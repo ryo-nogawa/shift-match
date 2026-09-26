@@ -47,7 +47,7 @@
     - 追加したテストの `@DisplayName` の先頭に `[H-3]` が付き、Given-When-Then で書かれ、`@Nested` でグループ化されている（`.agents/rules/test.md`）
     - `workableSlots` に Javadoc がある
     - コミットした
-- [ ] **T3. `UnassignedReason` と `Employee#unassignedReason()` を TDD で実装する**
+- [x] **T3. `UnassignedReason` と `Employee#unassignedReason()` を TDD で実装する**
   - 依頼事項：`UnassignedReasonTest`（`src/test/java/com/example/shiftmatch/domain/`）と `EmployeeTest` にテストを **先に** 書く。(1) `label()` が `ON_LEAVE` は `休み`、`LOWER_GAP_CHOSEN` は `入れる枠はあったが、より小さいずれの案が選ばれた`、`NO_AVAILABLE_SLOT` は `どの枠にも入れない` を返す（一字一句この文字列）、(2) `Employee.onLeave("K").unassignedReason()` は `ON_LEAVE`、(3) 休みでなく、開始・終了が `null` の人は `NO_AVAILABLE_SLOT`、(4) 休みでなく 9:00〜10:00 のように、どの枠も含まれない人は `NO_AVAILABLE_SLOT`、(5) 7:30〜18:30 のように入れる枠がある人は `LOWER_GAP_CHOSEN`。RED を確認してから、前提の設計方針 2 のとおり実装する。`@DisplayName` の先頭に `[F-4]`（枠がない理由の判定は `[H-3]` も付ける）を付ける
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/UnassignedReason.java`（新規）、`src/main/java/com/example/shiftmatch/domain/Employee.java`、`src/test/java/com/example/shiftmatch/domain/UnassignedReasonTest.java`（新規）、`src/test/java/com/example/shiftmatch/domain/EmployeeTest.java`
   - 完了条件：
@@ -119,3 +119,4 @@
 
 - T1：implementer はガードフック（`.claude/hooks/guard-implementer.sh`）により `docs/` の変更を禁止されているため、メインエージェントが `docs/specifications.md` の 7 章と `README.md` を更新した（Todo の再作成ではないので版は v1 のまま）。**implementer は T1 をやり直さず、T2 から実装すること**（`docs/` は変更しない）
 - T2 試行 1/4：成功 — 実装前に `./mvnw test -Dtest=EmployeeTest` でコンパイルエラーが発生してからテストが RED（失敗）になったことを確認した。実装後、Spotless と Checkstyle の違反を修正して、`./mvnw test -Dtest=EmployeeTest` が成功（Tests run: 15, Failures: 0, Errors: 0）した
+- T3 試行 1/4：成功 — 実装前に `./mvnw test -Dtest=UnassignedReasonTest,EmployeeTest` でコンパイルエラーが発生してから RED（失敗）になったことを確認した。実装後、`./mvnw test -Dtest=UnassignedReasonTest,EmployeeTest` が成功（Tests run: 22, Failures: 0, Errors: 0）した
