@@ -1,8 +1,23 @@
 /* Shift Match UI Styling: Design C (Warm Color Card UI + Timeline) */
 
 * { box-sizing: border-box }
-body { margin: 0; font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased }
-.app { max-width: 820px; margin: 0 auto; padding: 48px 20px 120px }
+html, body { height: 100%; overflow: hidden; margin: 0 }
+body { font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased }
+.app { display: flex; flex-direction: column; height: 100% }
+.step-nav { padding: 16px; border-bottom: 1px solid var(--line) }
+.step-buttons { display: flex; gap: 12px; justify-content: center }
+.step-btn { padding: 10px 18px; border: 1px solid var(--line); border-radius: 8px; background: transparent; cursor: pointer; font-size: 14px }
+.step-btn.active { background: var(--text); color: #fff; border-color: var(--text) }
+.main-content { flex: 1; overflow: auto; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100% }
+.scroll { overflow: auto }
+.button-panel { padding: 16px; border-top: 1px solid var(--line); display: flex; gap: 12px; justify-content: center }
+#prev-btn, #next-btn { padding: 12px 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); cursor: pointer; font-size: 14px }
+#next-btn { background: var(--text); color: #fff; border-color: var(--text) }
+.month-selector { display: flex; gap: 12px; align-items: center; margin-bottom: 20px }
+.month-nav-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; cursor: pointer }
+#month-label { font-weight: 600; font-size: 16px }
+#month-summary { font-size: 14px; color: var(--sub) }
+section[hidden] { display: none }
 h1, h2 { margin: 0 }
 table { border-collapse: collapse; width: 100% }
 .actions { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap }

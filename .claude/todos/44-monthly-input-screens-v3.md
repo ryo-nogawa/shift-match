@@ -91,7 +91,7 @@
     - 画面 3 の暫定表示を検証するテストがある：`MonthlyShiftService` に営業日 2 日分（成立 1、不成立 1）の `MonthlyShiftResult` を返させて `POST /shift` すると、日付と「不成立」と勤務できる人数が HTML に含まれる
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T6. ステップ操作とページ全体の非スクロール（F-9、8 章冒頭・8.1 節の対象月切り替え）**
+- [x] **T6. ステップ操作とページ全体の非スクロール（F-9、8 章冒頭・8.1 節の対象月切り替え）**
   - 依頼事項：`static/js/step-nav.js` を作る。①ステップ表示・「戻る」「次へ」で `[data-screen]` を切り替える（切り替えでは送信しない。`data-initial-step` の画面から始める）。画面 1 では「戻る」を無効、画面 2 の「次へ」は「1 か月分のシフトを作成」に文言を変えてフォームを送信する（画面 3 は「戻る」のみで、「次へ」は非表示）。ステップ表示を押すと、その画面へ移動できる。②対象月の切り替え：`◀`／`▶` で `targetMonth`（hidden、`YYYY-MM`）を前後の月にして、表示ラベル（`2026 年 10 月`）を更新し、`fetch("/calendar?month=YYYY-MM")` の応答（T2）で `#month-summary` に「営業日 22 日・祝日 1 日」を表示する。取得に失敗（400 など）したら、メッセージを `#month-summary` に表示する。取得した営業日・祝日は `document` に `CustomEvent("calendar-loaded", {detail: 応答})` で通知する（画面 2 が使う）。ページ読み込み時にも 1 回取得する。③`static/css/shift-form.css` を書き直し、`html, body { height: 100%; overflow: hidden; }`、`.app` を縦並び（上部ステップ表示・中央の画面領域・下部ボタン）にして、中央は残りの高さを使い、従業員一覧・カレンダー・入力パネル・結果（`.scroll`）だけを `overflow: auto` にする。既存の見た目（色・カード・ボタン）の CSS は流用してよい
   - 対象ファイル：`src/main/resources/static/js/step-nav.js`、`src/main/resources/static/css/shift-form.css`
   - 完了条件：
