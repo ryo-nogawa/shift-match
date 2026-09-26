@@ -1,8 +1,23 @@
 /* Shift Match UI Styling: Design C (Warm Color Card UI + Timeline) */
 
 * { box-sizing: border-box }
-body { margin: 0; font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased }
-.app { max-width: 820px; margin: 0 auto; padding: 48px 20px 120px }
+html, body { height: 100%; overflow: hidden; margin: 0 }
+body { font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased }
+.app { display: flex; flex-direction: column; height: 100% }
+.step-nav { padding: 16px; border-bottom: 1px solid var(--line) }
+.step-buttons { display: flex; gap: 12px; justify-content: center }
+.step-btn { padding: 10px 18px; border: 1px solid var(--line); border-radius: 8px; background: transparent; cursor: pointer; font-size: 14px }
+.step-btn.active { background: var(--text); color: #fff; border-color: var(--text) }
+.main-content { flex: 1; overflow: auto; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100% }
+.scroll { overflow: auto }
+.button-panel { padding: 16px; border-top: 1px solid var(--line); display: flex; gap: 12px; justify-content: center }
+#prev-btn, #next-btn { padding: 12px 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); cursor: pointer; font-size: 14px }
+#next-btn { background: var(--text); color: #fff; border-color: var(--text) }
+.month-selector { display: flex; gap: 12px; align-items: center; margin-bottom: 20px }
+.month-nav-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; cursor: pointer }
+#month-label { font-weight: 600; font-size: 16px }
+#month-summary { font-size: 14px; color: var(--sub) }
+section[hidden] { display: none }
 h1, h2 { margin: 0 }
 table { border-collapse: collapse; width: 100% }
 .actions { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap }
@@ -128,3 +143,53 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 .unassigned-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px }
 .reason { font-size: 13px; color: var(--sub) }
 .duration { margin-left: 6px; font-size: 12px; color: var(--sub) }
+
+/* カレンダーと個別変更パネル */
+.calendar-week { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px }
+.calendar-empty { height: 60px }
+.calendar-day { height: 60px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); cursor: pointer; font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px }
+.calendar-day:hover:not(:disabled) { background: var(--accent); color: #fff; border-color: var(--accent) }
+.calendar-day.selected { background: var(--accent); color: #fff; border-color: var(--accent) }
+.calendar-day.has-change { background: #ffe8d6; border-color: var(--accent) }
+.calendar-day:disabled { opacity: 0.5; cursor: not-allowed; background: #f5f5f5 }
+.calendar-day .date { font-weight: 600 }
+.calendar-day .holiday-name { font-size: 10px; color: var(--sub) }
+.calendar-day .change-count { font-size: 10px; color: var(--accent); font-weight: 600 }
+.day-panel-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 6px }
+.day-panel-row strong { min-width: 80px }
+.day-panel-row label { display: flex; align-items: center; gap: 4px }
+.day-panel-row select { flex: 1; min-width: 100px }
+.day-panel-row button { padding: 6px 12px; font-size: 12px; white-space: nowrap }
+.reset-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; cursor: pointer }
+.reset-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent) }
+.reset-btn:disabled { opacity: 0.3; cursor: not-allowed }
+.reset-all-btn { margin-top: 12px; padding: 10px 16px; background: transparent; border: 1px dashed var(--sub); border-radius: 6px; cursor: pointer; width: 100% }
+.reset-all-btn:hover { border-color: var(--accent); color: var(--accent) }
+
+/* 画面の配置：ページ全体は縦スクロールさせず、一覧・パネル（.scroll）だけをスクロールさせる（8 章冒頭） */
+.main-content { overflow: hidden; display: flex; flex-direction: column; min-height: 0 }
+.main-content > form { display: flex; flex-direction: column; flex: 1; min-height: 0 }
+[data-screen] { flex: 1; min-height: 0 }
+#screen-1:not([hidden]) { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-rows: auto minmax(0, 1fr); gap: 16px }
+#screen-1 .month-selector { grid-column: 1 / -1; margin-bottom: 0 }
+#screen-2:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px }
+#screen-3 { overflow: auto }
+#adjustment-inputs { display: none }
+#month-summary.error { color: var(--u-fg) }
+.employee-row { cursor: pointer }
+.employee-row.selected td { background: var(--ring) }
+.employee-table td { padding: 4px }
+.summary { font-size: 13px; white-space: nowrap }
+.delete-btn, .copy-to-all-btn { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--sub); cursor: pointer; white-space: nowrap }
+.delete-btn:disabled, #add-employee-btn:disabled, #prev-btn:disabled { opacity: .3; cursor: not-allowed }
+#add-employee-btn { margin-top: 8px; padding: 8px 16px; border: 1px dashed var(--sub); border-radius: 8px; background: transparent; cursor: pointer }
+.calendar-header div { text-align: center; font-size: 12px; color: var(--sub) }
+.calendar-day.selected { background: var(--accent); color: #fff; border-color: var(--accent) }
+.calendar-day.selected .change-count { color: #fff }
+.day-panel-row.changed { border-color: var(--accent) }
+.calendar-message { color: var(--sub) }
+
+@media (max-width: 640px) {
+  #screen-1:not([hidden]) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr) }
+  #screen-2:not([hidden]) { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) }
+}
