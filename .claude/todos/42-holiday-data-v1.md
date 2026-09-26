@@ -63,7 +63,7 @@
     - `[F-10]` を含む `@DisplayName` のテストが存在する：取得に成功すると解析した祝日が保存される、取得に失敗しても例外が外に出ず保存済みのデータが残る、CSV が不正で解析に失敗しても保存済みのデータが残る
     - `./mvnw test -Dtest=HolidayServiceImplTest` が成功する
 
-- [ ] **T5. 対象月が判定できるかを返す：V-8 の判定（V-8、F-10）**
+- [x] **T5. 対象月が判定できるかを返す：V-8 の判定（V-8、F-10）**
   - 依頼事項：`HolidayService` に `boolean isSupported(YearMonth month)` を追加して実装する。対象年の祝日が保存済み（`existsInYear`）なら、取得せずに true を返す。保存されていなければ `refresh()` を 1 回呼び、その後もう一度 `existsInYear` で判定して返す（取得失敗で保存済みのデータにもなければ false）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HolidayService.java`、`src/main/java/com/example/shiftmatch/service/HolidayServiceImpl.java`、`src/test/java/com/example/shiftmatch/service/HolidayServiceImplTest.java`
   - 完了条件：
