@@ -58,7 +58,7 @@
     - `grep -rn "役員\|正社員" docs README.md AGENTS.md src` の結果が 0 件、または残る箇所が意図した記述（管理職の説明として「役員」を含める場合など）で、実行ログに理由がある
     - `grep -rn "V-1〜V-6\|V-1 → V-6" docs README.md AGENTS.md src` の結果が 0 件である
     - `docs/specifications.md` に V-7 の行と、区分は割り当てに影響しない旨の記述がある
-- [ ] **T10. 全テストと静的解析を通す**
+- [x] **T10. 全テストと静的解析を通す**
   - 依頼事項：`./mvnw spotless:apply` で整形してから `./mvnw test` を実行し、失敗・違反があれば直す（振る舞いの変更を伴う場合は該当 Todo の TDD からやり直す）。区分が割り当てに影響していないことを、差分（`git diff main -- src/main/java/com/example/shiftmatch/service src/main/java/com/example/shiftmatch/domain/BreakScheduler.java`）で確認する
   - 対象ファイル：変更した全ファイル
   - 完了条件：
