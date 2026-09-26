@@ -76,19 +76,29 @@ git switch -c <prefix>/<issue番号>-<概要>   # 例：feature/12-input-validat
 
 ### 5. Codex にコードレビューを依頼する
 
-`.codex/skills/code-review/SKILL.md` のレビュースキル（`code-review`）を使い、main との差分を Codex にレビューさせます。
+`.codex/skills/code-review/SKILL.md` のレビュースキル（`code-review`）を使い、main との差分を Codex にレビューさせます。レビューは費用（トークン消費）が大きいため、ラウンドごとに範囲とモデルを変えます。
+
+**1 ラウンド目（main との全差分・全観点）**
 
 ```bash
 codex exec -m gpt-5.6-sol -c model_reasoning_effort="high" \
   --sandbox workspace-write '$code-review main'
 ```
 
-- レビューは見落としがそのまま品質・セキュリティーのリスクになるため、複雑な作業向けの高機能モデル（`gpt-5.6-sol`）と推論 `high` を指定します
+**2 ラウンド目以降（前回レビュー以降の差分のみ）**
 
+```bash
+codex exec -m gpt-5.6-sol -c model_reasoning_effort="medium" \
+  --sandbox workspace-write '$code-review main 再レビュー <前回レビューしたコミット>'
+```
+
+- 1 ラウンド目は見落としがそのまま品質・セキュリティーのリスクになるため、高機能モデル（`gpt-5.6-sol`）と推論 `high` を指定します。2 ラウンド目以降は修正の確認が中心なので `medium` にします
+- 2 ラウンド目以降、修正が入力チェック（V-x）・テンプレート・設定・依存関係に触れない場合は `観点 quality` を付け、セキュリティーレビューを省略します。触れる場合は省略しません
+- 修正のたびに実行せず、対応が必要な指摘をまとめて直してから次のラウンドを依頼します
+- レビュー用サブエージェントは `./mvnw test` を再実行しません（手順 4 で実行済み）。結果は `target/surefire-reports/` から読みます
 - `codex exec` の既定の sandbox は read-only で、`target/reviews/` へレポートを保存できないため、`--sandbox workspace-write` を必ず付けます
-
 - レビューの観点・出力形式はスキル側の定義に従います。このファイルに観点を重ねて書かないでください
-- 詳細レポートは `target/reviews/code-quality-review.md`（コード品質）と `target/reviews/security-risk-review.md`（セキュリティー）に保存されます。Codex の最終出力だけでなく、これらのレポートも読んで指摘内容を確認します
+- 詳細レポートは `target/reviews/code-quality-review.md`（コード品質）と `target/reviews/security-risk-review.md`（セキュリティー）に保存されます。Codex の最終出力だけでなく、これらのレポートも読んで指摘内容を確認します。セキュリティーを省略したラウンドでは、そのレポートは前回のものなので今回の結果として扱いません
 - 手順 6 では MUST の指摘は必ず対応します。SHOULD・WANT は要否を判断し、対応しない場合は理由を記録します
 - スキルが見つからない、またはレビューが完了しなかった場合は、推測でレビューを進めずにユーザーへ確認します
 
@@ -97,7 +107,7 @@ codex exec -m gpt-5.6-sol -c model_reasoning_effort="high" \
 - 指摘内容を確認し、対応が必要なものを修正します
   - 振る舞いの変更を伴う修正は、手順 3 の TDD（Red から）でやり直します
   - 対応しない指摘は、その理由を記録しておき、最終報告に含めます
-- 修正後は**手順 4（全テストと静的解析）から**やり直し、再度 Codex レビューを受けます
+- 修正後は**手順 4（全テストと静的解析）から**やり直し、手順 5 の 2 ラウンド目以降の形式で再度 Codex レビューを受けます
 - 対応が必要な指摘がなくなるまで繰り返します。ただし、Codex レビューは **最大 3 ラウンド** までとし、3 ラウンド目でも対応が必要な指摘が残る場合はループを止め、残った指摘と各ラウンドの対応内容をユーザーへ報告して判断を仰ぎます
 
 ### 7. ユーザーへ報告する
