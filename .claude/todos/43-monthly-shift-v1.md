@@ -33,7 +33,7 @@
 
 ## Todo
 
-- [ ] **T1. 月間入力・結果のドメインモデルを作る（F-3、F-11）**
+- [x] **T1. 月間入力・結果のドメインモデルを作る（F-3、F-11）**
   - 依頼事項：「前提 → 設計」のうち `DailyWish`・`EmployeeProfile`・`ShiftAdjustment`・`MonthlyShiftInput`・`DailyShiftResult`・`MonthlyShiftResult`・`InputError`・`InvalidMonthlyInputException` を `domain/` に作る。コレクションを受け取る record は、コンパクトコンストラクタで `List.copyOf`／`Map.copyOf` により不変にする（`AssignmentResult` を参考）。あわせて `DailyWish` から `Employee` を作るメソッド（例：`EmployeeProfile` と `DailyWish` から `Employee` を返す `toEmployee`）を用意する。休みなら `Employee.onLeave(name, type)`、それ以外は `Employee.working(name, type, start, end)`
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/` の上記ファイル、`src/test/java/com/example/shiftmatch/domain/` の対応するテスト
   - 完了条件：
