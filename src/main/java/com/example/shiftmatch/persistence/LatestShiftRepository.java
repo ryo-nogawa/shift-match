@@ -38,12 +38,10 @@ public class LatestShiftRepository {
    */
   @Transactional
   public void save(List<Employee> employees, Optional<AssignmentResult> result) {
-    // 全削除
     jdbcClient.sql("DELETE FROM saved_employee").update();
     jdbcClient.sql("DELETE FROM saved_assignment").update();
     jdbcClient.sql("DELETE FROM saved_score").update();
 
-    // 従業員入力を挿入
     for (int i = 0; i < employees.size(); i++) {
       Employee employee = employees.get(i);
       jdbcClient
@@ -59,7 +57,7 @@ public class LatestShiftRepository {
           .update();
     }
 
-    // 割り当て結果がある場合のみ保存
+    // 入力エラー時に前回の保存を維持するため、割り当て結果がある場合のみ保存
     if (result.isPresent()) {
       AssignmentResult assignmentResult = result.get();
       var assignments = assignmentResult.assignments();
@@ -79,7 +77,6 @@ public class LatestShiftRepository {
             .update();
       }
 
-      // スコアを保存
       jdbcClient
           .sql("INSERT INTO saved_score (id, score) VALUES (?, ?)")
           .params(1, assignmentResult.score())

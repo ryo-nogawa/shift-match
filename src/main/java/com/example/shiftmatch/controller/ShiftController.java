@@ -231,7 +231,6 @@ public class ShiftController {
       }
     }
 
-    // 行番号の昇順で並べる
     fieldErrors.sort(Comparator.comparingInt(fieldError -> fieldError.rowIndex()));
 
     return fieldErrors.stream()
