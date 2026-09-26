@@ -69,7 +69,7 @@ public class ShiftController {
   public String index(Model model) {
     ShiftForm shiftForm = new ShiftForm();
     List<EmployeeForm> employees = new ArrayList<>();
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < MAX_EMPLOYEE_COUNT; i++) {
       employees.add(new EmployeeForm());
     }
     shiftForm.setEmployees(employees);

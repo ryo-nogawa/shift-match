@@ -189,6 +189,20 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[F-2] Given: GETリクエストが与えられたとき, When: /にアクセスすると," + " Then: 従業員の上限と同じ12行の空の入力行が表示される")
+    void showsTwelveEmptyRowsInitially() throws Exception {
+      String html = getIndexHtml();
+
+      findTag(html, "input", "employees[11].name");
+      assertFalse(
+          html.contains("name=\"employees[12].name\""), "Should not render a 13th input row");
+      assertTrue(
+          Pattern.compile("id=\"row-count\"[^>]*>12<").matcher(html).find(),
+          "Row counter should show 12");
+    }
+
+    @Test
+    @DisplayName(
         "[F-1] Given: GETリクエストが与えられたとき, When: 開始・終了の選択肢を確認すると,"
             + " Then: 未選択と07:30〜18:30があり、07:45はない")
     void startAndEndSelectsHaveThirtyMinuteOptions() throws Exception {
