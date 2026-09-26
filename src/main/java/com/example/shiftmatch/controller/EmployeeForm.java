@@ -8,6 +8,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@ValidTimeRange
 public class EmployeeForm {
 
   /** 従業員の名前。 */
