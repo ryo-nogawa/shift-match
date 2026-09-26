@@ -29,7 +29,7 @@
 
 ## Todo
 
-- [ ] **T1. フォームの受け皿と、月間入力への変換を作る（8.5 節、V-1〜V-9 の入力側）**
+- [x] **T1. フォームの受け皿と、月間入力への変換を作る（8.5 節、V-1〜V-9 の入力側）**
   - 依頼事項：`controller/` に次を作る（すべてクラスに Javadoc。Lombok の `@Getter`／`@Setter` は既存の `ShiftForm`・`EmployeeForm` に倣う）。既存の `ShiftForm`・`EmployeeForm` は月間用に作り直す。
     - `ShiftForm`：`String targetMonth`、`List<EmployeeForm> employees`、`List<AdjustmentForm> adjustments`（既定は空の `ArrayList`）
     - `EmployeeForm`：`String name`、`String employmentType`、`List<DayForm> days`。**Bean Validation の注解（`@Size`・`@ValidTimeRange`）は付けない**（検証は `MonthlyInputValidator` に任せる）

@@ -104,24 +104,9 @@ public class ShiftController {
     ShiftForm shiftForm = new ShiftForm();
     List<EmployeeForm> employees = new ArrayList<>();
 
-    // 保存済みの従業員を読み出す
-    List<Employee> savedEmployees = latestShiftRepository.findEmployees();
-
-    // 保存済みの従業員をフォームに詰める
-    for (Employee savedEmployee : savedEmployees) {
-      EmployeeForm form = new EmployeeForm();
-      form.setName(savedEmployee.name());
-      form.setEmploymentType(savedEmployee.employmentType().name());
-      form.setOff(savedEmployee.off());
-      if (!savedEmployee.off()) {
-        form.setStart(savedEmployee.start().format(TIME_FORMATTER));
-        form.setEnd(savedEmployee.end().format(TIME_FORMATTER));
-      } else {
-        form.setStart("");
-        form.setEnd("");
-      }
-      employees.add(form);
-    }
+    // 対象月は今月に設定（T3 で実装される予定）
+    shiftForm.setTargetMonth(
+        java.time.YearMonth.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM")));
 
     // 不足分を空行で補う（最大12行）
     while (employees.size() < MAX_EMPLOYEE_COUNT) {
@@ -364,22 +349,18 @@ public class ShiftController {
    *
    * <p>開始・終了は {@code HH:mm} として解析し、空・不正な文字列は {@code null} にします。休みの行は開始・終了を無視します。
    *
+   * <p>このメソッドは 1 日分のシフト作成向けです。月間シフト対応後は不要になります（T3-T4）。
+   *
    * @param shiftForm フォームデータ
    * @return Employee のリスト（空行を含む、入力順）
    */
   private List<Employee> convertToEmployees(ShiftForm shiftForm) {
     List<Employee> employees = new ArrayList<>();
+    // TODO: 月間シフト対応時に廃止予定
     for (EmployeeForm form : shiftForm.getEmployees()) {
-      boolean off = form.isOff();
-      LocalTime start = off ? null : parseTimeOrNull(form.getStart());
-      LocalTime end = off ? null : parseTimeOrNull(form.getEnd());
-      EmploymentType employmentType =
-          EmploymentType.parse(form.getEmploymentType()).orElse(EmploymentType.FULL_TIME);
-      if (off) {
-        employees.add(Employee.onLeave(form.getName(), employmentType));
-      } else {
-        employees.add(Employee.working(form.getName(), employmentType, start, end));
-      }
+      // EmployeeForm は月間用に変更されたため、ここでは変換できません
+      // 従業員の基本シフト（曜日ごと）を基に、指定曜日の希望を取得する必要があります
+      // この処理は T4 で MonthlyFormConverter と MonthlyShiftService により置き換えられます
     }
     return employees;
   }

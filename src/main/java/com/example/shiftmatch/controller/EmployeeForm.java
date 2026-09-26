@@ -1,6 +1,7 @@
 package com.example.shiftmatch.controller;
 
-import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,22 +10,14 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@ValidTimeRange
 public class EmployeeForm {
 
   /** 従業員の名前。 */
-  @Size(max = 255, message = "氏名は255文字以内で入力してください。")
   private String name;
 
-  /** 雇用区分（FULL_TIME, PART_TIME, MANAGER）。送信時は必須。 */
+  /** 雇用区分（FULL_TIME, PART_TIME, MANAGER）。 */
   private String employmentType;
 
-  /** 休みのチェック。true の場合は休み。 */
-  private boolean off;
-
-  /** 勤務開始時刻（HH:mm 形式）。 */
-  private String start;
-
-  /** 勤務終了時刻（HH:mm 形式）。 */
-  private String end;
+  /** 曜日ごとの基本シフト（月〜金）。 */
+  private List<DayForm> days = new ArrayList<>();
 }

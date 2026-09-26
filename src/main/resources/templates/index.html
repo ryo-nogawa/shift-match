@@ -14,62 +14,16 @@
       <p class="lead">従業員の勤務できる時間帯を入力すると、6 つの勤務枠（8 名）の最適な割り当て案を提案します。</p>
     </header>
 
-    <section class="alert" role="alert" th:if="${limitExceededError != null}">
-      <h2>エラー</h2>
-      <p th:text="${limitExceededError}"></p>
-    </section>
-
-    <section class="alert" role="alert" th:if="${saveError != null}">
-      <h2>エラー</h2>
-      <p th:text="${saveError}"></p>
-    </section>
-
-    <section class="alert" role="alert" th:if="${duplicateErrors != null && !duplicateErrors.isEmpty()}">
-      <h2>重複エラー</h2>
-      <ul>
-        <li th:each="error : ${duplicateErrors}">
-          氏名「<span th:text="${error.name()}"></span>」が重複しています（該当行：<span th:each="idx, idxStat : ${error.rowIndexes()}"><span th:text="${idx + 1}"></span><span th:if="${!idxStat.last}">, </span></span>行目）
-        </li>
-      </ul>
-    </section>
-
-    <section class="alert" role="alert" th:if="${timeRangeErrors != null && !timeRangeErrors.isEmpty()}">
-      <h2>入力エラー</h2>
-      <ul>
-        <li th:each="error : ${timeRangeErrors}">
-          <span th:text="|${error.rowIndex() + 1}行目 ${error.message()}|"></span>
-        </li>
-      </ul>
-    </section>
-
-    <section class="alert" role="alert" th:if="${nameErrors != null && !nameErrors.isEmpty()}">
-      <h2>入力エラー</h2>
-      <ul>
-        <li th:each="error : ${nameErrors}">
-          <span th:text="|${error.rowIndex() + 1}行目 ${error.message()}|"></span>
-        </li>
-      </ul>
-    </section>
-
-    <section
-      class="alert"
-      role="alert"
-      th:if="${employmentTypeErrors != null && !employmentTypeErrors.isEmpty()}"
-    >
-      <h2>入力エラー</h2>
-      <ul>
-        <li th:each="error : ${employmentTypeErrors}">
-          <span th:text="|${error.rowIndex() + 1}行目 ${error.message()}|"></span>
-        </li>
-      </ul>
-    </section>
-
     <form
       method="post"
       th:action="@{/shift}"
       th:object="${shiftForm}"
       class="card"
     >
+      <!-- 対象月の入力 -->
+      <input type="hidden" th:field="*{targetMonth}" />
+
+      <!-- 従業員情報（月間フォーム対応） -->
       <div class="card-head">
         <h2>従業員の勤務できる時間帯</h2>
         <span class="count"><b id="row-count" th:text="${shiftForm.employees.size()}">0</b> 名</span>
@@ -83,9 +37,6 @@
             <th></th>
             <th>氏名</th>
             <th>区分</th>
-            <th>休み</th>
-            <th>開始</th>
-            <th>終了</th>
             <th></th>
           </tr>
         </thead>
@@ -109,33 +60,14 @@
                 <option value="MANAGER">管理職</option>
               </select>
             </td>
-            <td data-label="休み">
-              <input type="checkbox" class="off-checkbox" th:field="*{employees[__${stat.index}__].off}" />
-            </td>
-            <td data-label="開始">
-              <select
-                th:field="*{employees[__${stat.index}__].start}"
-                th:disabled="${employee.off}"
-              >
-                <option value="">-- 未選択 --</option>
-                <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}">07:30</option>
-              </select>
-            </td>
-            <td data-label="終了">
-              <select
-                th:field="*{employees[__${stat.index}__].end}"
-                th:disabled="${employee.off}"
-              >
-                <option value="">-- 未選択 --</option>
-                <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}">18:30</option>
-              </select>
-            </td>
             <td>
               <button type="button" class="delete-row-btn">削除</button>
             </td>
           </tr>
         </tbody>
       </table>
+
+      <!-- T5 で本格実装予定：曜日ごとの基本シフト、個別変更 -->
 
       <div class="actions">
         <button type="button" id="add-row-btn" class="btn ghost" data-max-rows="12">
@@ -145,83 +77,12 @@
       </div>
     </form>
 
-    <section class="card result" th:if="${unassignable != null && unassignable}">
+    <section class="card result" th:if="${monthlyResult != null}">
       <div class="card-head">
         <h2>割当結果</h2>
       </div>
-      <div class="empty">
-        <span class="empty-icon">！</span>
-        <p>条件を満たす組み合わせが見つかりませんでした。</p>
-      </div>
-    </section>
-
-    <section class="card result" th:if="${assignmentResult != null}">
-      <div class="card-head">
-        <h2>割当結果</h2>
-      </div>
-      <div class="timeline">
-        <div class="tl-axis">
-          <span th:each="h : ${#numbers.sequence(8, 18)}" th:style="|left:${#numbers.formatDecimal((h * 60 - 450) * 100.0 / 660, 1, 2, 'POINT')}%|" th:text="${h}"></span>
-        </div>
-        <div
-          class="tl-row"
-          th:each="assignment, stat : ${assignmentResult.assignments()}"
-        >
-          <span class="tl-name" th:text="${assignment.employee().name()}"></span>
-          <div class="tl-track">
-            <div
-              class="tl-work"
-              th:style="|left:${#numbers.formatDecimal((assignment.slot().startTime().getHour() * 60 + assignment.slot().startTime().getMinute() - 450) * 100.0 / 660, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(((assignment.slot().endTime().getHour() * 60 + assignment.slot().endTime().getMinute()) - (assignment.slot().startTime().getHour() * 60 + assignment.slot().startTime().getMinute())) * 100.0 / 660, 1, 2, 'POINT')}%|"
-            ></div>
-            <div
-              class="tl-break"
-              th:style="|left:${#numbers.formatDecimal((assignment.breakStart().getHour() * 60 + assignment.breakStart().getMinute() - 450) * 100.0 / 660, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(((assignment.breakEnd().getHour() * 60 + assignment.breakEnd().getMinute()) - (assignment.breakStart().getHour() * 60 + assignment.breakStart().getMinute())) * 100.0 / 660, 1, 2, 'POINT')}%|"
-            ></div>
-          </div>
-        </div>
-        <div class="tl-legend"><i class="lg"></i>勤務<i class="lg brk"></i>休憩</div>
-      </div>
-      <table class="result-table">
-        <thead>
-          <tr>
-            <th>氏名</th>
-            <th>区分</th>
-            <th>勤務時間</th>
-            <th>休憩時間</th>
-            <th>希望時間帯</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr th:each="assignment : ${assignmentResult.assignments()}">
-            <td th:text="${assignment.employee().name()}"></td>
-            <td th:text="${assignment.employee().employmentType().label()}"></td>
-            <td>
-              <span class="pill" data-duration="work"
-                th:text="|${#temporals.format(assignment.slot().startTime(), 'HH:mm')}〜${#temporals.format(assignment.slot().endTime(), 'HH:mm')}|"
-              ></span>
-            </td>
-            <td>
-              <span
-                data-duration="break"
-                th:text="|${#temporals.format(assignment.breakStart(), 'HH:mm')}〜${#temporals.format(assignment.breakEnd(), 'HH:mm')}|"
-              ></span>
-            </td>
-            <td>
-              <span th:text="|${#temporals.format(assignment.employee().start(), 'HH:mm')}〜${#temporals.format(assignment.employee().end(), 'HH:mm')}|"></span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="unassigned" th:if="${assignmentResult.unassignedEmployees().size() > 0}">
-        <b>未出勤者</b>
-        <div class="unassigned-item" th:each="employee : ${assignmentResult.unassignedEmployees()}">
-          <span class="chip" th:text="|${employee.name()}（${employee.employmentType().label()}）|"></span>
-          <span class="reason" th:text="${assignmentResult.unassignedReasonLabel(employee)}"></span>
-        </div>
-      </div>
+      <p th:text="'月間シフトが作成されました'"></p>
     </section>
   </main>
-
-  <script th:src="@{/js/shift-form.js}"></script>
 </body>
 </html>
