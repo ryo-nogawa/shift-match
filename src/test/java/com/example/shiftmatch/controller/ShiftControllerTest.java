@@ -1692,6 +1692,54 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[F-8] Given: GETリクエストが与えられたとき, When: 入力行を確認すると,"
+            + " Then: ▲▼ボタンは各行の最初のセルにあり、最後のセルには削除ボタンだけがある")
+    void moveButtonsAreInFirstCellAndDeleteInLastCell() throws Exception {
+      String html =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      Matcher tbody =
+          Pattern.compile("<tbody id=\"employee-rows\">(.*?)</tbody>", Pattern.DOTALL)
+              .matcher(html);
+      assertTrue(tbody.find(), "Input table body should exist");
+      Matcher row = Pattern.compile("<tr[^>]*>(.*?)</tr>", Pattern.DOTALL).matcher(tbody.group(1));
+      int rowCount = 0;
+      while (row.find()) {
+        List<String> cells = new java.util.ArrayList<>();
+        Matcher cell = Pattern.compile("<td[^>]*>(.*?)</td>", Pattern.DOTALL).matcher(row.group(1));
+        while (cell.find()) {
+          cells.add(cell.group(1));
+        }
+        String first = cells.get(0);
+        String last = cells.get(cells.size() - 1);
+        assertTrue(first.contains("move-up-btn") && first.contains("move-down-btn"), first);
+        assertFalse(last.contains("move-"), "Last cell should not contain move buttons");
+        assertTrue(last.contains("delete-row-btn"), "Last cell should contain delete button");
+        rowCount++;
+      }
+      assertTrue(rowCount > 0, "Should have input rows");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-8] Given: shift-form.jsをロードしたとき, When: 行追加の処理を確認すると,"
+            + " Then: ▲▼ボタンのセルは氏名のセルより先に追加される")
+    void shiftFormJsAddsMoveCellBeforeNameCell() throws Exception {
+      String jsContent = readShiftFormJs();
+
+      int moveCellPos = jsContent.indexOf("newRow.appendChild(moveCell)");
+      int nameCellPos = jsContent.indexOf("newRow.appendChild(createCell(\"氏名\"");
+      assertTrue(moveCellPos >= 0, "shift-form.js should append moveCell to the new row");
+      assertTrue(moveCellPos < nameCellPos, "moveCell should be appended before the name cell");
+    }
+
+    @Test
+    @DisplayName(
         "[F-8] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
             + " Then: move-up-btn・move-down-btn・insertBefore の記述があり、移動処理から"
             + " renumberInputIndices を呼ぶ処理がある")

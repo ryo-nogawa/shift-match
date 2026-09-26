@@ -26,7 +26,7 @@ table { border-collapse: collapse; width: 100% }
 .result-table th, .result-table td { text-align: left; padding: 10px 12px }
 .input-table th { text-align: left; padding: 8px 8px; font-size: 12px }
 .input-table td { padding: 6px 6px }
-.input-table td:last-child { white-space: nowrap }
+.input-table td:last-child, .input-table td.move-cell { white-space: nowrap }
 input[type=text], select { width: 100%; font: inherit; font-size: 15px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--field); color: var(--text) }
 select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px }
 .off-checkbox { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer }
@@ -40,7 +40,8 @@ select:disabled { opacity: .45; cursor: not-allowed }
   .input-table, .input-table tbody { display: block }
   .input-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 14px }
   .input-table td { padding: 0; display: block }
-  .input-table td:first-child { grid-column: 1 / -1 }
+  .input-table td.move-cell { grid-column: 1 / -1 }
+  .input-table td:nth-child(2) { grid-column: 1 / -1 }
   .input-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; margin-bottom: 2px; color: var(--sub) }
   .input-table td:last-child { grid-column: 1 / -1; text-align: right }
   .actions .btn { flex: 1 }

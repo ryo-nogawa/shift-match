@@ -67,6 +67,7 @@
       >
         <thead>
           <tr>
+            <th></th>
             <th>氏名</th>
             <th>休み</th>
             <th>開始</th>
@@ -76,6 +77,10 @@
         </thead>
         <tbody id="employee-rows">
           <tr th:each="employee, stat : ${shiftForm.employees}">
+            <td class="move-cell">
+              <button type="button" class="move-up-btn" aria-label="上へ">▲</button>
+              <button type="button" class="move-down-btn" aria-label="下へ">▼</button>
+            </td>
             <td data-label="氏名">
               <input
                 type="text"
@@ -105,8 +110,6 @@
               </select>
             </td>
             <td>
-              <button type="button" class="move-up-btn" aria-label="上へ">▲</button>
-              <button type="button" class="move-down-btn" aria-label="下へ">▼</button>
               <button type="button" class="delete-row-btn">削除</button>
             </td>
           </tr>

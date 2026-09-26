@@ -108,6 +108,23 @@ document.addEventListener("DOMContentLoaded", function () {
     const prefix = "employees[" + currentRowCount + "]";
     const newRow = document.createElement("tr");
 
+    const moveCell = document.createElement("td");
+    moveCell.className = "move-cell";
+    const moveUpBtn = document.createElement("button");
+    moveUpBtn.type = "button";
+    moveUpBtn.className = "move-up-btn";
+    moveUpBtn.setAttribute("aria-label", "上へ");
+    moveUpBtn.textContent = "▲";
+    moveCell.appendChild(moveUpBtn);
+
+    const moveDownBtn = document.createElement("button");
+    moveDownBtn.type = "button";
+    moveDownBtn.className = "move-down-btn";
+    moveDownBtn.setAttribute("aria-label", "下へ");
+    moveDownBtn.textContent = "▼";
+    moveCell.appendChild(moveDownBtn);
+    newRow.appendChild(moveCell);
+
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.name = prefix + ".name";
@@ -134,20 +151,6 @@ document.addEventListener("DOMContentLoaded", function () {
     newRow.appendChild(createCell("終了", createTimeSelect(prefix + ".end")));
 
     const actionCell = document.createElement("td");
-    const moveUpBtn = document.createElement("button");
-    moveUpBtn.type = "button";
-    moveUpBtn.className = "move-up-btn";
-    moveUpBtn.setAttribute("aria-label", "上へ");
-    moveUpBtn.textContent = "▲";
-    actionCell.appendChild(moveUpBtn);
-
-    const moveDownBtn = document.createElement("button");
-    moveDownBtn.type = "button";
-    moveDownBtn.className = "move-down-btn";
-    moveDownBtn.setAttribute("aria-label", "下へ");
-    moveDownBtn.textContent = "▼";
-    actionCell.appendChild(moveDownBtn);
-
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
     deleteBtn.className = "delete-row-btn";
