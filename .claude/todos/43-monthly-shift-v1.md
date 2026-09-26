@@ -101,7 +101,7 @@
     - `create` が検証エラーで `InvalidMonthlyInputException` を投げ、`ShiftAssignmentService.assign` を一度も呼ばないことを検証する `[V-3]` `[V-9]` 付きのテストがある
     - `./mvnw test -Dtest=MonthlyInputValidatorTest+MonthlyShiftServiceImplTest` が成功する
 
-- [ ] **T8. 営業日ごとの選定根拠ログに日付を添える（7.2 節）**
+- [x] **T8. 営業日ごとの選定根拠ログに日付を添える（7.2 節）**
   - 依頼事項：`service/SelectionRationaleLogger`（`@Component`、SLF4J）を作る。`log(LocalDate date, DailyShiftResult result)` は、成立日には `ShiftController.logRationale`（`controller/ShiftController.java`）と同じ内容（各人の割当・希望・差・入れる枠、未出勤者の理由と入れる枠、「合計 = 90 + 30 + … = 240 分」）を **各行に日付（`yyyy-MM-dd`）を添えて** INFO で出力し、不成立日には日付と勤務できる人数を INFO で出力する。氏名の制御文字のエスケープ（`escapeControlCharacters`）も同じ規則で行う。**`ShiftController` は変更しない**（重複は #44 で画面を差し替える際に解消する）。`MonthlyShiftServiceImpl.create` は、算出した各営業日についてこのロガーを呼ぶ
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/SelectionRationaleLogger.java`、`MonthlyShiftServiceImpl.java`、`src/test/java/com/example/shiftmatch/service/SelectionRationaleLoggerTest.java`
   - 完了条件：
@@ -110,7 +110,7 @@
     - `MonthlyShiftServiceImpl.create` が営業日ごとにログを出すことを検証するテストがある
     - `./mvnw test -Dtest=SelectionRationaleLoggerTest+MonthlyShiftServiceImplTest` が成功する
 
-- [ ] **T9. 全テストと静的解析を通す**
+- [x] **T9. 全テストと静的解析を通す**
   - 依頼事項：`./mvnw spotless:apply` で整形し、`./mvnw test` を実行して、全テスト・Spotless・Checkstyle が成功することを確認する。失敗があれば原因を直す（仕様と異なる期待値へのテスト書き換え、`@Disabled` での回避はしない）。`pom.xml` に変更がないこと、`controller/`・`templates/`・`static/`・`persistence/` に変更がないことを `git diff main --stat` で確認する
   - 対象ファイル：本 Issue で変更した全ファイル
   - 完了条件：
@@ -119,4 +119,7 @@
 
 ## 実行ログ
 
-<!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
+- T7・T8 の途中の変更：T7 実装時に未コミット状態だった MonthlyInputValidator の V-8・V-9 検証メソッドを、T8 実装の事前に補完コミット（fix: [T7]）として追加した。これにより T7 の実装が完成し、T8 の実装を継続できた。
+- T8 完了コミット：feat: [T8] 営業日ごとの選定根拠ログに日付を添える
+- T7 補完コミット：fix: [T7] V-8・V-9 の検証実装を補完
+- T9 確認：全テスト 338 実行、全て成功。Spotless・Checkstyle 違反 0 件。git diff main --stat で pom.xml・controller/・templates/・static/・persistence/ が含まれないことを確認。
