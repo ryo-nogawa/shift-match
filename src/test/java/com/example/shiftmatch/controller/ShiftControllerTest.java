@@ -1966,6 +1966,8 @@ class ShiftControllerTest {
         EmployeeForm row = form.getEmployees().get(i);
         assertNull(row.getName());
         assertFalse(row.isOff());
+        assertNull(row.getStart());
+        assertNull(row.getEnd());
       }
     }
 
@@ -1982,6 +1984,20 @@ class ShiftControllerTest {
       assertTrue(html.contains("id=\"row-count\""));
       assertTrue(html.contains("name=\"employees[11].name\""));
       assertFalse(html.contains("name=\"employees[12].name\""));
+
+      // モデルから ShiftForm を取出し、全12行の値を検証
+      ShiftForm form = (ShiftForm) result.getModelAndView().getModel().get("shiftForm");
+      assertNotNull(form);
+      assertEquals(12, form.getEmployees().size());
+
+      // 全12行が空であることを検証
+      for (int i = 0; i < 12; i++) {
+        EmployeeForm row = form.getEmployees().get(i);
+        assertNull(row.getName());
+        assertFalse(row.isOff());
+        assertNull(row.getStart());
+        assertNull(row.getEnd());
+      }
     }
   }
 
