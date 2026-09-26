@@ -61,7 +61,7 @@
     - `@WebMvcTest(ShiftController.class)` のテストに、次を検証する `[F-1]`・`[F-2]`・`[F-9]` 付きのものがある：`GET /` が 200 で `index` を返す／モデル `shiftForm` の `employees` が 12 行で、各行の区分が `FULL_TIME`、`days` が 5 件で `07:30`〜`18:30`・休みなし／`targetMonth` が `YYYY-MM` 形式で今月／`timeOptions` が 07:30〜18:30 の 30 分刻み 23 件
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する（この時点でテンプレートは旧版のままで、`th:field` の参照先がなくなり描画に失敗する場合は、`ShiftControllerTest` の `GET /` のテストはモデルの検証だけにとどめ、`@WebMvcTest` のビュー描画が原因で失敗しないようにする。テンプレートは T5 で置き換える）
 
-- [ ] **T4. POST /shift で月間の入力を受け取り、エラーを画面 1 の上部にまとめる（F-3 の入り口、V-1〜V-9 の表示）**
+- [x] **T4. POST /shift で月間の入力を受け取り、エラーを画面 1 の上部にまとめる（F-3 の入り口、V-1〜V-9 の表示）**
   - 依頼事項：`ShiftController` に `@PostMapping("/shift")` を実装する。`ShiftForm` を `@ModelAttribute("shiftForm")` で受け取り、`MonthlyFormConverter.toInput` → `MonthlyShiftService.create` を呼ぶ。`employees` が空で送られたときは 1 行の空行（区分は `FULL_TIME`、`days` 5 件）を補う。成功時：モデルに `monthlyResult`（`MonthlyShiftResult`）と `initialStep=3` を入れて `index` を返す。`InvalidMonthlyInputException` のとき：モデルに `inputErrors`（`List<InputError>`。順序は例外の順のまま）と `initialStep=1` を入れて `index` を返し、`monthlyResult` は入れない。`GET /` では `initialStep=1`。`shiftForm` は常にモデルに戻す（入力を残すため）。保存（`LatestShiftRepository`）は呼ばない
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
