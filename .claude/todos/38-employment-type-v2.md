@@ -32,7 +32,7 @@
 - [x] **T2. `Employee` に区分を持たせる**（完了・f81083f）
 - [x] **T3. 区分によって割り当て結果が変わらないことをサービスのテストで固定する**（完了・ecebca2）
 - [x] **T4. スキーマとリポジトリで区分を保存・復元する（F-7）**（完了・6c3ce0b）
-- [ ] **T5. フォームで区分を受け取り、`Employee` に変換する（初期値は常勤）**
+- [x] **T5. フォームで区分を受け取り、`Employee` に変換する（初期値は常勤）**
   - 依頼事項：`EmployeeForm` に `String employmentType` を追加し、初期値を `"FULL_TIME"` にする（空行・追加行が常勤になる）。`ShiftController#convertToEmployees` で `EmploymentType.parse` を使って `Employee` を作る（3 択以外の行は、T6 で検出できるよう、区分が不正であることを保持しておく。方法は既存の設計に合わせて選んでよい）。`index` の復元処理で、保存済みの区分をフォームに詰める
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/EmployeeForm.java`、`ShiftController.java`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：

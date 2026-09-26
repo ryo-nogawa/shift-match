@@ -3,6 +3,7 @@ package com.example.shiftmatch.controller;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InvalidNameError;
 import com.example.shiftmatch.domain.InvalidTimeRangeError;
 import com.example.shiftmatch.domain.ShiftAssignment;
@@ -97,6 +98,7 @@ public class ShiftController {
     for (Employee savedEmployee : savedEmployees) {
       EmployeeForm form = new EmployeeForm();
       form.setName(savedEmployee.name());
+      form.setEmploymentType(savedEmployee.employmentType().name());
       form.setOff(savedEmployee.off());
       if (!savedEmployee.off()) {
         form.setStart(savedEmployee.start().format(TIME_FORMATTER));
@@ -322,7 +324,13 @@ public class ShiftController {
       boolean off = form.isOff();
       LocalTime start = off ? null : parseTimeOrNull(form.getStart());
       LocalTime end = off ? null : parseTimeOrNull(form.getEnd());
-      employees.add(new Employee(form.getName(), off, start, end));
+      EmploymentType employmentType =
+          EmploymentType.parse(form.getEmploymentType()).orElse(EmploymentType.FULL_TIME);
+      if (off) {
+        employees.add(Employee.onLeave(form.getName(), employmentType));
+      } else {
+        employees.add(Employee.working(form.getName(), employmentType, start, end));
+      }
     }
     return employees;
   }

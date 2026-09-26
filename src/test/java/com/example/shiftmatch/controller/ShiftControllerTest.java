@@ -18,6 +18,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.core.read.ListAppender;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.persistence.LatestShiftRepository;
@@ -653,6 +654,73 @@ class ShiftControllerTest {
       List<Employee> employees = captureAssignedEmployees();
       assertEquals(1, employees.size());
       assertEquals("B", employees.get(0).name());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7] Given: 開始08:00・終了17:00・区分MANAGERの行があるとき, When: POSTすると,"
+            + " Then: assignに渡される従業員の区分がMANAGERである")
+    void convertsEmploymentTypeToEmployee() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].employmentType", "MANAGER")
+                  .param("employees[0].start", "08:00")
+                  .param("employees[0].end", "17:00"))
+          .andExpect(status().isOk());
+
+      List<Employee> employees = captureAssignedEmployees();
+      assertEquals(1, employees.size());
+      assertEquals("A", employees.get(0).name());
+      assertEquals(EmploymentType.MANAGER, employees.get(0).employmentType());
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-7] 雇用区分の保存と復元")
+  class EmploymentTypeSaveAndRestore {
+
+    @Test
+    @DisplayName("[F-7] Given: 保存がないとき, When: GET /すると, Then: 12行すべての区分がFULL_TIMEである")
+    void initializeAllEmploymentTypesToFullTimeWhenNoSave() throws Exception {
+      when(latestShiftRepository.findEmployees()).thenReturn(List.of());
+
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+      String html = result.getResponse().getContentAsString();
+
+      for (int i = 0; i < 12; i++) {
+        String expectedSelect = String.format("name=\"employees[%d].employmentType\"", i);
+        assertTrue(html.contains(expectedSelect), "Row " + i + " should have employmentType");
+      }
+      // Check that FULL_TIME is default value in options
+      assertTrue(html.contains("value=\"FULL_TIME\""), "FULL_TIME option should be present");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7] Given: MANAGER1名・PART_TIME1名が保存されているとき, When: GET /すると,"
+            + " Then: 1行目がMANAGER、2行目がPART_TIMEで、残りはFULL_TIMEである")
+    void restoresEmploymentTypesFromRepository() throws Exception {
+      List<Employee> savedEmployees =
+          List.of(
+              Employee.working(
+                  "A", EmploymentType.MANAGER, LocalTime.of(8, 0), LocalTime.of(17, 0)),
+              Employee.working(
+                  "B", EmploymentType.PART_TIME, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      when(latestShiftRepository.findEmployees()).thenReturn(savedEmployees);
+
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+      String html = result.getResponse().getContentAsString();
+
+      // Check that select elements exist with correct names
+      assertTrue(html.contains("name=\"employees[0].employmentType\""), "Row 0 select");
+      assertTrue(html.contains("name=\"employees[1].employmentType\""), "Row 1 select");
+      assertTrue(html.contains("name=\"employees[2].employmentType\""), "Row 2 select");
+      // Check that all option values are present
+      assertTrue(html.contains("value=\"MANAGER\""), "MANAGER option");
+      assertTrue(html.contains("value=\"PART_TIME\""), "PART_TIME option");
+      assertTrue(html.contains("value=\"FULL_TIME\""), "FULL_TIME option");
     }
   }
 

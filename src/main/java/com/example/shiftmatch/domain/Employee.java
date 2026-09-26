@@ -12,6 +12,18 @@ public record Employee(
     String name, EmploymentType employmentType, boolean off, LocalTime start, LocalTime end) {
 
   /**
+   * 旧シグネチャのコンストラクタ（常勤を補う）。互換性のために残しています。
+   *
+   * @param name 従業員名
+   * @param off 休みの有無
+   * @param start 勤務開始時刻
+   * @param end 勤務終了時刻
+   */
+  public Employee(String name, boolean off, LocalTime start, LocalTime end) {
+    this(name, EmploymentType.FULL_TIME, off, start, end);
+  }
+
+  /**
    * 勤務可能時間帯を指定して従業員を作成します（常勤）。
    *
    * @param name 従業員名

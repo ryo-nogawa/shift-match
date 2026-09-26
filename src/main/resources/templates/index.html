@@ -88,6 +88,13 @@
                 placeholder="氏名を入力"
               />
             </td>
+            <td data-label="区分">
+              <select th:field="*{employees[__${stat.index}__].employmentType}">
+                <option value="FULL_TIME">常勤</option>
+                <option value="PART_TIME">パート</option>
+                <option value="MANAGER">管理職</option>
+              </select>
+            </td>
             <td data-label="休み">
               <input type="checkbox" class="off-checkbox" th:field="*{employees[__${stat.index}__].off}" />
             </td>
