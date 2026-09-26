@@ -4,11 +4,9 @@ import com.example.shiftmatch.service.HolidayService;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.YearMonth;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,8 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 public class CalendarController {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(CalendarController.class);
 
   /** 内閣府の祝日 CSV が収録している最初の年です（4.1 節）。 */
   private static final int FIRST_HOLIDAY_YEAR = 1955;
@@ -48,13 +44,11 @@ public class CalendarController {
    */
   @GetMapping("/calendar")
   public ResponseEntity<?> getCalendar(@RequestParam String month) {
-    YearMonth yearMonth;
-    try {
-      yearMonth = YearMonth.parse(month);
-    } catch (DateTimeParseException e) {
-      LOGGER.debug("対象月を解析できません: {}", month, e);
+    Optional<YearMonth> parsed = InputParsers.parseYearMonth(month);
+    if (parsed.isEmpty()) {
       return unsupported();
     }
+    YearMonth yearMonth = parsed.get();
 
     // CSV の収録範囲外の年は isSupported に渡すと毎回外部 CSV の取得が走るため、
     // 取得を連打されないよう範囲外はここで拒否する（V-8 と同じ扱い）
