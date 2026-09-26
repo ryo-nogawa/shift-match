@@ -97,5 +97,49 @@ class HolidayCsvParserTest {
 
       assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
     }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 暦にない日付 2026/2/30 がある CSV のとき, When: パースすると, Then: IllegalArgumentException"
+            + " を投げる")
+    void throwsWhenInvalidDay() {
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/2/30,不正な日付\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 月が範囲外 2026/13/1 の CSV のとき, When: パースすると, Then: IllegalArgumentException"
+            + " を投げる")
+    void throwsWhenInvalidMonth() {
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/13/1,不正な月\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 日付形式が不正 abcd/1/1 の CSV のとき, When: パースすると, Then: IllegalArgumentException"
+            + " を投げる")
+    void throwsWhenInvalidDateFormat() {
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\nabcd/1/1,不正な形式\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 日付の部分が不足 2026/1 の CSV のとき, When: パースすると, Then: IllegalArgumentException"
+            + " を投げる")
+    void throwsWhenIncompleteDateFormat() {
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/1,不正な形式\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
   }
 }

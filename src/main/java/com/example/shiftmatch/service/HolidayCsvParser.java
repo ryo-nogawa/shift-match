@@ -3,8 +3,10 @@ package com.example.shiftmatch.service;
 import com.example.shiftmatch.domain.Holiday;
 import java.nio.charset.Charset;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * 祝日 CSV をパースするクラス。
@@ -12,6 +14,8 @@ import java.util.List;
  * <p>内閣府の「国民の祝日」CSV を解析し、祝日データのリストを返します。
  */
 public class HolidayCsvParser {
+
+  private static final Pattern DATE_PATTERN = Pattern.compile("\\d{4}/\\d{1,2}/\\d{1,2}");
 
   /**
    * Shift_JIS でエンコードされた祝日 CSV をパースします。
@@ -47,20 +51,25 @@ public class HolidayCsvParser {
 
       // 日付をパース
       String dateStr = parts[0];
-      LocalDate date;
-      try {
-        // yyyy/M/d 形式をパース
-        String[] dateParts = dateStr.split("/");
-        if (dateParts.length != 3) {
-          throw new IllegalArgumentException("日付形式が不正です: " + dateStr);
-        }
-        int year = Integer.parseInt(dateParts[0]);
-        int month = Integer.parseInt(dateParts[1]);
-        int day = Integer.parseInt(dateParts[2]);
-        date = LocalDate.of(year, month, day);
-      } catch (Exception e) {
-        throw new IllegalArgumentException("日付が読めません: " + dateStr, e);
+
+      if (!DATE_PATTERN.matcher(dateStr).matches()) {
+        throw new IllegalArgumentException("日付形式が不正です: " + dateStr);
       }
+
+      String[] dateParts = dateStr.split("/");
+      int year = Integer.parseInt(dateParts[0]);
+      int month = Integer.parseInt(dateParts[1]);
+      int day = Integer.parseInt(dateParts[2]);
+
+      if (month < 1 || month > 12) {
+        throw new IllegalArgumentException("日付が読めません: " + dateStr);
+      }
+
+      if (!YearMonth.of(year, month).isValidDay(day)) {
+        throw new IllegalArgumentException("日付が読めません: " + dateStr);
+      }
+
+      LocalDate date = LocalDate.of(year, month, day);
 
       String name = parts[1];
       holidays.add(new Holiday(date, name));
