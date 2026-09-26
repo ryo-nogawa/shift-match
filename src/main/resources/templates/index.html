@@ -183,7 +183,61 @@
                     </tbody>
                   </table>
                 </div>
-                <div id="tab-detail" class="tab-panel" hidden></div>
+                <div id="tab-detail" class="tab-panel" hidden>
+                  <label>日付
+                    <select id="detail-date">
+                      <option th:each="dayResult : ${monthlyResult.days()}" th:value="${dayResult.date()}" th:text="${#temporals.format(dayResult.date(), 'M/d(E)', T(java.util.Locale).JAPAN)}"></option>
+                    </select>
+                  </label>
+                  <section th:each="dayResult : ${monthlyResult.days()}" class="day-detail" th:attr="data-date=${dayResult.date()}" hidden>
+                    <p th:if="${dayResult.assignment().isEmpty()}" class="failed" th:text="'不成立です。勤務できる人数：' + ${dayResult.availableCount()} + ' 名'"></p>
+                    <th:block th:if="${dayResult.assignment().isPresent()}" th:with="result=${dayResult.assignment().get()}">
+                      <table class="detail-table">
+                        <thead>
+                          <tr>
+                            <th>氏名</th>
+                            <th>区分</th>
+                            <th>勤務時間</th>
+                            <th>休憩時間</th>
+                            <th>希望時間帯</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr th:each="assignment : ${result.assignments()}">
+                            <td th:text="${assignment.employee().name()}"></td>
+                            <td th:text="${assignment.employee().employmentType().label()}"></td>
+                            <td>
+                              <span th:text="${#temporals.format(assignment.slot().startTime(), 'HH:mm')} + '〜' + ${#temporals.format(assignment.slot().endTime(), 'HH:mm')}"></span>
+                              <span class="duration" th:attr="data-start=${#temporals.format(assignment.slot().startTime(), 'HH:mm')},data-end=${#temporals.format(assignment.slot().endTime(), 'HH:mm')}"></span>
+                            </td>
+                            <td>
+                              <span th:text="${#temporals.format(assignment.breakStart(), 'HH:mm')} + '〜' + ${#temporals.format(assignment.breakEnd(), 'HH:mm')}"></span>
+                              <span class="duration" th:attr="data-start=${#temporals.format(assignment.breakStart(), 'HH:mm')},data-end=${#temporals.format(assignment.breakEnd(), 'HH:mm')}"></span>
+                            </td>
+                            <td th:text="${#temporals.format(assignment.employee().start(), 'HH:mm')} + '〜' + ${#temporals.format(assignment.employee().end(), 'HH:mm')}"></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <h3>未出勤者</h3>
+                      <ul class="unassigned-list">
+                        <li th:each="employee : ${result.unassignedEmployees()}" th:text="${employee.name()} + '（' + ${employee.employmentType().label()} + '）：' + ${result.unassignedReasonLabel(employee)}"></li>
+                      </ul>
+                      <div class="legend">
+                        <span class="legend-work">勤務</span>
+                        <span class="legend-break">休憩</span>
+                      </div>
+                      <div class="timeline">
+                        <div class="tl-row" th:each="assignment : ${result.assignments()}">
+                          <span class="tl-name" th:text="${assignment.employee().name()}"></span>
+                          <div class="tl-track">
+                            <div class="tl-work" th:style="|left:${#numbers.formatDecimal((assignment.slot().startTime().hour * 60 + assignment.slot().startTime().minute - 450) * 100.0 / 660, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(assignment.slot().workMinutes() * 100.0 / 660, 1, 2, 'POINT')}%|"></div>
+                            <div class="tl-break" th:style="|left:${#numbers.formatDecimal((assignment.breakStart().hour * 60 + assignment.breakStart().minute - 450) * 100.0 / 660, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(((assignment.breakEnd().hour * 60 + assignment.breakEnd().minute) - (assignment.breakStart().hour * 60 + assignment.breakStart().minute)) * 100.0 / 660, 1, 2, 'POINT')}%|"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </th:block>
+                  </section>
+                </div>
               </div>
             </div>
             <div th:unless="${resultView}">

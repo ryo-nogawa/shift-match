@@ -282,4 +282,24 @@ describe("result-tabs.js", () => {
     assert.equal(resultTabs.switchTab("unknown", buttons, panels), false);
     assert.equal(panels[0].hidden, false);
   });
+
+  test("[7.2節] formatDuration は開始と終了の差を hh:mm で返す", () => {
+    assert.equal(resultTabs.formatDuration("07:30", "14:30"), "07:00");
+    assert.equal(resultTabs.formatDuration("12:00", "12:45"), "00:45");
+    assert.equal(resultTabs.formatDuration("09:00", "18:30"), "09:30");
+  });
+
+  test("[7.2節] showDay は選んだ日付のセクションだけを表示する", () => {
+    const sections = ["2026-10-01", "2026-10-02"].map((date) => ({
+      getAttribute: () => date,
+      hidden: true,
+    }));
+
+    resultTabs.showDay("2026-10-02", sections);
+
+    assert.deepEqual(
+      sections.map((section) => section.hidden),
+      [true, false]
+    );
+  });
 });

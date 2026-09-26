@@ -27,8 +27,28 @@
     return true;
   }
 
+  /** HH:mm を 0 時からの分に直す。 */
+  function toMinutes(time) {
+    const parts = time.split(":");
+    return Number(parts[0]) * 60 + Number(parts[1]);
+  }
+
+  /** 開始と終了（HH:mm）の差を、前 0 埋めの hh:mm で返す（7.2 節の合計時間）。 */
+  function formatDuration(start, end) {
+    const minutes = toMinutes(end) - toMinutes(start);
+    const hours = Math.floor(minutes / 60);
+    return String(hours).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
+  }
+
+  /** 選んだ日付の日別詳細だけを表示する。 */
+  function showDay(date, sections) {
+    sections.forEach(function (section) {
+      section.hidden = section.getAttribute("data-date") !== date;
+    });
+  }
+
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { switchTab };
+    module.exports = { switchTab, formatDuration, showDay };
   }
 
   if (typeof document === "undefined") {
@@ -57,6 +77,19 @@
         switchTab(button.getAttribute("data-tab"), buttons, panels);
       });
     });
+    // 日別詳細：合計時間を埋め、日付の選択とセクションの表示を連動させる
+    document.querySelectorAll(".duration").forEach(function (span) {
+      span.textContent =
+        "(" + formatDuration(span.getAttribute("data-start"), span.getAttribute("data-end")) + ")";
+    });
+    const detailDate = document.getElementById("detail-date");
+    const daySections = Array.from(document.querySelectorAll(".day-detail"));
+    if (detailDate) {
+      detailDate.addEventListener("change", function () {
+        showDay(detailDate.value, daySections);
+      });
+      showDay(detailDate.value, daySections);
+    }
     // カレンダーの日付ボタンを押すと、その日の日別詳細を開く（8.3 節）
     document.addEventListener("click", function (event) {
       const dayButton = event.target.closest(".calendar-day");

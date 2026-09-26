@@ -426,6 +426,51 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[F-4][F-5][7.2節] Given: 成立の日・未出勤者・不成立の日がある結果, When: POST /shift の HTML を見ると,"
+            + " Then: 日別詳細に列見出しの順・勤務時間と休憩時間の形式・時間軸バー・凡例・不成立の文言・日付の選択がある")
+    void rendersDetailTab() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10),
+                  List.of(
+                      feasibleDay(
+                          LocalDate.of(2026, 10, 1),
+                          "e1",
+                          List.of(Employee.onLeave("休みさん", EmploymentType.PART_TIME))),
+                      new DailyShiftResult(LocalDate.of(2026, 10, 2), 5, Optional.empty()))));
+
+      String html = bodyOf(perform(validRequest()));
+
+      String panel = html.substring(html.indexOf("id=\"tab-detail\""), html.indexOf("</main>"));
+      assertTrue(panel.contains("id=\"detail-date\""));
+      assertTrue(panel.contains("class=\"day-detail\" hidden data-date=\"2026-10-01\""));
+      assertTrue(panel.contains("class=\"day-detail\" hidden data-date=\"2026-10-02\""));
+      int name = panel.indexOf("<th>氏名</th>");
+      int type = panel.indexOf("<th>区分</th>");
+      int work = panel.indexOf("<th>勤務時間</th>");
+      int rest = panel.indexOf("<th>休憩時間</th>");
+      int wish = panel.indexOf("<th>希望時間帯</th>");
+      assertTrue(0 <= name && name < type && type < work && work < rest && rest < wish);
+      assertTrue(panel.contains("07:30〜14:30"));
+      assertTrue(panel.contains("12:00〜12:45"));
+      assertTrue(panel.contains("07:30〜18:30"));
+      assertTrue(panel.contains("class=\"duration\" data-start=\"07:30\" data-end=\"14:30\""));
+      assertTrue(panel.contains("class=\"duration\" data-start=\"12:00\" data-end=\"12:45\""));
+      assertTrue(panel.contains("class=\"tl-work\""));
+      assertTrue(panel.contains("class=\"tl-break\""));
+      assertTrue(panel.contains("left:0.00%;width:63.64%"));
+      assertTrue(panel.contains("left:40.91%;width:6.82%"));
+      assertTrue(panel.contains(">勤務<"));
+      assertTrue(panel.contains(">休憩<"));
+      assertTrue(panel.contains("休みさん（パート）"));
+      assertTrue(panel.contains("休み"));
+      assertTrue(panel.contains("不成立です。勤務できる人数：5 名"));
+      assertFalse(panel.contains("枠"));
+    }
+
+    @Test
+    @DisplayName(
         "[F-4][8.3節] Given: 結果がない初期表示のとき, When: GET / の HTML を見ると,"
             + " Then: 「結果はまだありません」が出て、タブや集計は出ない")
     void rendersEmptyMessageWithoutResult() throws Exception {

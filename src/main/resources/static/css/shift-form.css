@@ -217,3 +217,18 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 .employee-result-table th, .employee-result-table td { padding: 6px 10px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--line); font-size: 13px }
 .employee-result-table .sticky-col { position: sticky; left: 0; background: var(--card); text-align: left; z-index: 1 }
 .employee-result-table .work-days { font-weight: 600 }
+
+/* 日別詳細 */
+.detail-table th, .detail-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px }
+.duration { color: var(--sub); margin-left: 4px }
+.unassigned-list { margin: 4px 0 12px; padding-left: 1.2em; font-size: 13px }
+.legend { display: flex; gap: 16px; margin: 12px 0 6px; font-size: 12px }
+.legend-work::before, .legend-break::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: middle; border-radius: 3px }
+.legend-work::before { background: var(--d-fg) }
+.legend-break::before { background: var(--accent) }
+.tl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12px }
+.tl-name { flex: 0 0 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.tl-track { position: relative; flex: 1; height: 16px; background: var(--line); border-radius: 4px }
+.tl-work, .tl-break { position: absolute; top: 0; height: 100%; border-radius: 4px }
+.tl-work { background: var(--d-fg); opacity: .55 }
+.tl-break { background: var(--accent) }
