@@ -161,4 +161,170 @@ class MonthlyInputValidatorTest {
 
     assertTrue(errors.isEmpty());
   }
+
+  @Test
+  @DisplayName("[V-5] 有効な従業員が 12 名ならエラーにならない")
+  void testMaxEmployeesOk() {
+    HolidayService holidayService = mock(HolidayService.class);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    List<EmployeeProfile> profiles = new ArrayList<>();
+    for (int i = 0; i < 12; i++) {
+      profiles.add(new EmployeeProfile("Employee" + i, EmploymentType.FULL_TIME, baseShifts));
+    }
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(YearMonth.of(2024, 9), profiles, new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    assertTrue(errors.isEmpty());
+  }
+
+  @Test
+  @DisplayName("[V-5] 有効な従業員が 13 名ならエラー")
+  void testExceedsMaxEmployees() {
+    HolidayService holidayService = mock(HolidayService.class);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    List<EmployeeProfile> profiles = new ArrayList<>();
+    for (int i = 0; i < 13; i++) {
+      profiles.add(new EmployeeProfile("Employee" + i, EmploymentType.FULL_TIME, baseShifts));
+    }
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(YearMonth.of(2024, 9), profiles, new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    assertEquals(1, errors.size());
+    assertEquals("V-5", errors.get(0).code());
+  }
+
+  @Test
+  @DisplayName("[V-6] 従業員名が 255 文字ならエラーにならない")
+  void testMaxNameLength() {
+    HolidayService holidayService = mock(HolidayService.class);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    String longName = "a".repeat(255);
+    EmployeeProfile profile = new EmployeeProfile(longName, EmploymentType.FULL_TIME, baseShifts);
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(YearMonth.of(2024, 9), List.of(profile), new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    assertTrue(errors.isEmpty());
+  }
+
+  @Test
+  @DisplayName("[V-6] 従業員名が 256 文字ならエラー")
+  void testExceedsNameLength() {
+    HolidayService holidayService = mock(HolidayService.class);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    String longName = "a".repeat(256);
+    EmployeeProfile profile = new EmployeeProfile(longName, EmploymentType.FULL_TIME, baseShifts);
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(YearMonth.of(2024, 9), List.of(profile), new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    assertEquals(1, errors.size());
+    assertEquals("V-6", errors.get(0).code());
+  }
+
+  @Test
+  @DisplayName("[V-7] 雇用区分が null ならエラー")
+  void testInvalidEmploymentType() {
+    HolidayService holidayService = mock(HolidayService.class);
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile profile = new EmployeeProfile("Taro", null, baseShifts);
+
+    MonthlyShiftInput input =
+        new MonthlyShiftInput(YearMonth.of(2024, 9), List.of(profile), new ArrayList<>());
+
+    List<InputError> errors = validator.validate(input);
+
+    assertEquals(1, errors.size());
+    assertEquals("V-7", errors.get(0).code());
+  }
 }

@@ -2,6 +2,7 @@ package com.example.shiftmatch.service;
 
 import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.EmployeeProfile;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import java.time.DayOfWeek;
@@ -52,6 +53,18 @@ public class MonthlyInputValidator {
     // V-3: 基本シフトと個別変更の時間帯チェック
     List<InputError> v3Errors = validateTimeRanges(validEmployees, input);
     errors.addAll(v3Errors);
+
+    // V-5: 従業員数の上限チェック
+    List<InputError> v5Errors = validateEmployeeCount(validEmployees);
+    errors.addAll(v5Errors);
+
+    // V-6: 従業員名の長さチェック
+    List<InputError> v6Errors = validateNameLength(validEmployees);
+    errors.addAll(v6Errors);
+
+    // V-7: 雇用区分の検証
+    List<InputError> v7Errors = validateEmploymentType(validEmployees);
+    errors.addAll(v7Errors);
 
     return errors;
   }
@@ -174,5 +187,41 @@ public class MonthlyInputValidator {
       case FRIDAY -> "金曜日";
       default -> day.toString();
     };
+  }
+
+  private List<InputError> validateEmployeeCount(List<EmployeeProfile> validEmployees) {
+    List<InputError> errors = new ArrayList<>();
+    if (validEmployees.size() >= 13) {
+      String message = "有効な従業員が 13 名以上です";
+      errors.add(new InputError("V-5", message));
+    }
+    return errors;
+  }
+
+  private List<InputError> validateNameLength(List<EmployeeProfile> validEmployees) {
+    List<InputError> errors = new ArrayList<>();
+    for (int i = 0; i < validEmployees.size(); i++) {
+      EmployeeProfile profile = validEmployees.get(i);
+      if (profile.name().length() > 255) {
+        String message = String.format("従業員名が 255 文字を超えています（%d 行目）", i + 1);
+        errors.add(new InputError("V-6", message));
+      }
+    }
+    return errors;
+  }
+
+  private List<InputError> validateEmploymentType(List<EmployeeProfile> validEmployees) {
+    List<InputError> errors = new ArrayList<>();
+    for (int i = 0; i < validEmployees.size(); i++) {
+      EmployeeProfile profile = validEmployees.get(i);
+      if (profile.employmentType() == null
+          || (profile.employmentType() != EmploymentType.FULL_TIME
+              && profile.employmentType() != EmploymentType.PART_TIME
+              && profile.employmentType() != EmploymentType.MANAGER)) {
+        String message = String.format("雇用区分が不正です（%d 行目）", i + 1);
+        errors.add(new InputError("V-7", message));
+      }
+    }
+    return errors;
   }
 }
