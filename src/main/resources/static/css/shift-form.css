@@ -165,3 +165,31 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 .reset-btn:disabled { opacity: 0.3; cursor: not-allowed }
 .reset-all-btn { margin-top: 12px; padding: 10px 16px; background: transparent; border: 1px dashed var(--sub); border-radius: 6px; cursor: pointer; width: 100% }
 .reset-all-btn:hover { border-color: var(--accent); color: var(--accent) }
+
+/* 画面の配置：ページ全体は縦スクロールさせず、一覧・パネル（.scroll）だけをスクロールさせる（8 章冒頭） */
+.main-content { overflow: hidden; display: flex; flex-direction: column; min-height: 0 }
+.main-content > form { display: flex; flex-direction: column; flex: 1; min-height: 0 }
+[data-screen] { flex: 1; min-height: 0 }
+#screen-1:not([hidden]) { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-rows: auto minmax(0, 1fr); gap: 16px }
+#screen-1 .month-selector { grid-column: 1 / -1; margin-bottom: 0 }
+#screen-2:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px }
+#screen-3 { overflow: auto }
+#adjustment-inputs { display: none }
+#month-summary.error { color: var(--u-fg) }
+.employee-row { cursor: pointer }
+.employee-row.selected td { background: var(--ring) }
+.employee-table td { padding: 4px }
+.summary { font-size: 13px; white-space: nowrap }
+.delete-btn, .copy-to-all-btn { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--sub); cursor: pointer; white-space: nowrap }
+.delete-btn:disabled, #add-employee-btn:disabled, #prev-btn:disabled { opacity: .3; cursor: not-allowed }
+#add-employee-btn { margin-top: 8px; padding: 8px 16px; border: 1px dashed var(--sub); border-radius: 8px; background: transparent; cursor: pointer }
+.calendar-header div { text-align: center; font-size: 12px; color: var(--sub) }
+.calendar-day.selected { background: var(--accent); color: #fff; border-color: var(--accent) }
+.calendar-day.selected .change-count { color: #fff }
+.day-panel-row.changed { border-color: var(--accent) }
+.calendar-message { color: var(--sub) }
+
+@media (max-width: 640px) {
+  #screen-1:not([hidden]) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr) }
+  #screen-2:not([hidden]) { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) }
+}
