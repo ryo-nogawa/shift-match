@@ -139,8 +139,8 @@ class SavedInputFormConverterTest {
 
     @Test
     @DisplayName(
-        "[F-7][8.1節] Given: 曜日ごとの休みと時間帯が保存済み, When: フォームに変換すると, Then: 曜日 0〜4 の休み・開始・終了が HH:mm"
-            + " で復元される")
+        "[F-7][8.1節] Given: 休みだった曜日を含む旧仕様の基本シフトが保存済み, When: フォームに変換すると,"
+            + " Then: 休みだった曜日は既定の 07:30〜18:30 になり、他の曜日は開始・終了が HH:mm で復元される")
     void restoresDaysWithTimeFormat() {
       SavedInput saved =
           savedOf(List.of(profile("佐藤", EmploymentType.FULL_TIME)), List.of(), Optional.empty());
