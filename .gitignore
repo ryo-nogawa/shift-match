@@ -62,3 +62,6 @@ data/
 
 ### Claude Code ###
 .claude/settings.local.json
+
+### 実装 Todo（ローカル専用） ###
+.claude/todos/
