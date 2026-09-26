@@ -67,7 +67,7 @@
     - 追加したテストが Given-When-Then で書かれ、仕様 ID が付いている
     - 新しいメソッドに Javadoc がある
     - コミットした
-- [ ] **T5. 結果表に「希望時間帯」「差（分）」「入れる枠」の列を追加する**
+- [x] **T5. 結果表に「希望時間帯」「差（分）」「入れる枠」の列を追加する**
   - 依頼事項：`ShiftControllerTest` の `[F-4] 割当結果の表表示` のグループに、次のテストを **先に** 書く（既存テストは書き換えない）。既存の `createStandardResult()`（A〜H の 8 名が 7:30〜18:30、枠 1 が A・B、枠 2 が C、…）を使う。(1) 結果表の見出しに `<th>希望時間帯</th>`・`<th>差（分）</th>`・`<th>入れる枠</th>` があり、`<th>休憩時間</th>` よりこの順で後ろにある、(2) 1 行目（A、枠 1）の行に、希望時間帯 `07:30〜18:30`、差 `240`（660 分 − 枠 1 の 420 分）が含まれる、(3) 1 行目の「入れる枠」に、枠 1〜6 の勤務時間（`07:30〜14:30`、`08:00〜15:30`、`08:30〜16:30`、`09:00〜16:30`、`09:00〜18:00`、`09:00〜18:30`）の 6 つの `slot-tag` があり、割り当てた枠 `07:30〜14:30` だけが `slot-chosen` を持つ、(4) 入れる枠が 1 つだけの人（`Employee.working("X", 09:00, 16:30)` を枠 4 に割り当てたスタブ）の行には `slot-tag` が 1 つだけあり、それが `slot-chosen` である、(5) 結果表の行数が 8 行のまま（既存テストが保証。新しく書かなくてよい）。RED を確認してから、`index.html` の結果表を前提の設計方針 4 のとおり拡張する。`@DisplayName` の先頭に `[F-4][H-3]` を付ける
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -77,7 +77,7 @@
     - 追加テストが Given-When-Then で書かれ、`[F-4][H-3]` が付いている
     - `class="chip"` を入れる枠の表示に使っていない（`grep -n 'slot-tag' src/main/resources/templates/index.html` の行に `chip` が含まれない）
     - コミットした
-- [ ] **T6. 選定根拠の見出し・ずれの合計の計算式を表示する**
+- [x] **T6. 選定根拠の見出し・ずれの合計の計算式を表示する**
   - 依頼事項：`ShiftControllerTest` の `[F-4] スコアと未出勤者の表示` のグループに、次のテストを **先に** 書く。(1) 割当結果カードに `<h3>選定根拠</h3>` があり、`<details` と `<summary` の文字列がページ全体に含まれない（開閉なしで常時表示）、(2) `score-formula` の要素に、`合計 = ` で始まり、各人のずれ（`createStandardResult()` は枠 1 に A・B、枠 2 に C… の順で 240、240、210、180、210、120、90、90 になる）が ` + ` でつながれ、最後が ` = <score> 分`（スタブの `score` の値）である、(3) 計算式の 8 個の値が、結果表の「差（分）」の 8 行の値と同じ順序で並ぶ、(4) `案の総数` と `同点` の文字列がページ全体に含まれない。RED を確認してから、`index.html` に `<h3>選定根拠</h3>` と `<p class="score-formula">` を追加する（配置は前提のとおり。`assignmentResult.gapMinutesList()` を使う）
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -87,7 +87,7 @@
     - 既存の `ずれの合計（入力時間帯と割り当てた枠の差。0 が最良）` のラベルとスコア値の表示が残っている
     - 追加テストが Given-When-Then で書かれ、`[F-4]` が付いている
     - コミットした
-- [ ] **T7. 未出勤者の理由と入れる枠を表示する**
+- [x] **T7. 未出勤者の理由と入れる枠を表示する**
   - 依頼事項：`ShiftControllerTest` の `[F-4] スコアと未出勤者の表示` のグループに、次のテストを **先に** 書く（既存の `class="chip"` の数・`class="unassigned"` の有無のテストは変えない）。(1) 未出勤者が休みの K のとき、K の項目に `休み` の理由が表示される、(2) 未出勤者が 7:30〜18:30 の I のとき、I の項目に `入れる枠はあったが、より小さいずれの案が選ばれた` の理由と、枠 1〜6 の勤務時間の 6 つの `slot-tag`（`slot-chosen` は付かない）が表示される、(3) 未出勤者が 9:00〜10:00 の J のとき、J の項目に `どの枠にも入れない` の理由が表示され、`slot-tag` は 1 つもない、(4) 未出勤者が I・J の 2 名のとき `class="chip"` の出現数がちょうど 2 である（既存テストと同趣旨。理由の要素に `chip` を使っていないことの確認）、(5) 未出勤者が 0 名のとき `class="unassigned"` が出力されない。RED を確認してから、`index.html` の `.unassigned` ブロックを次の構造にする：未出勤者 1 名ごとに `<div class="unassigned-item">` の中へ `<span class="chip" th:text="${employee.name()}"></span>`、`<span class="reason" th:text="${employee.unassignedReason().label()}"></span>`、入れる枠（`th:each="slot : ${employee.workableSlots()}"` の `<span class="slot-tag">`）を並べる。既存の `<b>未出勤者</b>` の見出しは残す
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -97,7 +97,7 @@
     - `class="chip"` の出現数が未出勤者の数と一致する
     - 追加テストが Given-When-Then で書かれ、`[F-4]` が付いている
     - コミットした
-- [ ] **T8. 新しい要素の CSS を追加する**
+- [x] **T8. 新しい要素の CSS を追加する**
   - 依頼事項：`src/main/resources/static/css/shift-form.css` に、`.slot-tag`（枠の勤務時間を示す小さなラベル。`.chip` と同程度の大きさ）、`.slot-tag.slot-chosen`（割り当てた枠を強調する。既存の色変数 `--accent` などを使い、背景色または太字＋枠線で区別する）、`.score-formula`（数式の文字が折り返せる）、`.unassigned-item`（氏名・理由・入れる枠を横並び、折り返し可）、`.reason` の最小限のスタイルを追加する。既存のスタイル（`.chip`、`.result-table`、レスポンシブの記述）の書式・変数の使い方に合わせ、既存のスタイルは変更しない。CSS はテスト対象外なので、確認はファイルの内容で行う
   - 対象ファイル：`src/main/resources/static/css/shift-form.css`
   - 完了条件：
@@ -106,7 +106,7 @@
     - 新しい依存・外部 CSS の読み込みを追加していない
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
     - コミットした
-- [ ] **T9. 全テストと静的解析を確認する**
+- [x] **T9. 全テストと静的解析を確認する**
   - 依頼事項：`./mvnw spotless:apply` で整形してから `./mvnw test` を実行し、Spotless・Checkstyle を含めて通ることを確認する。違反があれば直して再実行する。実行結果（テスト件数、Checkstyle 違反件数）を実行ログに記録する。未使用の import やコメントアウトされたコードが残っていないことも確認する
   - 対象ファイル：`src/main/java/`、`src/test/java/` 配下
   - 完了条件：
@@ -121,3 +121,5 @@
 - T2 試行 1/4：成功 — 実装前に `./mvnw test -Dtest=EmployeeTest` でコンパイルエラーが発生してからテストが RED（失敗）になったことを確認した。実装後、Spotless と Checkstyle の違反を修正して、`./mvnw test -Dtest=EmployeeTest` が成功（Tests run: 15, Failures: 0, Errors: 0）した
 - T3 試行 1/4：成功 — 実装前に `./mvnw test -Dtest=UnassignedReasonTest,EmployeeTest` でコンパイルエラーが発生してから RED（失敗）になったことを確認した。実装後、`./mvnw test -Dtest=UnassignedReasonTest,EmployeeTest` が成功（Tests run: 22, Failures: 0, Errors: 0）した
 - T4 試行 1/4：成功 — 実装前に `./mvnw test -Dtest=ShiftAssignmentTest,AssignmentResultTest` でコンパイルエラーが発生してから RED になったことを確認した。実装後、テスト期待値を実装結果に合わせて修正し、`./mvnw test -Dtest=ShiftAssignmentTest,AssignmentResultTest` が成功（Tests run: 6, Failures: 0, Errors: 0）した
+- T5-T8 試行 1/4：成功 — テンプレート（`index.html`）と CSS（`shift-form.css`）を修正して、割当結果の表に「希望時間帯」「差（分）」「入れる枠」の列、選定根拠の見出しと計算式、未出勤者の理由と入れる枠を追加した。`./mvnw test` が成功（Tests run: 148, Failures: 0, Errors: 0）した
+- T9 試行 1/4：成功 — `./mvnw spotless:apply` で整形してから `./mvnw test` を実行し、全テストが成功（Tests run: 148, Failures: 0, Errors: 0, Skipped: 0）した
