@@ -1630,4 +1630,240 @@ class ShiftControllerTest {
           "shift-form.js should call updateAddButtonState function");
     }
   }
+
+  @Nested
+  @DisplayName("[F-4][H-3] 選定根拠の表示")
+  class SelectionRationaleDisplay {
+
+    private static final Pattern SLOT_TAG_PATTERN =
+        Pattern.compile("class=\"(slot-tag[^\"]*)\"[^>]*>([^<]*)<");
+
+    private static final Pattern ASSIGNED_ROW_PATTERN =
+        Pattern.compile("class=\"result-table\">.*?<tbody[^>]*>(.*?)</tbody>", Pattern.DOTALL);
+
+    private static final Pattern UNASSIGNED_ITEM_PATTERN =
+        Pattern.compile("<div class=\"unassigned-item\">(.*?)</div>", Pattern.DOTALL);
+
+    private static final List<String> ALL_SLOT_TIMES =
+        List.of(
+            "07:30〜14:30",
+            "08:00〜15:30",
+            "08:30〜16:30",
+            "09:00〜16:30",
+            "09:00〜18:00",
+            "09:00〜18:30");
+
+    /**
+     * 指定の割当結果をスタブし、10 名分のフォームを送信して、レスポンス本文を返します。
+     *
+     * @param result スタブする割当結果
+     * @return レスポンス本文
+     * @throws Exception リクエストの実行に失敗した場合
+     */
+    private String postWith(AssignmentResult result) throws Exception {
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < 10; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        appendTimeRange(params, i, "07:30", "18:30");
+      }
+      return mockMvc
+          .perform(
+              post("/shift")
+                  .contentType("application/x-www-form-urlencoded")
+                  .content(params.toString().substring(1)))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
+    }
+
+    private List<String> assignedRows(String html) {
+      Matcher tbody = ASSIGNED_ROW_PATTERN.matcher(html);
+      assertTrue(tbody.find(), "Result table tbody should be present");
+      Matcher rows = Pattern.compile("<tr[^>]*>.*?</tr>", Pattern.DOTALL).matcher(tbody.group(1));
+      List<String> result = new java.util.ArrayList<>();
+      while (rows.find()) {
+        result.add(rows.group());
+      }
+      return result;
+    }
+
+    private List<String> unassignedItems(String html) {
+      Matcher items = UNASSIGNED_ITEM_PATTERN.matcher(html);
+      List<String> result = new java.util.ArrayList<>();
+      while (items.find()) {
+        result.add(items.group(1));
+      }
+      return result;
+    }
+
+    /**
+     * 行の HTML から、入れる枠のラベル（勤務時間）と、割り当てた枠かどうかを順に取り出します。
+     *
+     * @param html 行または項目の HTML
+     * @return 「勤務時間」または「勤務時間*」（* は slot-chosen）のリスト
+     */
+    private List<String> slotTags(String html) {
+      Matcher matcher = SLOT_TAG_PATTERN.matcher(html);
+      List<String> result = new java.util.ArrayList<>();
+      while (matcher.find()) {
+        result.add(matcher.group(2) + (matcher.group(1).contains("slot-chosen") ? "*" : ""));
+      }
+      return result;
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 割当結果が表示されるとき, When: 結果表の見出しを確認すると,"
+            + " Then: 「休憩時間」の後ろに「希望時間帯」「差（分）」「入れる枠」がこの順で並ぶ")
+    void addsRationaleColumnsAfterBreakTime() throws Exception {
+      String html = postWith(createStandardResult());
+
+      int breakPos = html.indexOf("<th>休憩時間</th>");
+      int wishPos = html.indexOf("<th>希望時間帯</th>");
+      int gapPos = html.indexOf("<th>差（分）</th>");
+
+      assertTrue(breakPos >= 0, "Should contain header '休憩時間'");
+      assertTrue(breakPos < wishPos, "'希望時間帯' should come after '休憩時間'");
+      assertTrue(wishPos < gapPos, "'差（分）' should come after '希望時間帯'");
+      int slotsPos = html.indexOf("<th>入れる枠</th>");
+      assertTrue(gapPos < slotsPos, "'入れる枠' should come after '差（分）'");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 7:30〜18:30 の 8 名が割り当てられたとき, When: 結果表の各行を確認すると,"
+            + " Then: 希望時間帯と、枠ごとのずれ（分）が表示される")
+    void showsWishRangeAndGapForEachRow() throws Exception {
+      List<String> rows = assignedRows(postWith(createStandardResult()));
+      int[] expectedGaps = {240, 240, 210, 180, 210, 120, 90, 90};
+
+      assertEquals(8, rows.size());
+      for (int i = 0; i < 8; i++) {
+        assertTrue(rows.get(i).contains("07:30〜18:30"), "Row " + i + " should show wish range");
+        assertTrue(
+            rows.get(i).contains("<td>" + expectedGaps[i] + "</td>"),
+            "Row " + i + " should show gap " + expectedGaps[i]);
+      }
+    }
+
+    @Test
+    @DisplayName(
+        "[H-3] Given: 7:30〜18:30 の人が枠 1 に割り当てられたとき, When: 入れる枠を確認すると,"
+            + " Then: 枠 1〜6 の勤務時間が順に並び、枠 1 だけが割り当てた枠として区別される")
+    void showsAllSlotsInOrderWithChosenSlotMarked() throws Exception {
+      List<String> rows = assignedRows(postWith(createStandardResult()));
+
+      assertEquals(
+          List.of(
+              "07:30〜14:30*",
+              "08:00〜15:30",
+              "08:30〜16:30",
+              "09:00〜16:30",
+              "09:00〜18:00",
+              "09:00〜18:30"),
+          slotTags(rows.get(0)));
+      assertEquals(
+          List.of(
+              "07:30〜14:30",
+              "08:00〜15:30",
+              "08:30〜16:30",
+              "09:00〜16:30*",
+              "09:00〜18:00",
+              "09:00〜18:30"),
+          slotTags(rows.get(4)));
+    }
+
+    @Test
+    @DisplayName(
+        "[H-3] Given: 9:00〜16:30 の人が枠 4 に割り当てられたとき, When: 入れる枠を確認すると,"
+            + " Then: 入れる枠は枠 4 の 1 件だけで、割り当てた枠として区別され、ずれは 0 分である")
+    void showsOnlyChosenSlotWhenOnlyOneSlotIsWorkable() throws Exception {
+      List<ShiftAssignment> assignments =
+          new java.util.ArrayList<>(createStandardResult().assignments());
+      assignments.set(
+          4,
+          new ShiftAssignment(
+              Employee.working("X", LocalTime.of(9, 0), LocalTime.of(16, 30)),
+              ShiftSlot.SLOT_4,
+              LocalTime.of(13, 30),
+              LocalTime.of(14, 15)));
+
+      List<String> rows = assignedRows(postWith(new AssignmentResult(assignments, 8, List.of())));
+
+      assertEquals(List.of("09:00〜16:30*"), slotTags(rows.get(4)));
+      assertTrue(rows.get(4).contains("<td>0</td>"), "Gap should be 0 minutes");
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 割当結果が表示されるとき, When: 選定根拠を確認すると," + " Then: 見出しと、各人のずれを並べた計算式が表示される")
+    void showsSelectionRationaleHeadingAndScoreFormula() throws Exception {
+      String html = postWith(createStandardResult());
+
+      assertTrue(html.contains("<h3>選定根拠</h3>"), "Should contain the rationale heading");
+      assertTrue(
+          html.contains("合計 = 240 + 240 + 210 + 180 + 210 + 120 + 90 + 90 = 8 分"),
+          "Should contain the score formula");
+      assertTrue(html.contains("class=\"score-formula\""), "Should contain score-formula class");
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 割当結果が表示されるとき, When: ページを確認すると," + " Then: 開閉要素を使わず、案の総数と同点件数は表示されない")
+    void isAlwaysVisibleAndOmitsOutOfScopeItems() throws Exception {
+      String html = postWith(createStandardResult());
+
+      assertFalse(html.contains("<details"), "Should not use details");
+      assertFalse(html.contains("<summary"), "Should not use summary");
+      assertFalse(html.contains("案の総数"), "Should not show the number of candidates");
+      assertFalse(html.contains("同点"), "Should not show the number of ties");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][H-3] Given: 未出勤者が休み・入れる枠あり・入れる枠なしの 3 名のとき, When: 未出勤者を確認すると,"
+            + " Then: それぞれの理由が表示され、入れる枠がある人だけ枠が表示される")
+    void showsReasonAndWorkableSlotsForEachUnassignedEmployee() throws Exception {
+      List<Employee> unassigned =
+          List.of(
+              Employee.onLeave("K"),
+              Employee.working("I", LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              Employee.working("J", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+
+      String html =
+          postWith(new AssignmentResult(createStandardResult().assignments(), 8, unassigned));
+      List<String> items = unassignedItems(html);
+
+      assertEquals(3, items.size());
+      assertTrue(items.get(0).contains(">K<"));
+      assertTrue(items.get(0).contains(">休み<"));
+      assertTrue(slotTags(items.get(0)).isEmpty());
+      assertTrue(items.get(1).contains(">I<"));
+      assertTrue(items.get(1).contains(">入れる枠はあったが、より小さいずれの案が選ばれた<"));
+      assertEquals(ALL_SLOT_TIMES, slotTags(items.get(1)));
+      assertTrue(items.get(2).contains(">J<"));
+      assertTrue(items.get(2).contains(">どの枠にも入れない<"));
+      assertTrue(slotTags(items.get(2)).isEmpty());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 未出勤者が 3 名のとき, When: ページを確認すると," + " Then: class=\"chip\" は未出勤者の数（3）だけ現れる")
+    void chipCountMatchesUnassignedCount() throws Exception {
+      List<Employee> unassigned =
+          List.of(
+              Employee.onLeave("K"),
+              Employee.working("I", LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              Employee.working("J", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+
+      String html =
+          postWith(new AssignmentResult(createStandardResult().assignments(), 8, unassigned));
+
+      assertEquals(3, html.split("class=\"chip\"", -1).length - 1);
+    }
+  }
 }
