@@ -6,6 +6,7 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
 import com.example.shiftmatch.domain.ShiftAssignment;
@@ -365,5 +366,45 @@ public class MonthlyShiftRepository {
                         rs.getObject("wish_end", LocalTime.class)))
             .list();
     return new AssignmentResult(assignments, score, unassigned);
+  }
+
+  /**
+   * 入力と決定したシフトを 1 トランザクションで保存します。
+   *
+   * @param input 月間シフトの入力
+   * @param result 月間シフトの結果
+   * @param employeeNames シフトを作成した時点の従業員名（入力順）
+   */
+  @Transactional
+  public void save(MonthlyShiftInput input, MonthlyShiftResult result, List<String> employeeNames) {
+    deleteOtherYears(input.month().getYear());
+    saveInput(input.employees(), input.month());
+    saveAdjustments(input.month(), input.adjustments());
+    saveShift(result, employeeNames);
+  }
+
+  private void deleteOtherYears(int year) {
+    String otherYearMonths = "(SELECT day_date FROM saved_day WHERE LEFT(target_month, 4) <> ?)";
+    String yearText = String.valueOf(year);
+    jdbcClient
+        .sql("DELETE FROM saved_day_assignment WHERE day_date IN " + otherYearMonths)
+        .param(yearText)
+        .update();
+    jdbcClient
+        .sql("DELETE FROM saved_day_unassigned WHERE day_date IN " + otherYearMonths)
+        .param(yearText)
+        .update();
+    jdbcClient
+        .sql("DELETE FROM saved_day WHERE LEFT(target_month, 4) <> ?")
+        .param(yearText)
+        .update();
+    jdbcClient
+        .sql("DELETE FROM saved_month_employee WHERE LEFT(target_month, 4) <> ?")
+        .param(yearText)
+        .update();
+    jdbcClient
+        .sql("DELETE FROM saved_adjustment WHERE YEAR(adjust_date) <> ?")
+        .param(year)
+        .update();
   }
 }

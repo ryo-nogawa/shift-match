@@ -1,6 +1,7 @@
 package com.example.shiftmatch.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.domain.AssignmentResult;
@@ -9,6 +10,7 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
 import com.example.shiftmatch.service.ShiftAssignmentService;
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /** MonthlyShiftRepository のテスト。 */
@@ -377,6 +380,103 @@ class MonthlyShiftRepositoryTest {
       @DisplayName("[F-7][8.4節] Given: 保存がない月のとき, When: 復元すると, Then: 空が返る")
       void returnsEmptyWhenMonthNotSaved() {
         assertTrue(repository.findShift(YearMonth.of(2026, 10)).isEmpty());
+      }
+    }
+  }
+
+  @Nested
+  @DisplayName("年単位の保存")
+  class SaveByYear {
+
+    private MonthlyShiftInput input(YearMonth month, String employeeName, LocalDate adjustDate) {
+      return new MonthlyShiftInput(
+          month,
+          List.of(profile(employeeName, EmploymentType.FULL_TIME, false)),
+          List.of(
+              new ShiftAdjustment(
+                  adjustDate,
+                  employeeName,
+                  new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(17, 0)))));
+    }
+
+    private MonthlyShiftResult result(YearMonth month, LocalDate date) {
+      return new MonthlyShiftResult(
+          month, List.of(new DailyShiftResult(date, 3, Optional.empty())));
+    }
+
+    @Nested
+    class 正常系 {
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 前の年を保存済みのとき, When: 別の年を保存すると, Then: 前の年の個別変更と決定シフトが消える")
+      void removesPreviousYearWhenAnotherYearIsSaved() {
+        YearMonth december = YearMonth.of(2026, 12);
+        YearMonth january = YearMonth.of(2027, 1);
+        repository.save(
+            input(december, "佐藤", LocalDate.of(2026, 12, 1)),
+            result(december, LocalDate.of(2026, 12, 1)),
+            List.of("佐藤"));
+
+        repository.save(
+            input(january, "鈴木", LocalDate.of(2027, 1, 4)),
+            result(january, LocalDate.of(2027, 1, 4)),
+            List.of("鈴木"));
+
+        assertTrue(repository.findShift(december).isEmpty());
+        assertEquals(1, repository.findAdjustments().size());
+        assertEquals(LocalDate.of(2027, 1, 4), repository.findAdjustments().get(0).date());
+        assertTrue(repository.findShift(january).isPresent());
+        assertEquals(Optional.of(january), repository.findLastTargetMonth());
+      }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 同じ年の別の月を保存済みのとき, When: 別の月を保存すると, Then: 前の月は残る")
+      void keepsOtherMonthOfSameYear() {
+        YearMonth october = YearMonth.of(2026, 10);
+        YearMonth november = YearMonth.of(2026, 11);
+        repository.save(
+            input(october, "佐藤", LocalDate.of(2026, 10, 1)),
+            result(october, LocalDate.of(2026, 10, 1)),
+            List.of("佐藤"));
+
+        repository.save(
+            input(november, "佐藤", LocalDate.of(2026, 11, 2)),
+            result(november, LocalDate.of(2026, 11, 2)),
+            List.of("佐藤"));
+
+        assertTrue(repository.findShift(october).isPresent());
+        assertTrue(repository.findShift(november).isPresent());
+        assertEquals(2, repository.findAdjustments().size());
+      }
+    }
+
+    @Nested
+    class 異常系 {
+
+      @Test
+      @DisplayName(
+          "[F-7][8.4節] Given: 前の年を保存済みで途中の保存が失敗するとき, When: 別の年を保存すると, Then: ロールバックされ前の年が残る")
+      void rollsBackWhenSaveFails() {
+        YearMonth december = YearMonth.of(2026, 12);
+        YearMonth january = YearMonth.of(2027, 1);
+        repository.save(
+            input(december, "佐藤", LocalDate.of(2026, 12, 1)),
+            result(december, LocalDate.of(2026, 12, 1)),
+            List.of("佐藤"));
+        String tooLongName = "あ".repeat(256);
+
+        assertThrows(
+            DataAccessException.class,
+            () ->
+                repository.save(
+                    input(january, tooLongName, LocalDate.of(2027, 1, 4)),
+                    result(january, LocalDate.of(2027, 1, 4)),
+                    List.of(tooLongName)));
+
+        assertTrue(repository.findShift(december).isPresent());
+        assertEquals(1, repository.findAdjustments().size());
+        assertEquals(LocalDate.of(2026, 12, 1), repository.findAdjustments().get(0).date());
+        assertEquals(Optional.of(december), repository.findLastTargetMonth());
       }
     }
   }
