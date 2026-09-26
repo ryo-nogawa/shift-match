@@ -9,11 +9,14 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,6 +24,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class MonthlyFormConverter {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MonthlyFormConverter.class);
 
   /**
    * {@link ShiftForm} を {@link MonthlyShiftInput} に変換します。
@@ -53,7 +58,8 @@ public class MonthlyFormConverter {
     }
     try {
       return YearMonth.parse(targetMonth);
-    } catch (Exception e) {
+    } catch (DateTimeParseException e) {
+      LOGGER.debug("対象月を解析できません: {}", targetMonth, e);
       return null;
     }
   }
@@ -115,7 +121,6 @@ public class MonthlyFormConverter {
       if (i < dayForms.size() && dayForms.get(i) != null) {
         wish = convertDay(dayForms.get(i));
       } else {
-        // 不足する曜日は休みなし・時刻なし
         wish = new DailyWish(false, null, null);
       }
       baseShifts.put(weekdays[i], wish);
@@ -173,7 +178,8 @@ public class MonthlyFormConverter {
     }
     try {
       return LocalTime.parse(time);
-    } catch (Exception e) {
+    } catch (DateTimeParseException e) {
+      LOGGER.debug("時刻を解析できません: {}", time, e);
       return null;
     }
   }
@@ -192,7 +198,8 @@ public class MonthlyFormConverter {
     }
     try {
       return LocalDate.parse(date);
-    } catch (Exception e) {
+    } catch (DateTimeParseException e) {
+      LOGGER.debug("日付を解析できません: {}", date, e);
       return LocalDate.MIN;
     }
   }
