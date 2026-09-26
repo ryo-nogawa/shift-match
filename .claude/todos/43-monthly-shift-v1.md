@@ -68,7 +68,7 @@
     - 例外が投げられないことを検証している
     - `./mvnw test -Dtest=MonthlyShiftServiceImplTest` が成功する
 
-- [ ] **T5. 入力チェック V-1〜V-3 を実装する（V-1、V-2、V-3）**
+- [x] **T5. 入力チェック V-1〜V-3 を実装する（V-1、V-2、V-3）**
   - 依頼事項：`MonthlyInputValidator` を作る（`@Component`）。`validate(MonthlyShiftInput)` は次を **この順** で検証し、`InputError` のリストを返す。エラーがなければ空リスト。`code` は仕様 ID（`"V-2"` など）、`message` は該当する従業員（行番号は 1 始まり）・曜日（月〜金）・日付を示す日本語の文言にする（既存の `templates/index.html` や `InvalidTimeRangeError` の文言・行番号の扱いを参考にする）
     - V-1：従業員名が空（null・blank）の行は、エラーにせず以降の検証・処理から除外する
     - V-2：有効な従業員の氏名の重複。該当行を示す。既存の `ShiftAssignmentService.findDuplicateNames` を再利用してもよい（`Employee.onLeave(name)` などに変換して渡す）

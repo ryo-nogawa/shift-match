@@ -1,0 +1,178 @@
+package com.example.shiftmatch.service;
+
+import com.example.shiftmatch.domain.DailyWish;
+import com.example.shiftmatch.domain.EmployeeProfile;
+import com.example.shiftmatch.domain.InputError;
+import com.example.shiftmatch.domain.MonthlyShiftInput;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.springframework.stereotype.Component;
+
+/**
+ * 月間シフト入力の検証を行います。
+ *
+ * <p>V-1 から V-9 の入力チェックを実行します。
+ */
+@Component
+public class MonthlyInputValidator {
+
+  private final HolidayService holidayService;
+
+  /**
+   * 月間入力検証を初期化します。
+   *
+   * @param holidayService 祝日サービス
+   */
+  public MonthlyInputValidator(HolidayService holidayService) {
+    this.holidayService = holidayService;
+  }
+
+  /**
+   * 月間シフト入力を検証し、エラーのリストを返します。
+   *
+   * <p>エラーは V-1 から V-9 の順に評価され、検出順に返されます。
+   *
+   * @param input 検証対象の入力
+   * @return エラーのリスト（エラーがなければ空）
+   */
+  public List<InputError> validate(MonthlyShiftInput input) {
+    List<InputError> errors = new ArrayList<>();
+
+    // 有効な従業員（名前が空でない）のリストを作成
+    List<EmployeeProfile> validEmployees = getValidEmployees(input.employees());
+
+    // V-2: 従業員名の重複チェック
+    List<InputError> v2Errors = validateDuplicateNames(validEmployees);
+    errors.addAll(v2Errors);
+
+    // V-3: 基本シフトと個別変更の時間帯チェック
+    List<InputError> v3Errors = validateTimeRanges(validEmployees, input);
+    errors.addAll(v3Errors);
+
+    return errors;
+  }
+
+  private List<EmployeeProfile> getValidEmployees(List<EmployeeProfile> employees) {
+    List<EmployeeProfile> valid = new ArrayList<>();
+    for (EmployeeProfile profile : employees) {
+      if (!profile.name().isBlank()) {
+        valid.add(profile);
+      }
+    }
+    return valid;
+  }
+
+  private List<InputError> validateDuplicateNames(List<EmployeeProfile> validEmployees) {
+    List<InputError> errors = new ArrayList<>();
+    Set<String> seen = new HashSet<>();
+    Set<String> duplicates = new HashSet<>();
+
+    for (EmployeeProfile profile : validEmployees) {
+      if (seen.contains(profile.name())) {
+        duplicates.add(profile.name());
+      }
+      seen.add(profile.name());
+    }
+
+    if (!duplicates.isEmpty()) {
+      String message = "従業員名が重複しています: " + String.join(", ", duplicates);
+      errors.add(new InputError("V-2", message));
+    }
+
+    return errors;
+  }
+
+  private List<InputError> validateTimeRanges(
+      List<EmployeeProfile> validEmployees, MonthlyShiftInput input) {
+    List<InputError> errors = new ArrayList<>();
+
+    // 基本シフトの検証
+    for (int i = 0; i < validEmployees.size(); i++) {
+      EmployeeProfile profile = validEmployees.get(i);
+      List<InputError> profileErrors = validateBaseShifts(profile, i + 1);
+      errors.addAll(profileErrors);
+    }
+
+    return errors;
+  }
+
+  private List<InputError> validateBaseShifts(EmployeeProfile profile, int lineNumber) {
+    List<InputError> errors = new ArrayList<>();
+
+    // 月〜金の曜日をチェック
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      DailyWish wish = profile.baseShifts().get(day);
+
+      if (wish == null) {
+        // 曜日が欠けている
+        String dayName = getDayName(day);
+        String message = String.format("基本シフト：%s が未選択です（%d 行目）", dayName, lineNumber);
+        errors.add(new InputError("V-3", message));
+      } else if (!wish.off()) {
+        // 時間帯の妥当性をチェック
+        List<InputError> timeErrors = validateTimeRange(wish, day, profile.name(), lineNumber);
+        errors.addAll(timeErrors);
+      }
+    }
+
+    return errors;
+  }
+
+  private List<InputError> validateTimeRange(
+      DailyWish wish, DayOfWeek day, String name, int lineNumber) {
+    List<InputError> errors = new ArrayList<>();
+
+    if (wish.start() == null || wish.end() == null) {
+      String dayName = getDayName(day);
+      String message = String.format("基本シフト：%s が未選択です（%s、%d 行目）", dayName, name, lineNumber);
+      errors.add(new InputError("V-3", message));
+    } else if (!isValidTime(wish.start()) || !isValidTime(wish.end())) {
+      String dayName = getDayName(day);
+      String message =
+          String.format(
+              "基本シフト：%s の時間帯が 7:30〜18:30 の 30 分単位ではありません（%s、%d 行目）", dayName, name, lineNumber);
+      errors.add(new InputError("V-3", message));
+    } else if (!wish.start().isBefore(wish.end())) {
+      String dayName = getDayName(day);
+      String message =
+          String.format("基本シフト：%s の開始時刻が終了時刻以上です（%s、%d 行目）", dayName, name, lineNumber);
+      errors.add(new InputError("V-3", message));
+    }
+
+    return errors;
+  }
+
+  private boolean isValidTime(LocalTime time) {
+    LocalTime minTime = LocalTime.of(7, 30);
+    LocalTime maxTime = LocalTime.of(18, 30);
+
+    if (time.isBefore(minTime) || time.isAfter(maxTime)) {
+      return false;
+    }
+
+    // 30 分単位かチェック
+    return time.getMinute() == 0 || time.getMinute() == 30;
+  }
+
+  private String getDayName(DayOfWeek day) {
+    return switch (day) {
+      case MONDAY -> "月曜日";
+      case TUESDAY -> "火曜日";
+      case WEDNESDAY -> "水曜日";
+      case THURSDAY -> "木曜日";
+      case FRIDAY -> "金曜日";
+      default -> day.toString();
+    };
+  }
+}
