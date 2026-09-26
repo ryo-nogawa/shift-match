@@ -1803,13 +1803,18 @@ class ShiftControllerTest {
     @Test
     @DisplayName("[F-4] Given: 割当結果が表示されるとき, When: 選定根拠を確認すると," + " Then: 見出しと、各人のずれを並べた計算式が表示される")
     void showsSelectionRationaleHeadingAndScoreFormula() throws Exception {
-      // 各人のずれの合計（240 + 240 + 210 + 180 + 210 + 120 + 90 + 90）をスコアとして渡す
+      int expectedTotalGapMinutes = 240 + 240 + 210 + 180 + 210 + 120 + 90 + 90;
       String html =
-          postWith(new AssignmentResult(createStandardResult().assignments(), 1380, List.of()));
+          postWith(
+              new AssignmentResult(
+                  createStandardResult().assignments(), expectedTotalGapMinutes, List.of()));
 
       assertTrue(html.contains("<h3>選定根拠</h3>"), "Should contain the rationale heading");
       assertTrue(
-          html.contains("合計 = 240 + 240 + 210 + 180 + 210 + 120 + 90 + 90 = 1380 分"),
+          html.contains(
+              "合計 = 240 + 240 + 210 + 180 + 210 + 120 + 90 + 90 = "
+                  + expectedTotalGapMinutes
+                  + " 分"),
           "Should contain the score formula");
       assertTrue(html.contains("class=\"score-formula\""), "Should contain score-formula class");
     }
