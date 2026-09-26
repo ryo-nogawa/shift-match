@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 /**
@@ -57,6 +58,8 @@ public class HolidayServiceImpl implements HolidayService {
       LOGGER.error("祝日 CSV の取得に失敗しました", e);
     } catch (IllegalArgumentException e) {
       LOGGER.error("祝日 CSV の解析に失敗しました", e);
+    } catch (DataAccessException e) {
+      LOGGER.error("祝日データの保存に失敗しました", e);
     }
   }
 

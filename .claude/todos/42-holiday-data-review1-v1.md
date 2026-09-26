@@ -25,7 +25,7 @@
     - `HolidayCsvParser.java` に `catch (Exception` がない（`grep -n "catch" src/main/java/com/example/shiftmatch/service/HolidayCsvParser.java` が 0 件）
     - `./mvnw test -Dtest=HolidayCsvParserTest` が成功する
 
-- [ ] **R2. パーサーで CSV の完全性を検証する（SHOULD）**
+- [x] **R2. パーサーで CSV の完全性を検証する（SHOULD）**
   - 依頼事項：`HolidayCsvParser.parse` が、次の場合に `IllegalArgumentException` を投げるようにする（保存前に不完全な CSV を弾き、保存済みのデータを守るため）。(1) 1 行目の見出しが `国民の祝日・休日月日,国民の祝日・休日名称` と（前後の空白を除いて）一致しない（空のバイト列を含む）、(2) 見出しの後に有効な祝日が 1 件もない、(3) 同じ日付が 2 回以上ある、(4) 祝日名が空、または 64 文字を超える（`holiday` テーブルの `name VARCHAR(64)` に合わせる）。行末が `\r\n` でも `\n` でも読めることは、既存のテストで維持する。必要なら見出しの文字列を `private static final` の定数にする
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HolidayCsvParser.java`、`src/test/java/com/example/shiftmatch/service/HolidayCsvParserTest.java`
   - 完了条件：

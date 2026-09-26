@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @DisplayName("HolidayServiceImpl")
 class HolidayServiceImplTest {
@@ -74,6 +76,30 @@ class HolidayServiceImplTest {
       service.refresh();
 
       verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 保存時に DataAccessException が発生するとき, When: refresh を呼ぶと, Then:"
+            + " 例外を外に出さず、保存済みデータが残る")
+    void logsErrorWhenSaveFails() {
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/1/1,元日\n2026/10/12,スポーツの日\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+      when(fetcher.fetch()).thenReturn(csvBytes);
+      doThrow(new DataIntegrityViolationException("データベースエラー"))
+          .when(repository)
+          .replaceAll(
+              List.of(
+                  new Holiday(LocalDate.of(2026, 1, 1), "元日"),
+                  new Holiday(LocalDate.of(2026, 10, 12), "スポーツの日")));
+
+      service.refresh();
+
+      verify(repository, times(1))
+          .replaceAll(
+              List.of(
+                  new Holiday(LocalDate.of(2026, 1, 1), "元日"),
+                  new Holiday(LocalDate.of(2026, 10, 12), "スポーツの日")));
     }
   }
 
