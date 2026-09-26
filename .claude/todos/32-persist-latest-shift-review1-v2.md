@@ -33,13 +33,13 @@
   - 完了条件：
     - テストを先に書き、RED を確認した
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
-- [ ] **T3a. 氏名が 255 文字を超えたら入力エラーにして保存しない**
+- [x] **T3a. 氏名が 255 文字を超えたら入力エラーにして保存しない**
   - 依頼事項：作業ツリーの未コミット実装（`@Size(max = 255)`、`toNameErrors`、`InvalidNameError`）を使い、氏名が 256 文字のとき `POST /shift` で `save` も `assign` も呼ばれず（`never()`）、`index` が表示され、モデルの `nameErrors` に行番号（0 始まり）とメッセージが入ることを検証する。255 文字ちょうど・氏名が空の行（V-1）はエラーにならず従来どおり処理される。`toNameErrors` 内の `Pattern.compile` は、`TIME_RANGE_FIELD_PATTERN` と同様に `private static final Pattern NAME_FIELD_PATTERN` に切り出す。HTML 本文の検証はこの Todo に含めない（T3b）
   - 対象ファイル：`EmployeeForm.java`、`ShiftController.java`、`src/main/java/com/example/shiftmatch/domain/InvalidNameError.java`、`ShiftControllerTest.java`
   - 完了条件：
     - 256 文字で `save` が呼ばれない・`nameErrors` が入るテストと、255 文字・空の氏名がエラーにならないテストがある
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する（本文検証のテストは T3b で追加するので、この時点では含めない）
-- [ ] **T3b. 氏名のエラーを画面に表示する**
+- [x] **T3b. 氏名のエラーを画面に表示する**
   - 依頼事項：前提「今回（v2）の変更点」のとおり `index.html` に氏名エラーの表示欄を追加する。テストを先に書く：256 文字の氏名で `POST /shift` したレスポンス本文に「1行目」と「氏名は255文字以内で入力してください。」が含まれる（RED：欄がなく含まれない）。エラーがないときは本文にそのメッセージが含まれない
   - 対象ファイル：`src/main/resources/templates/index.html`、`ShiftControllerTest.java`
   - 完了条件：
