@@ -183,6 +183,29 @@ class MonthlyResultViewFactoryTest {
     }
 
     @Test
+    @DisplayName(
+        "[F-4] Given: 月初が木曜で、月曜に祝日がある月, When: カレンダーのマスを作ると," + " Then: 先頭に月〜水の空きが入り、営業日と祝日が日付順に並ぶ")
+    void arrangesCalendarCellsInDateOrderWithLeadingBlanks() {
+      MonthlyResultView view =
+          createView(
+              List.of(
+                  feasibleDay(DAY_1, List.of()),
+                  failedDay(DAY_2, 5),
+                  feasibleDay(DAY_3, List.of())),
+              names("e1"),
+              Map.of(LocalDate.of(2026, 10, 12), "スポーツの日"));
+
+      List<MonthlyResultView.CalendarCell> cells = view.calendarCells();
+
+      assertEquals(7, cells.size());
+      assertTrue(cells.get(0).blank() && cells.get(1).blank() && cells.get(2).blank());
+      assertEquals(DAY_1, cells.get(3).day().date());
+      assertEquals(DAY_2, cells.get(4).day().date());
+      assertEquals(DAY_3, cells.get(5).day().date());
+      assertEquals("スポーツの日", cells.get(6).holiday().name());
+    }
+
+    @Test
     @DisplayName("[F-4] Given: 営業日の祝日名がない, When: 表示モデルを作ると, Then: CalendarDay の祝日名は null")
     void leavesHolidayNameNullOnBusinessDay() {
       MonthlyResultView view =

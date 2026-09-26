@@ -142,7 +142,29 @@
                 <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="detail">日別詳細</button>
               </div>
               <div class="tab-panels">
-                <div id="tab-calendar" class="tab-panel"></div>
+                <div id="tab-calendar" class="tab-panel">
+                  <div class="calendar-grid">
+                    <div class="calendar-head">月</div>
+                    <div class="calendar-head">火</div>
+                    <div class="calendar-head">水</div>
+                    <div class="calendar-head">木</div>
+                    <div class="calendar-head">金</div>
+                    <th:block th:each="cell : ${resultView.calendarCells()}">
+                      <div th:if="${cell.blank()}" class="blank"></div>
+                      <div th:if="${cell.holiday() != null}" class="holiday">
+                        <div class="calendar-date" th:text="${cell.holiday().date().dayOfMonth}"></div>
+                        <div th:text="${cell.holiday().name()}"></div>
+                      </div>
+                      <div th:if="${cell.day() != null}" class="calendar-cell">
+                        <button type="button" class="calendar-day" th:attr="data-date=${cell.day().date()}" th:text="${cell.day().date().dayOfMonth}"></button>
+                        <div th:if="${cell.day().failed()}" class="failed" th:text="'不成立（勤務可 ' + ${cell.day().availableCount()} + ' 名）'"></div>
+                        <th:block th:unless="${cell.day().failed()}">
+                          <div th:each="group : ${cell.day().groups()}" class="work-group" th:text="${group.workTime()} + ' ' + ${group.names()}"></div>
+                        </th:block>
+                      </div>
+                    </th:block>
+                  </div>
+                </div>
                 <div id="tab-employees" class="tab-panel" hidden></div>
                 <div id="tab-detail" class="tab-panel" hidden></div>
               </div>

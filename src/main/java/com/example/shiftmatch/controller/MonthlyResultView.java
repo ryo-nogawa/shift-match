@@ -1,6 +1,8 @@
 package com.example.shiftmatch.controller;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -61,4 +63,62 @@ public record MonthlyResultView(
    * @param workDays 出勤日数
    */
   public record EmployeeRow(String name, List<String> cells, int workDays) {}
+
+  /**
+   * カレンダーの 1 マスです。営業日・祝日・空きのいずれか 1 つだけが設定されます。
+   *
+   * @param day 営業日（営業日でなければ {@code null}）
+   * @param holiday 祝日（祝日でなければ {@code null}）
+   */
+  public record CalendarCell(CalendarDay day, HolidayCell holiday) {
+
+    /**
+     * 月初の曜日をそろえるための空きのマスかどうかを返します。
+     *
+     * @return 空きのマスなら true
+     */
+    public boolean blank() {
+      return day == null && holiday == null;
+    }
+  }
+
+  /**
+   * 月〜金の 5 列に並べるマスを、日付順で返します。
+   *
+   * <p>月初が月曜でない場合は、先頭に空きのマスを入れて曜日をそろえます。
+   *
+   * @return カレンダーのマス
+   */
+  public List<CalendarCell> calendarCells() {
+    List<CalendarCell> cells = new ArrayList<>();
+    int dayIndex = 0;
+    int holidayIndex = 0;
+    boolean first = true;
+    while (dayIndex < days.size() || holidayIndex < holidayCells.size()) {
+      boolean takeDay =
+          holidayIndex >= holidayCells.size()
+              || (dayIndex < days.size()
+                  && days.get(dayIndex).date().isBefore(holidayCells.get(holidayIndex).date()));
+      CalendarCell cell;
+      LocalDate date;
+      if (takeDay) {
+        cell = new CalendarCell(days.get(dayIndex), null);
+        date = days.get(dayIndex).date();
+        dayIndex++;
+      } else {
+        cell = new CalendarCell(null, holidayCells.get(holidayIndex));
+        date = holidayCells.get(holidayIndex).date();
+        holidayIndex++;
+      }
+      if (first) {
+        int offset = date.getDayOfWeek().getValue() - DayOfWeek.MONDAY.getValue();
+        for (int i = 0; i < offset; i++) {
+          cells.add(new CalendarCell(null, null));
+        }
+        first = false;
+      }
+      cells.add(cell);
+    }
+    return cells;
+  }
 }

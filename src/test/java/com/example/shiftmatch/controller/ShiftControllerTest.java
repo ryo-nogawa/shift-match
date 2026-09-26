@@ -14,12 +14,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
+import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
+import com.example.shiftmatch.domain.ShiftAssignment;
+import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
 import java.time.DayOfWeek;
@@ -27,6 +31,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -56,6 +61,33 @@ class ShiftControllerTest {
   @MockitoBean private MonthlyShiftService monthlyShiftService;
 
   @MockitoBean private HolidayService holidayService;
+
+  private static final List<ShiftSlot> SLOTS_IN_ORDER =
+      List.of(
+          ShiftSlot.SLOT_1,
+          ShiftSlot.SLOT_1,
+          ShiftSlot.SLOT_2,
+          ShiftSlot.SLOT_3,
+          ShiftSlot.SLOT_4,
+          ShiftSlot.SLOT_5,
+          ShiftSlot.SLOT_6,
+          ShiftSlot.SLOT_6);
+
+  /** 8 名を枠 1 → 6 の順に割り当てた成立の日を作ります。名前は先頭から順に firstName、e2〜e8 です。 */
+  private static DailyShiftResult feasibleDay(LocalDate date, String firstName) {
+    List<ShiftAssignment> assignments = new ArrayList<>();
+    for (int i = 0; i < SLOTS_IN_ORDER.size(); i++) {
+      String name = i == 0 ? firstName : "e" + (i + 1);
+      assignments.add(
+          new ShiftAssignment(
+              Employee.working(name, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              SLOTS_IN_ORDER.get(i),
+              LocalTime.of(12, 0),
+              LocalTime.of(12, 45)));
+    }
+    return new DailyShiftResult(
+        date, 8, Optional.of(new AssignmentResult(assignments, 0, List.of())));
+  }
 
   private MockHttpServletRequestBuilder validRequest() {
     return post("/shift")
@@ -292,6 +324,53 @@ class ShiftControllerTest {
       assertTrue(html.contains("id=\"tab-detail\" class=\"tab-panel\" hidden"));
       assertTrue(html.contains("result-tabs.js"));
       assertFalse(html.contains("role=\"alert\""));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][F-5][7.1節] Given: 成立の日・不成立の日・祝日がある月, When: POST /shift の HTML を見ると,"
+            + " Then: カレンダーに勤務時間ごとの氏名・不成立（勤務可 n 名）・祝日名・日付ボタンが出る")
+    void rendersCalendarTab() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10),
+                  List.of(
+                      feasibleDay(LocalDate.of(2026, 10, 1), "e1"),
+                      new DailyShiftResult(LocalDate.of(2026, 10, 2), 5, Optional.empty()))));
+      when(holidayService.holidaysOf(YearMonth.of(2026, 10)))
+          .thenReturn(Map.of(LocalDate.of(2026, 10, 12), "スポーツの日"));
+
+      String html = bodyOf(perform(validRequest()));
+
+      assertTrue(html.contains("<div class=\"work-group\">7:30–14:30 e1・e2</div>"));
+      assertTrue(html.contains("<div class=\"work-group\">8:00–15:30 e3</div>"));
+      assertTrue(html.contains("<div class=\"work-group\">9:00–18:30 e7・e8</div>"));
+      assertTrue(html.contains("class=\"failed\""));
+      assertTrue(html.contains("不成立（勤務可 5 名）"));
+      assertTrue(html.contains("class=\"holiday\""));
+      assertTrue(html.contains("スポーツの日"));
+      assertTrue(html.contains("class=\"calendar-day\""));
+      assertTrue(html.contains("data-date=\"2026-10-01\""));
+      assertTrue(html.contains("data-date=\"2026-10-02\""));
+      assertFalse(html.contains("data-date=\"2026-10-12\" class=\"calendar-day\""));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 氏名に HTML タグを含む成立の日, When: POST /shift の HTML を見ると,"
+            + " Then: カレンダーの氏名はエスケープされる")
+    void escapesEmployeeNameInCalendar() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10),
+                  List.of(feasibleDay(LocalDate.of(2026, 10, 1), "<script>alert(1)</script>"))));
+
+      String html = bodyOf(perform(validRequest()));
+
+      assertFalse(html.contains("<script>alert(1)</script>"));
+      assertTrue(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;・e2"));
     }
 
     @Test

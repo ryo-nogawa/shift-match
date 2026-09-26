@@ -57,5 +57,12 @@
         switchTab(button.getAttribute("data-tab"), buttons, panels);
       });
     });
+    // カレンダーの日付ボタンを押すと、その日の日別詳細を開く（8.3 節）
+    document.addEventListener("click", function (event) {
+      const dayButton = event.target.closest(".calendar-day");
+      if (dayButton) {
+        openDetail(dayButton.getAttribute("data-date"));
+      }
+    });
   });
 })();
