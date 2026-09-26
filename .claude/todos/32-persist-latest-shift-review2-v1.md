@@ -33,7 +33,7 @@
     - 3〜12 行目の `start`・`end` を検証するアサーションがある
     - 復元処理で空行の `start` にダミー値を入れるとテストが失敗することを確認し、確認後に元へ戻した（実行ログに書く）
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
-- [ ] **T4. 実際の挙動と逆のコメントを直す**
+- [x] **T4. 実際の挙動と逆のコメントを直す**
   - 依頼事項：`src/main/java/com/example/shiftmatch/persistence/LatestShiftRepository.java`（60 行目付近）の「入力エラー時に前回の保存を維持するため」というコメントを、実際の理由（`Optional.empty()` は不成立を表し、従業員入力だけを保存して以前の割り当て・スコアを消す）に合わせて直すか、不要なら削除する。コードは変えない。最後に `./mvnw spotless:apply` の後 `./mvnw test` を実行する
   - 対象ファイル：`LatestShiftRepository.java`
   - 完了条件：

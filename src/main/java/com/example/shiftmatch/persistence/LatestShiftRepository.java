@@ -57,7 +57,7 @@ public class LatestShiftRepository {
           .update();
     }
 
-    // 入力エラー時に前回の保存を維持するため、割り当て結果がある場合のみ保存
+    // 不成立時も従業員入力だけを保存するため、割り当て結果がある場合のみ割り当てとスコアを保存
     if (result.isPresent()) {
       AssignmentResult assignmentResult = result.get();
       var assignments = assignmentResult.assignments();
