@@ -16,195 +16,200 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("[F-11] 希望の優先順位")
 class WishResolverTest {
 
-  @Test
-  @DisplayName("個別変更がなければ曜日の基本シフトを使う")
-  void testUseBaseShiftWhenNoAdjustment() {
-    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-    LocalTime start = LocalTime.of(9, 0);
-    LocalTime end = LocalTime.of(18, 0);
-    DailyWish wish = new DailyWish(false, start, end);
-    baseShifts.put(DayOfWeek.MONDAY, wish);
-    baseShifts.put(DayOfWeek.TUESDAY, wish);
-    baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-    baseShifts.put(DayOfWeek.THURSDAY, wish);
-    baseShifts.put(DayOfWeek.FRIDAY, wish);
+  @Nested
+  class 正常系 {
 
-    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+    @Test
+    @DisplayName("[F-11] Given: 個別変更がないとき, When: resolve を実行すると, Then: 曜日の基本シフトを使う")
+    void useBaseShiftWhenNoAdjustment() {
+      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+      LocalTime start = LocalTime.of(9, 0);
+      LocalTime end = LocalTime.of(18, 0);
+      DailyWish wish = new DailyWish(false, start, end);
+      baseShifts.put(DayOfWeek.MONDAY, wish);
+      baseShifts.put(DayOfWeek.TUESDAY, wish);
+      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
+      baseShifts.put(DayOfWeek.THURSDAY, wish);
+      baseShifts.put(DayOfWeek.FRIDAY, wish);
 
-    WishResolver resolver = new WishResolver();
-    LocalDate tuesdayDate = LocalDate.of(2024, 9, 3); // Tuesday
-    DailyWish resolved = resolver.resolve(profile, tuesdayDate, new ArrayList<>());
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
 
-    assertFalse(resolved.off());
-    assertEquals(start, resolved.start());
-    assertEquals(end, resolved.end());
-  }
+      WishResolver resolver = new WishResolver();
+      LocalDate tuesdayDate = LocalDate.of(2024, 9, 3); // Tuesday
+      DailyWish resolved = resolver.resolve(profile, tuesdayDate, new ArrayList<>());
 
-  @Test
-  @DisplayName("個別変更があれば基本シフトより優先する")
-  void testAdjustmentTakesPrecedence() {
-    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-    LocalTime baseStart = LocalTime.of(9, 0);
-    LocalTime baseEnd = LocalTime.of(18, 0);
-    DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
-    baseShifts.put(DayOfWeek.MONDAY, baseWish);
-    baseShifts.put(DayOfWeek.TUESDAY, baseWish);
-    baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
-    baseShifts.put(DayOfWeek.THURSDAY, baseWish);
-    baseShifts.put(DayOfWeek.FRIDAY, baseWish);
+      assertFalse(resolved.off());
+      assertEquals(start, resolved.start());
+      assertEquals(end, resolved.end());
+    }
 
-    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+    @Test
+    @DisplayName("[F-11] Given: 個別変更があるとき, When: resolve を実行すると, Then: 個別変更が基本シフトより優先される")
+    void adjustmentTakesPrecedence() {
+      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+      LocalTime baseStart = LocalTime.of(9, 0);
+      LocalTime baseEnd = LocalTime.of(18, 0);
+      DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
+      baseShifts.put(DayOfWeek.MONDAY, baseWish);
+      baseShifts.put(DayOfWeek.TUESDAY, baseWish);
+      baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
+      baseShifts.put(DayOfWeek.THURSDAY, baseWish);
+      baseShifts.put(DayOfWeek.FRIDAY, baseWish);
 
-    LocalDate tuesdayDate = LocalDate.of(2024, 9, 3); // Tuesday
-    LocalTime adjustStart = LocalTime.of(10, 0);
-    LocalTime adjustEnd = LocalTime.of(17, 0);
-    DailyWish adjustWish = new DailyWish(false, adjustStart, adjustEnd);
-    ShiftAdjustment adjustment = new ShiftAdjustment(tuesdayDate, "Taro", adjustWish);
-    List<ShiftAdjustment> adjustments = new ArrayList<>();
-    adjustments.add(adjustment);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
 
-    WishResolver resolver = new WishResolver();
-    DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
+      LocalDate tuesdayDate = LocalDate.of(2024, 9, 3); // Tuesday
+      LocalTime adjustStart = LocalTime.of(10, 0);
+      LocalTime adjustEnd = LocalTime.of(17, 0);
+      DailyWish adjustWish = new DailyWish(false, adjustStart, adjustEnd);
+      ShiftAdjustment adjustment = new ShiftAdjustment(tuesdayDate, "Taro", adjustWish);
+      List<ShiftAdjustment> adjustments = new ArrayList<>();
+      adjustments.add(adjustment);
 
-    assertFalse(resolved.off());
-    assertEquals(adjustStart, resolved.start());
-    assertEquals(adjustEnd, resolved.end());
-  }
+      WishResolver resolver = new WishResolver();
+      DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
 
-  @Test
-  @DisplayName("個別変更は日付が違う日には効かない")
-  void testAdjustmentSpecificToDate() {
-    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-    LocalTime baseStart = LocalTime.of(9, 0);
-    LocalTime baseEnd = LocalTime.of(18, 0);
-    DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
-    baseShifts.put(DayOfWeek.MONDAY, baseWish);
-    baseShifts.put(DayOfWeek.TUESDAY, baseWish);
-    baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
-    baseShifts.put(DayOfWeek.THURSDAY, baseWish);
-    baseShifts.put(DayOfWeek.FRIDAY, baseWish);
+      assertFalse(resolved.off());
+      assertEquals(adjustStart, resolved.start());
+      assertEquals(adjustEnd, resolved.end());
+    }
 
-    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+    @Test
+    @DisplayName("[F-11] Given: 個別変更の日付が異なるとき, When: resolve を実行すると, Then: 基本シフトが使われる")
+    void adjustmentSpecificToDate() {
+      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+      LocalTime baseStart = LocalTime.of(9, 0);
+      LocalTime baseEnd = LocalTime.of(18, 0);
+      DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
+      baseShifts.put(DayOfWeek.MONDAY, baseWish);
+      baseShifts.put(DayOfWeek.TUESDAY, baseWish);
+      baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
+      baseShifts.put(DayOfWeek.THURSDAY, baseWish);
+      baseShifts.put(DayOfWeek.FRIDAY, baseWish);
 
-    LocalDate mondayDate = LocalDate.of(2024, 9, 2);
-    LocalDate tuesdayDate = LocalDate.of(2024, 9, 3);
-    LocalTime adjustStart = LocalTime.of(10, 0);
-    LocalTime adjustEnd = LocalTime.of(17, 0);
-    DailyWish adjustWish = new DailyWish(false, adjustStart, adjustEnd);
-    ShiftAdjustment adjustment = new ShiftAdjustment(mondayDate, "Taro", adjustWish);
-    List<ShiftAdjustment> adjustments = new ArrayList<>();
-    adjustments.add(adjustment);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
 
-    WishResolver resolver = new WishResolver();
-    // Tuesday の希望を解決（調整は Monday 用）
-    DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
+      LocalDate mondayDate = LocalDate.of(2024, 9, 2);
+      LocalDate tuesdayDate = LocalDate.of(2024, 9, 3);
+      LocalTime adjustStart = LocalTime.of(10, 0);
+      LocalTime adjustEnd = LocalTime.of(17, 0);
+      DailyWish adjustWish = new DailyWish(false, adjustStart, adjustEnd);
+      ShiftAdjustment adjustment = new ShiftAdjustment(mondayDate, "Taro", adjustWish);
+      List<ShiftAdjustment> adjustments = new ArrayList<>();
+      adjustments.add(adjustment);
 
-    // 基本シフトが使われるはず
-    assertFalse(resolved.off());
-    assertEquals(baseStart, resolved.start());
-    assertEquals(baseEnd, resolved.end());
-  }
+      WishResolver resolver = new WishResolver();
+      // Tuesday の希望を解決（調整は Monday 用）
+      DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
 
-  @Test
-  @DisplayName("氏名が一致しない個別変更は無視される")
-  void testAdjustmentWithMismatchedName() {
-    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-    LocalTime baseStart = LocalTime.of(9, 0);
-    LocalTime baseEnd = LocalTime.of(18, 0);
-    DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
-    baseShifts.put(DayOfWeek.MONDAY, baseWish);
-    baseShifts.put(DayOfWeek.TUESDAY, baseWish);
-    baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
-    baseShifts.put(DayOfWeek.THURSDAY, baseWish);
-    baseShifts.put(DayOfWeek.FRIDAY, baseWish);
+      // 基本シフトが使われるはず
+      assertFalse(resolved.off());
+      assertEquals(baseStart, resolved.start());
+      assertEquals(baseEnd, resolved.end());
+    }
 
-    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+    @Test
+    @DisplayName("[F-11] Given: 個別変更の氏名が一致しないとき, When: resolve を実行すると, Then: 個別変更は無視される")
+    void adjustmentWithMismatchedName() {
+      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+      LocalTime baseStart = LocalTime.of(9, 0);
+      LocalTime baseEnd = LocalTime.of(18, 0);
+      DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
+      baseShifts.put(DayOfWeek.MONDAY, baseWish);
+      baseShifts.put(DayOfWeek.TUESDAY, baseWish);
+      baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
+      baseShifts.put(DayOfWeek.THURSDAY, baseWish);
+      baseShifts.put(DayOfWeek.FRIDAY, baseWish);
 
-    LocalDate tuesdayDate = LocalDate.of(2024, 9, 3);
-    LocalTime adjustStart = LocalTime.of(10, 0);
-    LocalTime adjustEnd = LocalTime.of(17, 0);
-    DailyWish adjustWish = new DailyWish(false, adjustStart, adjustEnd);
-    ShiftAdjustment adjustment = new ShiftAdjustment(tuesdayDate, "Hanako", adjustWish);
-    List<ShiftAdjustment> adjustments = new ArrayList<>();
-    adjustments.add(adjustment);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
 
-    WishResolver resolver = new WishResolver();
-    DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
+      LocalDate tuesdayDate = LocalDate.of(2024, 9, 3);
+      LocalTime adjustStart = LocalTime.of(10, 0);
+      LocalTime adjustEnd = LocalTime.of(17, 0);
+      DailyWish adjustWish = new DailyWish(false, adjustStart, adjustEnd);
+      ShiftAdjustment adjustment = new ShiftAdjustment(tuesdayDate, "Hanako", adjustWish);
+      List<ShiftAdjustment> adjustments = new ArrayList<>();
+      adjustments.add(adjustment);
 
-    // 氏名が一致しないので基本シフトが使われるはず
-    assertFalse(resolved.off());
-    assertEquals(baseStart, resolved.start());
-    assertEquals(baseEnd, resolved.end());
-  }
+      WishResolver resolver = new WishResolver();
+      DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
 
-  @Test
-  @DisplayName("個別変更で休みへの変更が反映される")
-  void testAdjustmentToLeave() {
-    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-    LocalTime baseStart = LocalTime.of(9, 0);
-    LocalTime baseEnd = LocalTime.of(18, 0);
-    DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
-    baseShifts.put(DayOfWeek.MONDAY, baseWish);
-    baseShifts.put(DayOfWeek.TUESDAY, baseWish);
-    baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
-    baseShifts.put(DayOfWeek.THURSDAY, baseWish);
-    baseShifts.put(DayOfWeek.FRIDAY, baseWish);
+      // 氏名が一致しないので基本シフトが使われるはず
+      assertFalse(resolved.off());
+      assertEquals(baseStart, resolved.start());
+      assertEquals(baseEnd, resolved.end());
+    }
 
-    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+    @Test
+    @DisplayName("[F-11] Given: 個別変更で休みへの変更があるとき, When: resolve を実行すると, Then: 休みが反映される")
+    void adjustmentToLeave() {
+      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+      LocalTime baseStart = LocalTime.of(9, 0);
+      LocalTime baseEnd = LocalTime.of(18, 0);
+      DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
+      baseShifts.put(DayOfWeek.MONDAY, baseWish);
+      baseShifts.put(DayOfWeek.TUESDAY, baseWish);
+      baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
+      baseShifts.put(DayOfWeek.THURSDAY, baseWish);
+      baseShifts.put(DayOfWeek.FRIDAY, baseWish);
 
-    LocalDate tuesdayDate = LocalDate.of(2024, 9, 3);
-    DailyWish adjustWish = new DailyWish(true, null, null);
-    ShiftAdjustment adjustment = new ShiftAdjustment(tuesdayDate, "Taro", adjustWish);
-    List<ShiftAdjustment> adjustments = new ArrayList<>();
-    adjustments.add(adjustment);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
 
-    WishResolver resolver = new WishResolver();
-    DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
+      LocalDate tuesdayDate = LocalDate.of(2024, 9, 3);
+      DailyWish adjustWish = new DailyWish(true, null, null);
+      ShiftAdjustment adjustment = new ShiftAdjustment(tuesdayDate, "Taro", adjustWish);
+      List<ShiftAdjustment> adjustments = new ArrayList<>();
+      adjustments.add(adjustment);
 
-    assertTrue(resolved.off());
-  }
+      WishResolver resolver = new WishResolver();
+      DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
 
-  @Test
-  @DisplayName("同じ日付・氏名の個別変更が複数あれば、後ろのものを採用する")
-  void testLastAdjustmentWins() {
-    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-    LocalTime baseStart = LocalTime.of(9, 0);
-    LocalTime baseEnd = LocalTime.of(18, 0);
-    DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
-    baseShifts.put(DayOfWeek.MONDAY, baseWish);
-    baseShifts.put(DayOfWeek.TUESDAY, baseWish);
-    baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
-    baseShifts.put(DayOfWeek.THURSDAY, baseWish);
-    baseShifts.put(DayOfWeek.FRIDAY, baseWish);
+      assertTrue(resolved.off());
+    }
 
-    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+    @Test
+    @DisplayName("[F-11] Given: 同じ日付・氏名の個別変更が複数あるとき, When: resolve を実行すると, Then: 後ろのものを採用する")
+    void lastAdjustmentWins() {
+      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+      LocalTime baseStart = LocalTime.of(9, 0);
+      LocalTime baseEnd = LocalTime.of(18, 0);
+      DailyWish baseWish = new DailyWish(false, baseStart, baseEnd);
+      baseShifts.put(DayOfWeek.MONDAY, baseWish);
+      baseShifts.put(DayOfWeek.TUESDAY, baseWish);
+      baseShifts.put(DayOfWeek.WEDNESDAY, baseWish);
+      baseShifts.put(DayOfWeek.THURSDAY, baseWish);
+      baseShifts.put(DayOfWeek.FRIDAY, baseWish);
 
-    LocalDate tuesdayDate = LocalDate.of(2024, 9, 3);
-    LocalTime adjust1Start = LocalTime.of(10, 0);
-    LocalTime adjust1End = LocalTime.of(17, 0);
-    DailyWish adjustWish1 = new DailyWish(false, adjust1Start, adjust1End);
-    ShiftAdjustment adjustment1 = new ShiftAdjustment(tuesdayDate, "Taro", adjustWish1);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
 
-    LocalTime adjust2Start = LocalTime.of(11, 0);
-    LocalTime adjust2End = LocalTime.of(16, 0);
-    DailyWish adjustWish2 = new DailyWish(false, adjust2Start, adjust2End);
-    ShiftAdjustment adjustment2 = new ShiftAdjustment(tuesdayDate, "Taro", adjustWish2);
+      LocalDate tuesdayDate = LocalDate.of(2024, 9, 3);
+      LocalTime adjust1Start = LocalTime.of(10, 0);
+      LocalTime adjust1End = LocalTime.of(17, 0);
+      DailyWish adjustWish1 = new DailyWish(false, adjust1Start, adjust1End);
+      ShiftAdjustment adjustment1 = new ShiftAdjustment(tuesdayDate, "Taro", adjustWish1);
 
-    List<ShiftAdjustment> adjustments = new ArrayList<>();
-    adjustments.add(adjustment1);
-    adjustments.add(adjustment2);
+      LocalTime adjust2Start = LocalTime.of(11, 0);
+      LocalTime adjust2End = LocalTime.of(16, 0);
+      DailyWish adjustWish2 = new DailyWish(false, adjust2Start, adjust2End);
+      ShiftAdjustment adjustment2 = new ShiftAdjustment(tuesdayDate, "Taro", adjustWish2);
 
-    WishResolver resolver = new WishResolver();
-    DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
+      List<ShiftAdjustment> adjustments = new ArrayList<>();
+      adjustments.add(adjustment1);
+      adjustments.add(adjustment2);
 
-    // 後ろの個別変更が採用される
-    assertFalse(resolved.off());
-    assertEquals(adjust2Start, resolved.start());
-    assertEquals(adjust2End, resolved.end());
+      WishResolver resolver = new WishResolver();
+      DailyWish resolved = resolver.resolve(profile, tuesdayDate, adjustments);
+
+      // 後ろの個別変更が採用される
+      assertFalse(resolved.off());
+      assertEquals(adjust2Start, resolved.start());
+      assertEquals(adjust2End, resolved.end());
+    }
   }
 }
