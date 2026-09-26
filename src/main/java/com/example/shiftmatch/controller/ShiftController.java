@@ -143,7 +143,6 @@ public class ShiftController {
   private List<InvalidTimeRangeError> toTimeRangeErrors(BindingResult bindingResult) {
     List<TimeRangeFieldError> fieldErrors = new ArrayList<>();
 
-    // employees[N].start / employees[N].end のフィールドエラーだけを集める
     for (FieldError error : bindingResult.getFieldErrors()) {
       Matcher matcher = TIME_RANGE_FIELD_PATTERN.matcher(error.getField());
       if (matcher.matches()) {
