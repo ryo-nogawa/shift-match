@@ -56,7 +56,7 @@
     - テストの検証内容（アサーション）を変えていない
     - `./mvnw test -Dtest='Holiday*Test+HttpHolidayCsvFetcherTest'` が成功する
 
-- [ ] **R6. フェッチャーの例外の捕捉を絞り、設定の誤りを起動時に見つける（SHOULD）**
+- [x] **R6. フェッチャーの例外の捉を絞り、設定の誤りを起動時に見つける（SHOULD）**
   - 依頼事項：`HttpHolidayCsvFetcher.fetch` の `catch (Exception ...)` を、`IOException` と `InterruptedException` の個別の捕捉に変える（`InterruptedException` では `Thread.currentThread().interrupt()` を呼んでから `HolidayFetchException` を投げる）。HTTP 200 以外は、明示的に `HolidayFetchException` を投げる。URL は、コンストラクタで `URI.create(url)` を呼んで保持し、形式が不正なときはアプリの起動時に `IllegalArgumentException` で失敗する（設定の誤りを、取得失敗として握りつぶさない）。テストは `HttpServer` を使う既存の方式を維持する
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HttpHolidayCsvFetcher.java`、`src/test/java/com/example/shiftmatch/service/HttpHolidayCsvFetcherTest.java`
   - 完了条件：
@@ -86,7 +86,7 @@
     - 「何をしているか」だけの行コメントがなくなっている（`grep -n "^\s*//" ` で残ったコメントが、すべて理由を述べている）
     - `./mvnw test -Dtest='Holiday*Test'` が成功する
 
-- [ ] **R10. 全テストと静的解析を通す**
+- [x] **R10. 全テストと静的解析を通す**
   - 依頼事項：`./mvnw spotless:apply` を実行して整形し、`./mvnw test` で全テスト・Spotless・Checkstyle を通す。`pom.xml` に変更がないことを確認する
   - 対象ファイル：変更した全ファイル
   - 完了条件：
