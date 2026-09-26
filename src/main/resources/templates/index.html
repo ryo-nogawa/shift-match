@@ -184,6 +184,7 @@
         <thead>
           <tr>
             <th>氏名</th>
+            <th>区分</th>
             <th>勤務時間</th>
             <th>休憩時間</th>
             <th>希望時間帯</th>
@@ -192,6 +193,7 @@
         <tbody>
           <tr th:each="assignment : ${assignmentResult.assignments()}">
             <td th:text="${assignment.employee().name()}"></td>
+            <td th:text="${assignment.employee().employmentType().label()}"></td>
             <td>
               <span class="pill" data-duration="work"
                 th:text="|${#temporals.format(assignment.slot().startTime(), 'HH:mm')}〜${#temporals.format(assignment.slot().endTime(), 'HH:mm')}|"
@@ -212,7 +214,7 @@
       <div class="unassigned" th:if="${assignmentResult.unassignedEmployees().size() > 0}">
         <b>未出勤者</b>
         <div class="unassigned-item" th:each="employee : ${assignmentResult.unassignedEmployees()}">
-          <span class="chip" th:text="${employee.name()}"></span>
+          <span class="chip" th:text="|${employee.name()}（${employee.employmentType().label()}）|"></span>
           <span class="reason" th:text="${assignmentResult.unassignedReasonLabel(employee)}"></span>
         </div>
       </div>

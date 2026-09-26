@@ -1370,7 +1370,7 @@ class ShiftControllerTest {
               .getContentAsString();
 
       assertTrue(
-          responseContent.contains("class=\"chip\">K</span>"),
+          responseContent.contains("class=\"chip\">K（常勤）</span>"),
           "Employee on leave should be displayed as unassigned");
     }
 
@@ -1422,10 +1422,10 @@ class ShiftControllerTest {
       assertEquals(2, chipCount, "Should have exactly 2 chips for 2 unassigned employees");
 
       assertTrue(
-          responseContent.contains(">I<") || responseContent.contains("I</span>"),
+          responseContent.contains("I（常勤）") || responseContent.contains(">I</span>"),
           "Should contain employee I");
       assertTrue(
-          responseContent.contains(">J<") || responseContent.contains("J</span>"),
+          responseContent.contains("J（常勤）") || responseContent.contains(">J</span>"),
           "Should contain employee J");
     }
 
@@ -2047,7 +2047,7 @@ class ShiftControllerTest {
         assertTrue(rows.get(i).contains("07:30〜18:30"), "Row " + i + " should show wish range");
         assertFalse(rows.get(i).contains("slot-tag"), "Row " + i + " should not show slot tags");
         assertEquals(
-            4, rows.get(i).split("<td", -1).length - 1, "Row " + i + " should have 4 cells");
+            5, rows.get(i).split("<td", -1).length - 1, "Row " + i + " should have 5 cells");
       }
     }
 
@@ -2120,11 +2120,11 @@ class ShiftControllerTest {
       List<String> items = unassignedItems(html);
 
       assertEquals(3, items.size());
-      assertTrue(items.get(0).contains(">K<"));
+      assertTrue(items.get(0).contains("K") && items.get(0).contains("常勤"));
       assertTrue(items.get(0).contains(">休み<"));
-      assertTrue(items.get(1).contains(">I<"));
+      assertTrue(items.get(1).contains("I") && items.get(1).contains("常勤"));
       assertTrue(items.get(1).contains(">入れる枠はあったが、同じずれの案があり、入力順で優先度が高い A が選ばれた<"));
-      assertTrue(items.get(2).contains(">J<"));
+      assertTrue(items.get(2).contains("J") && items.get(2).contains("常勤"));
       assertTrue(items.get(2).contains(">どの枠にも入れない<"));
       assertFalse(html.contains("slot-tag"), "Should not show slot tags");
     }
@@ -2160,6 +2160,99 @@ class ShiftControllerTest {
           postWith(new AssignmentResult(createStandardResult().assignments(), 8, unassigned));
 
       assertEquals(3, html.split("class=\"chip\"", -1).length - 1);
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 未出勤者が常勤・パート・管理職のとき, When: チップを確認すると," + " Then: 各人の氏名に（区分ラベル）が併記される")
+    void showsEmploymentTypeInUnassignedChip() throws Exception {
+      List<Employee> unassigned =
+          List.of(
+              Employee.onLeave("K"),
+              Employee.working(
+                  "I", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              Employee.working(
+                  "J", EmploymentType.MANAGER, LocalTime.of(9, 0), LocalTime.of(10, 0)));
+
+      String html =
+          postWith(new AssignmentResult(createStandardResult().assignments(), 8, unassigned));
+      List<String> items = unassignedItems(html);
+
+      assertEquals(3, items.size());
+      assertTrue(
+          items.get(0).contains("K") && items.get(0).contains("常勤"), "K should show with 常勤");
+      assertTrue(
+          items.get(1).contains("I") && items.get(1).contains("パート"), "I should show with パート");
+      assertTrue(
+          items.get(2).contains("J") && items.get(2).contains("管理職"), "J should show with 管理職");
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 8名が割り当てられたとき, When: 結果表を確認すると," + " Then: 各行に区分ラベル（常勤・パート・管理職）が含まれる")
+    void showsEmploymentTypeLabelInResultTable() throws Exception {
+      List<ShiftAssignment> assignments =
+          List.of(
+              new ShiftAssignment(
+                  Employee.working(
+                      "A", EmploymentType.FULL_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+                  ShiftSlot.SLOT_1,
+                  LocalTime.of(12, 0),
+                  LocalTime.of(12, 45)),
+              new ShiftAssignment(
+                  Employee.working(
+                      "B", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+                  ShiftSlot.SLOT_1,
+                  LocalTime.of(12, 0),
+                  LocalTime.of(12, 45)),
+              new ShiftAssignment(
+                  Employee.working(
+                      "C", EmploymentType.MANAGER, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+                  ShiftSlot.SLOT_2,
+                  LocalTime.of(12, 45),
+                  LocalTime.of(13, 30)),
+              new ShiftAssignment(
+                  Employee.working(
+                      "D", EmploymentType.FULL_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+                  ShiftSlot.SLOT_3,
+                  LocalTime.of(12, 45),
+                  LocalTime.of(13, 30)),
+              new ShiftAssignment(
+                  Employee.working(
+                      "E", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+                  ShiftSlot.SLOT_4,
+                  LocalTime.of(13, 30),
+                  LocalTime.of(14, 15)),
+              new ShiftAssignment(
+                  Employee.working(
+                      "F", EmploymentType.MANAGER, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+                  ShiftSlot.SLOT_5,
+                  LocalTime.of(13, 30),
+                  LocalTime.of(14, 30)),
+              new ShiftAssignment(
+                  Employee.working(
+                      "G", EmploymentType.FULL_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+                  ShiftSlot.SLOT_6,
+                  LocalTime.of(14, 15),
+                  LocalTime.of(15, 15)),
+              new ShiftAssignment(
+                  Employee.working(
+                      "H", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30)),
+                  ShiftSlot.SLOT_6,
+                  LocalTime.of(14, 30),
+                  LocalTime.of(15, 30)));
+      AssignmentResult result = new AssignmentResult(assignments, 8, List.of());
+
+      String html = postWith(result);
+      List<String> rows = assignedRows(html);
+
+      assertEquals(8, rows.size());
+      assertTrue(rows.get(0).contains("常勤"), "Row 0 (A) should show 常勤");
+      assertTrue(rows.get(1).contains("パート"), "Row 1 (B) should show パート");
+      assertTrue(rows.get(2).contains("管理職"), "Row 2 (C) should show 管理職");
+      assertTrue(rows.get(3).contains("常勤"), "Row 3 (D) should show 常勤");
+      assertTrue(rows.get(4).contains("パート"), "Row 4 (E) should show パート");
+      assertTrue(rows.get(5).contains("管理職"), "Row 5 (F) should show 管理職");
+      assertTrue(rows.get(6).contains("常勤"), "Row 6 (G) should show 常勤");
+      assertTrue(rows.get(7).contains("パート"), "Row 7 (H) should show パート");
     }
   }
 
