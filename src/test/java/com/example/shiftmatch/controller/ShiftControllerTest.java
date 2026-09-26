@@ -21,8 +21,7 @@ import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
-import com.example.shiftmatch.persistence.LatestShiftRepository;
-import com.example.shiftmatch.service.ShiftAssignmentService;
+import com.example.shiftmatch.service.MonthlyShiftService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -52,9 +51,9 @@ class ShiftControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
-  @MockitoBean private ShiftAssignmentService shiftAssignmentService;
+  @MockitoBean private MonthlyShiftService monthlyShiftService;
 
-  @MockitoBean private LatestShiftRepository latestShiftRepository;
+  @MockitoBean private MonthlyFormConverter monthlyFormConverter;
 
   /**
    * 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（小文字）。
