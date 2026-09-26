@@ -138,8 +138,8 @@
               <h2>シフト作成結果</h2>
               <div th:each="dayResult : ${monthlyResult.days()}">
                 <div th:text="${dayResult.date()}"></div>
-                <div th:if="${dayResult.feasible()}" th:text="'成立'"></div>
-                <div th:if="!${dayResult.feasible()}" th:text="'不成立'"></div>
+                <div th:if="${dayResult.assignment().isPresent()}" th:text="'成立'"></div>
+                <div th:if="${dayResult.assignment().isEmpty()}" th:text="'不成立'"></div>
                 <div th:text="'勤務できる人数: ' + ${dayResult.availableCount()}"></div>
               </div>
             </div>
