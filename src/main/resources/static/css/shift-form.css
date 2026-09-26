@@ -123,4 +123,11 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
   .chip { background: #2d2822 }
   .empty-icon { background: #3a2f12; color: #f0c25a }
   .tl-break { background: repeating-linear-gradient(45deg, #000 0 3px, #0006 3px 6px); border-color: #fff5 }
+  .slot-tag { background: #2d2822 }
 }
+
+.slot-tag { display: inline-block; padding: 4px 10px; border-radius: 6px; background: #f0e8dc; font-size: 12px; margin: 2px 2px }
+.slot-tag.slot-chosen { background: var(--accent); color: #fff; font-weight: 600; border: 1px solid var(--accent) }
+.score-formula { font-size: 14px; color: var(--sub); white-space: pre-wrap; word-break: break-word }
+.unassigned-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px }
+.reason { font-size: 13px; color: var(--sub) }
