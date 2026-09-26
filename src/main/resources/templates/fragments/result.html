@@ -3,6 +3,7 @@
 <body>
   <!-- 画面 3（結果）の中身。GET / と GET /shift/saved で共有する -->
   <th:block th:fragment="resultPanel">
+    <div id="result-panel" th:attr="data-result-source=${resultSource},data-result-month=${monthlyResult != null && resultSource == 'fresh'} ? ${monthlyResult.month()} : null">
       <p th:if="${saveError}" class="alert" role="alert" th:text="${saveError}"></p>
       <p th:if="${resultSource == 'saved'}" class="result-source">保存済みのシフトを表示しています</p>
       <div th:if="${resultView}" class="result">
@@ -111,6 +112,7 @@
       <div th:if="${resultSource == 'none'}">
         <p>この月のシフトはまだ作成されていません</p>
       </div>
+    </div>
   </th:block>
 </body>
 </html>

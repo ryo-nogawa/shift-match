@@ -878,4 +878,42 @@ class ShiftControllerTest {
       verify(shiftStorageService, never()).load(any());
     }
   }
+
+  @Nested
+  class 結果パネルの属性 {
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 今回作成した結果, When: POST /shift の HTML を見ると,"
+            + " Then: 結果パネルに data-result-source=fresh と data-result-month が付く")
+    void freshPanelHasSourceAndMonth() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10), List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A"))));
+
+      String html = bodyOf(perform(validRequest()));
+
+      assertTrue(html.contains("id=\"result-panel\""));
+      assertTrue(html.contains("data-result-source=\"fresh\""));
+      assertTrue(html.contains("data-result-month=\"2026-10\""));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 保存済みシフトがない, When: GET /shift/saved の HTML を見ると,"
+            + " Then: 結果パネルに data-result-source=none が付き、data-result-month はない")
+    void nonePanelHasSourceOnly() throws Exception {
+      String html =
+          bodyOf(
+              mockMvc
+                  .perform(get("/shift/saved").param("month", "2026-10"))
+                  .andExpect(status().isOk())
+                  .andReturn());
+
+      assertTrue(html.contains("id=\"result-panel\""));
+      assertTrue(html.contains("data-result-source=\"none\""));
+      assertFalse(html.contains("data-result-month"));
+    }
+  }
 }
