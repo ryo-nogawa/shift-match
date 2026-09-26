@@ -106,6 +106,115 @@ class EmployeeTest {
   }
 
   @Nested
+  @DisplayName("[H-3] 従業員が入れる枠を列挙")
+  class WorkableSlots {
+
+    @Test
+    @DisplayName("[H-3] Given: 7:30〜18:30の従業員のとき, When: workableSlotsを呼ぶと, Then:" + " 枠1〜6をその順で返す")
+    void workableSlotsReturnsAllSlotsInOrder() {
+      Employee employee = Employee.working("太郎", LocalTime.of(7, 30), LocalTime.of(18, 30));
+
+      var slots = employee.workableSlots();
+
+      assertEquals(6, slots.size());
+      assertEquals(ShiftSlot.SLOT_1, slots.get(0));
+      assertEquals(ShiftSlot.SLOT_2, slots.get(1));
+      assertEquals(ShiftSlot.SLOT_3, slots.get(2));
+      assertEquals(ShiftSlot.SLOT_4, slots.get(3));
+      assertEquals(ShiftSlot.SLOT_5, slots.get(4));
+      assertEquals(ShiftSlot.SLOT_6, slots.get(5));
+    }
+
+    @Test
+    @DisplayName("[H-3] Given: 9:00〜16:30の従業員のとき, When: workableSlotsを呼ぶと, Then:" + " 枠4だけを返す")
+    void workableSlotsReturnsOnlyMatchingSlots() {
+      Employee employee = Employee.working("太郎", LocalTime.of(9, 0), LocalTime.of(16, 30));
+
+      var slots = employee.workableSlots();
+
+      assertEquals(1, slots.size());
+      assertEquals(ShiftSlot.SLOT_4, slots.get(0));
+    }
+
+    @Test
+    @DisplayName("[H-3] Given: 休みの従業員のとき, When: workableSlotsを呼ぶと, Then:" + " 空のリストを返す")
+    void workableSlotsReturnsEmptyForOnLeaveEmployee() {
+      Employee employee = Employee.onLeave("太郎");
+
+      var slots = employee.workableSlots();
+
+      assertEquals(0, slots.size());
+    }
+
+    @Test
+    @DisplayName("[H-3] Given: 開始・終了がnullの従業員のとき, When: workableSlotsを呼ぶと, Then:" + " 空のリストを返す")
+    void workableSlotsReturnsEmptyWhenTimeRangeIsNull() {
+      Employee employee = new Employee("太郎", false, null, null);
+
+      var slots = employee.workableSlots();
+
+      assertEquals(0, slots.size());
+    }
+
+    @Test
+    @DisplayName(
+        "[H-3] Given: 8:00〜15:30の従業員（枠2と境界が一致）のとき, When: workableSlotsを呼ぶと, Then:" + " 枠2を含む")
+    void workableSlotsIncludeSlotWhenBoundariesMatch() {
+      Employee employee = Employee.working("太郎", LocalTime.of(8, 0), LocalTime.of(15, 30));
+
+      var slots = employee.workableSlots();
+
+      assertEquals(1, slots.size());
+      assertEquals(ShiftSlot.SLOT_2, slots.get(0));
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-4][H-3] 未出勤の理由を判定")
+  class UnassignedReasonTest {
+
+    @Test
+    @DisplayName("[F-4] Given: 休みの従業員K, When: unassignedReason()を呼ぶと, Then: ON_LEAVE を返す")
+    void onLeaveEmployeeReturnsOnLeave() {
+      Employee employee = Employee.onLeave("K");
+
+      assertEquals(UnassignedReason.ON_LEAVE, employee.unassignedReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][H-3] Given: 開始・終了がnullの従業員, When: unassignedReason()を呼ぶと, Then:"
+            + " NO_AVAILABLE_SLOT を返す")
+    void nullTimeRangeReturnsNoAvailableSlot() {
+      Employee employee = new Employee("X", false, null, null);
+
+      assertEquals(UnassignedReason.NO_AVAILABLE_SLOT, employee.unassignedReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][H-3] Given: 9:00〜10:00の従業員（どの枠にも入らない), When: unassignedReason()を呼ぶと, Then:"
+            + " NO_AVAILABLE_SLOT を返す")
+    void noSuitableSlotReturnsNoAvailableSlot() {
+      Employee employee =
+          Employee.working("J", java.time.LocalTime.of(9, 0), java.time.LocalTime.of(10, 0));
+
+      assertEquals(UnassignedReason.NO_AVAILABLE_SLOT, employee.unassignedReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][H-3] Given: 7:30〜18:30の従業員（入れる枠がある), When: unassignedReason()を呼ぶと, Then:"
+            + " LOWER_GAP_CHOSEN を返す")
+    void withWorkableSlotsReturnsLowerGapChosen() {
+      Employee employee =
+          Employee.working("I", java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30));
+
+      assertEquals(UnassignedReason.LOWER_GAP_CHOSEN, employee.unassignedReason());
+    }
+  }
+
+  @Nested
   @DisplayName("[F-3] 「ずれ」（入力時間帯と枠の勤務時間の差）を計算")
   class GapMinutes {
 
