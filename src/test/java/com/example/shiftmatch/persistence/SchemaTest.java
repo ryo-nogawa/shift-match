@@ -2,6 +2,8 @@ package com.example.shiftmatch.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /** Schema initialization test. */
@@ -95,24 +98,46 @@ class SchemaTest {
 
     @Test
     @DisplayName(
-        "Given: 旧テーブル（employment_type列がない）データを挿入するとき, When: 直後に SELECT するとき, Then: DEFAULT の"
-            + " 'FULL_TIME' になっている")
-    void alterTableAddColumnWorksWithExistingData() {
-      // 既存データを挿入（employment_typeなし）
-      jdbcClient
-          .sql(
-              "INSERT INTO saved_employee (row_index, name, off, start_time, end_time)"
-                  + " VALUES (?, ?, ?, ?, ?)")
-          .params(2, "ExistingEmployee", false, LocalTime.of(8, 0), LocalTime.of(16, 0))
-          .update();
+        "[F-7] Given: employment_type 列のない旧テーブルに既存行があるとき, When: schema.sql の ALTER TABLE を適用すると,"
+            + " Then: 既存行の employment_type が 'FULL_TIME' になる")
+    void alterTableFillsFullTimeForExistingRows() throws IOException {
+      String legacyTable = "legacy_saved_employee";
+      String alterStatement =
+          new ClassPathResource("schema.sql")
+              .getContentAsString(StandardCharsets.UTF_8)
+              .lines()
+              .filter(line -> line.startsWith("ALTER TABLE saved_employee"))
+              .findFirst()
+              .orElseThrow()
+              .replace("saved_employee", legacyTable);
+      jdbcClient.sql("DROP TABLE IF EXISTS " + legacyTable).update();
+      try {
+        jdbcClient
+            .sql(
+                "CREATE TABLE "
+                    + legacyTable
+                    + " (row_index INT PRIMARY KEY, name VARCHAR(255) NOT NULL,"
+                    + " off BOOLEAN NOT NULL, start_time TIME NULL, end_time TIME NULL)")
+            .update();
+        jdbcClient
+            .sql(
+                "INSERT INTO "
+                    + legacyTable
+                    + " (row_index, name, off, start_time, end_time) VALUES (?, ?, ?, ?, ?)")
+            .params(0, "ExistingEmployee", false, LocalTime.of(8, 0), LocalTime.of(16, 0))
+            .update();
 
-      // ALTER TABLE は既に実行されているはずだが、既存行のデータを確認
-      String employmentType =
-          jdbcClient
-              .sql("SELECT employment_type FROM saved_employee WHERE row_index = 2")
-              .query(String.class)
-              .single();
-      assertEquals("FULL_TIME", employmentType, "既存行の employment_type は FULL_TIME になるべき");
+        jdbcClient.sql(alterStatement).update();
+
+        String employmentType =
+            jdbcClient
+                .sql("SELECT employment_type FROM " + legacyTable + " WHERE row_index = 0")
+                .query(String.class)
+                .single();
+        assertEquals("FULL_TIME", employmentType, "既存行の employment_type は FULL_TIME になるべき");
+      } finally {
+        jdbcClient.sql("DROP TABLE IF EXISTS " + legacyTable).update();
+      }
     }
   }
 }

@@ -19,13 +19,13 @@ import ch.qos.logback.core.read.ListAppender;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmploymentType;
-import com.example.shiftmatch.domain.InvalidEmploymentTypeError;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.persistence.LatestShiftRepository;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -128,6 +128,32 @@ class ShiftControllerTest {
   private static void appendTimeRange(StringBuilder params, int index, String start, String end) {
     params.append("&employees[").append(index).append("].start=").append(start);
     params.append("&employees[").append(index).append("].end=").append(end);
+  }
+
+  /**
+   * 指定行の雇用区分の select で、selected が付いた option の値を返します。
+   *
+   * @param html 画面の HTML
+   * @param row 行インデックス
+   * @return selected が付いた option の値（表示順）
+   */
+  private static List<String> selectedEmploymentTypes(String html, int row) {
+    Matcher select =
+        Pattern.compile(
+                "<select\\b[^>]*name=\"employees\\["
+                    + row
+                    + "\\]\\.employmentType\"[^>]*>.*?</select>",
+                Pattern.DOTALL)
+            .matcher(html);
+    assertTrue(select.find(), "Row " + row + " should have an employmentType select");
+    Matcher option =
+        Pattern.compile("<option\\b[^>]*value=\"([A-Z_]+)\"[^>]*selected[^>]*>")
+            .matcher(select.group());
+    List<String> selected = new ArrayList<>();
+    while (option.find()) {
+      selected.add(option.group(1));
+    }
+    return selected;
   }
 
   @Nested
@@ -250,8 +276,10 @@ class ShiftControllerTest {
           mockMvc
               .perform(
                   post("/shift")
+                      .param("employees[0].employmentType", "FULL_TIME")
                       .param("employees[0].name", "A")
                       .param("employees[0].off", "true")
+                      .param("employees[1].employmentType", "FULL_TIME")
                       .param("employees[1].name", "B")
                       .param("employees[1].start", "")
                       .param("employees[1].end", "17:00"))
@@ -278,9 +306,11 @@ class ShiftControllerTest {
           mockMvc
               .perform(
                   post("/shift")
+                      .param("employees[0].employmentType", "FULL_TIME")
                       .param("employees[0].name", "A")
                       .param("employees[0].start", "08:00")
                       .param("employees[0].end", "17:00")
+                      .param("employees[1].employmentType", "FULL_TIME")
                       .param("employees[1].name", "B")
                       .param("employees[1].start", "")
                       .param("employees[1].end", ""))
@@ -311,6 +341,7 @@ class ShiftControllerTest {
     void showsErrorWhen13ValidEmployees() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 13; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -343,6 +374,7 @@ class ShiftControllerTest {
     void doesNotShowErrorWhen12ValidEmployees() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 12; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -368,10 +400,12 @@ class ShiftControllerTest {
     void doesNotShowErrorWhen13RowsBut11ValidEmployees() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 11; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
       for (int i = 11; i < 13; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=");
         appendTimeRange(params, i, "", "");
       }
@@ -403,10 +437,12 @@ class ShiftControllerTest {
     private String postWorkingAndOffEmployees(int workingCount, int offCount) throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < workingCount; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
       for (int i = workingCount; i < workingCount + offCount; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         params.append("&employees[").append(i).append("].off=true");
       }
@@ -450,6 +486,7 @@ class ShiftControllerTest {
       when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.empty());
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -478,6 +515,7 @@ class ShiftControllerTest {
     void doesNotShowTimelineWhenUnassignable() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -522,10 +560,13 @@ class ShiftControllerTest {
     @DisplayName("[V-2] Given: 1行目が空、2・3行目が同名のとき, When: POSTすると, Then: 「2, 3行目」が表示され、「1, 2行目」ではない")
     void displaysDuplicateLineNumbersCorrectlyWithBlankRowBefore() throws Exception {
       StringBuilder params = new StringBuilder();
+      params.append("&employees[0].employmentType=FULL_TIME");
       params.append("&employees[0].name=");
       appendTimeRange(params, 0, "07:30", "18:30");
+      params.append("&employees[1].employmentType=FULL_TIME");
       params.append("&employees[1].name=A");
       appendTimeRange(params, 1, "07:30", "18:30");
+      params.append("&employees[2].employmentType=FULL_TIME");
       params.append("&employees[2].name=A");
       appendTimeRange(params, 2, "07:30", "18:30");
 
@@ -555,10 +596,13 @@ class ShiftControllerTest {
     @DisplayName("[V-2] Given: 1行目A、2行目が空、3行目Aのとき, When: POSTすると, Then: 「1, 3行目」が表示される")
     void displaysDuplicateLineNumbersCorrectlyWithBlankRowBetween() throws Exception {
       StringBuilder params = new StringBuilder();
+      params.append("&employees[0].employmentType=FULL_TIME");
       params.append("&employees[0].name=A");
       appendTimeRange(params, 0, "07:30", "18:30");
+      params.append("&employees[1].employmentType=FULL_TIME");
       params.append("&employees[1].name=");
       appendTimeRange(params, 1, "07:30", "18:30");
+      params.append("&employees[2].employmentType=FULL_TIME");
       params.append("&employees[2].name=A");
       appendTimeRange(params, 2, "07:30", "18:30");
 
@@ -604,6 +648,7 @@ class ShiftControllerTest {
       mockMvc
           .perform(
               post("/shift")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].start", "08:00")
                   .param("employees[0].end", "17:00"))
@@ -624,6 +669,7 @@ class ShiftControllerTest {
       mockMvc
           .perform(
               post("/shift")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "true")
                   .param("employees[0].start", "08:00")
@@ -644,9 +690,11 @@ class ShiftControllerTest {
       mockMvc
           .perform(
               post("/shift")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "")
                   .param("employees[0].start", "")
                   .param("employees[0].end", "")
+                  .param("employees[1].employmentType", "FULL_TIME")
                   .param("employees[1].name", "B")
                   .param("employees[1].start", "07:30")
                   .param("employees[1].end", "18:30"))
@@ -691,11 +739,9 @@ class ShiftControllerTest {
       String html = result.getResponse().getContentAsString();
 
       for (int i = 0; i < 12; i++) {
-        String expectedSelect = String.format("name=\"employees[%d].employmentType\"", i);
-        assertTrue(html.contains(expectedSelect), "Row " + i + " should have employmentType");
+        assertEquals(
+            List.of("FULL_TIME"), selectedEmploymentTypes(html, i), "Row " + i + " selection");
       }
-      // Check that FULL_TIME is default value in options
-      assertTrue(html.contains("value=\"FULL_TIME\""), "FULL_TIME option should be present");
     }
 
     @Test
@@ -714,14 +760,12 @@ class ShiftControllerTest {
       MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
       String html = result.getResponse().getContentAsString();
 
-      // Check that select elements exist with correct names
-      assertTrue(html.contains("name=\"employees[0].employmentType\""), "Row 0 select");
-      assertTrue(html.contains("name=\"employees[1].employmentType\""), "Row 1 select");
-      assertTrue(html.contains("name=\"employees[2].employmentType\""), "Row 2 select");
-      // Check that all option values are present
-      assertTrue(html.contains("value=\"MANAGER\""), "MANAGER option");
-      assertTrue(html.contains("value=\"PART_TIME\""), "PART_TIME option");
-      assertTrue(html.contains("value=\"FULL_TIME\""), "FULL_TIME option");
+      assertEquals(List.of("MANAGER"), selectedEmploymentTypes(html, 0), "Row 0 selection");
+      assertEquals(List.of("PART_TIME"), selectedEmploymentTypes(html, 1), "Row 1 selection");
+      for (int i = 2; i < 12; i++) {
+        assertEquals(
+            List.of("FULL_TIME"), selectedEmploymentTypes(html, i), "Row " + i + " selection");
+      }
     }
   }
 
@@ -733,6 +777,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < rows.length; i++) {
         String[] cols = rows[i].split(",", -1);
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=").append(cols[0]);
         if (cols[1].equals("off")) {
           params.append("&employees[").append(i).append("].off=true");
@@ -868,13 +913,6 @@ class ShiftControllerTest {
   @DisplayName("[V-7] 雇用区分の入力チェック")
   class EmploymentTypeValidation {
 
-    @SuppressWarnings("unchecked")
-    private List<InvalidEmploymentTypeError> captureEmploymentTypeErrors() {
-      ArgumentCaptor<List<InvalidEmploymentTypeError>> captor = ArgumentCaptor.forClass(List.class);
-      // Note: checking by capturing the model attribute if needed
-      return List.of(); // placeholder
-    }
-
     @Test
     @DisplayName(
         "[V-7] Given: 1行目の氏名が「A」で区分が不正のとき, When: POSTすると, Then: エラーが表示され" + " assignが呼ばれない")
@@ -899,6 +937,48 @@ class ShiftControllerTest {
     }
 
     @Test
+    @DisplayName(
+        "[V-7] Given: 氏名ありで区分が未送信の行があるとき, When: POSTすると," + " Then: 行番号つきのエラーが表示され、算出も保存もされない")
+    void showsErrorWhenEmploymentTypeIsNotSubmitted() throws Exception {
+      MvcResult result =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].employmentType", "FULL_TIME")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].start", "07:30")
+                      .param("employees[0].end", "18:30")
+                      .param("employees[1].name", "B")
+                      .param("employees[1].start", "07:30")
+                      .param("employees[1].end", "18:30"))
+              .andExpect(status().isOk())
+              .andReturn();
+
+      String html = result.getResponse().getContentAsString();
+      assertTrue(html.contains("2行目 雇用区分は"), "Should show error for row 2");
+      assertFalse(html.contains("1行目 雇用区分は"), "Row 1 has a type and should not be an error");
+
+      verify(shiftAssignmentService, never()).assign(any());
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("[V-7] Given: 氏名が空の行で区分が未送信のとき, When: POSTすると, Then: エラーにならず assignが呼ばれる")
+    void ignoresMissingEmploymentTypeWhenNameIsBlank() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "")
+                  .param("employees[1].employmentType", "FULL_TIME")
+                  .param("employees[1].name", "B")
+                  .param("employees[1].start", "07:30")
+                  .param("employees[1].end", "18:30"))
+          .andExpect(status().isOk());
+
+      verify(shiftAssignmentService).assign(any());
+    }
+
+    @Test
     @DisplayName("[V-7] Given: 氏名が空の行で区分が不正のとき, When: POSTすると, Then: エラーにならず" + " assignが呼ばれる")
     void ignoresEmploymentTypeErrorWhenNameIsBlank() throws Exception {
       mockMvc
@@ -908,6 +988,7 @@ class ShiftControllerTest {
                   .param("employees[0].employmentType", "INVALID_TYPE")
                   .param("employees[0].start", "")
                   .param("employees[0].end", "")
+                  .param("employees[1].employmentType", "FULL_TIME")
                   .param("employees[1].name", "B")
                   .param("employees[1].start", "07:30")
                   .param("employees[1].end", "18:30"))
@@ -924,6 +1005,33 @@ class ShiftControllerTest {
   @Nested
   @DisplayName("[F-8][F-2][F-6] 入力画面の区分列")
   class EmploymentTypeInputColumn {
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: GET /のとき, When: 画面が表示されると,"
+            + " Then: 入力表の見出しが「（並べ替え）・氏名・区分・休み・開始・終了・（削除）」の7列である")
+    void inputTableHeaderHasEmploymentTypeColumn() throws Exception {
+      when(latestShiftRepository.findEmployees()).thenReturn(List.of());
+
+      String html =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      Matcher head =
+          Pattern.compile("<table[^>]*class=\"input-table\".*?<thead>(.*?)</thead>", Pattern.DOTALL)
+              .matcher(html);
+      assertTrue(head.find(), "Input table thead should be present");
+      Matcher th = Pattern.compile("<th>(.*?)</th>").matcher(head.group(1));
+      List<String> headers = new ArrayList<>();
+      while (th.find()) {
+        headers.add(th.group(1));
+      }
+      assertEquals(List.of("", "氏名", "区分", "休み", "開始", "終了", ""), headers);
+    }
 
     @Test
     @DisplayName(
@@ -946,15 +1054,6 @@ class ShiftControllerTest {
     @Test
     @DisplayName("[F-8] Given: POSTでエラーが返ったとき, When: indexが表示されるとき," + " Then: 送信した区分が選択されたまま表示される")
     void preservesEmploymentTypeSelectionAfterError() throws Exception {
-      mockMvc
-          .perform(
-              post("/shift")
-                  .param("employees[0].name", "A")
-                  .param("employees[0].employmentType", "PART_TIME")
-                  .param("employees[0].start", "invalid")
-                  .param("employees[0].end", "18:30"))
-          .andExpect(status().isOk());
-
       String html =
           mockMvc
               .perform(
@@ -968,9 +1067,7 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // Check that MANAGER is selected (selected attribute in HTML)
-      assertTrue(html.contains("name=\"employees[0].employmentType\""), "Row 0 select");
-      assertTrue(html.contains("value=\"MANAGER\""), "MANAGER option in HTML");
+      assertEquals(List.of("MANAGER"), selectedEmploymentTypes(html, 0), "Row 0 selection");
     }
   }
 
@@ -992,6 +1089,7 @@ class ShiftControllerTest {
     private MvcResult postEmployees(int count) throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < count; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1046,6 +1144,7 @@ class ShiftControllerTest {
           mockMvc
               .perform(
                   post("/shift")
+                      .param("employees[0].employmentType", "FULL_TIME")
                       .param("employees[0].name", "Employee A")
                       .param("employees[0].start", "")
                       .param("employees[0].end", "17:00"))
@@ -1083,6 +1182,7 @@ class ShiftControllerTest {
     void displaysResultTableHeadersInCorrectOrder() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1117,6 +1217,7 @@ class ShiftControllerTest {
     void displaysCorrectNumberOfRowsAndCorrectWorkSchedules() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params
             .append("&employees[")
             .append(i)
@@ -1215,6 +1316,7 @@ class ShiftControllerTest {
     void resultTableDoesNotContainEarlyOrLateTerms() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1246,6 +1348,7 @@ class ShiftControllerTest {
     void displaysTimelineAxisLabelsEightToEighteen() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1311,6 +1414,7 @@ class ShiftControllerTest {
     private String postEmployees(int count) throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < count; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params
             .append("&employees[")
             .append(i)
@@ -1353,9 +1457,11 @@ class ShiftControllerTest {
 
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
+      params.append("&employees[8].employmentType=FULL_TIME");
       params.append("&employees[8].name=K&employees[8].off=true");
 
       String responseContent =
@@ -1390,6 +1496,7 @@ class ShiftControllerTest {
 
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 10; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params
             .append("&employees[")
             .append(i)
@@ -1435,6 +1542,7 @@ class ShiftControllerTest {
     void doesNotDisplayUnassignedSectionWhenAllAssigned() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1472,6 +1580,7 @@ class ShiftControllerTest {
     void displaysCorrectNumberOfTimelineRows() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1518,6 +1627,7 @@ class ShiftControllerTest {
     void displaysSlot1WorkBarWithCorrectStyle() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1544,6 +1654,7 @@ class ShiftControllerTest {
     void displaysSlot6WorkBarWithCorrectStyle() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1574,6 +1685,7 @@ class ShiftControllerTest {
     void displaysSlot1BreakBarWithCorrectStyle() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1601,6 +1713,7 @@ class ShiftControllerTest {
     void displaysCorrectLegend() throws Exception {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params.append("&employees[").append(i).append("].name=Employee").append(i);
         appendTimeRange(params, i, "07:30", "18:30");
       }
@@ -1981,6 +2094,7 @@ class ShiftControllerTest {
       when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 10; i++) {
+        params.append("&employees[").append(i).append("].employmentType=FULL_TIME");
         params
             .append("&employees[")
             .append(i)
@@ -2344,6 +2458,7 @@ class ShiftControllerTest {
       var request = post("/shift");
       List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
       for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].employmentType", "FULL_TIME");
         request.param("employees[" + i + "].name", names.get(i));
         request.param("employees[" + i + "].off", "false");
         request.param("employees[" + i + "].start", "07:30");
@@ -2372,6 +2487,7 @@ class ShiftControllerTest {
       var request = post("/shift");
       List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
       for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].employmentType", "FULL_TIME");
         request.param("employees[" + i + "].name", names.get(i));
         request.param("employees[" + i + "].off", "false");
         request.param("employees[" + i + "].start", "07:30");
@@ -2393,6 +2509,7 @@ class ShiftControllerTest {
       mockMvc
           .perform(
               post("/shift")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "false")
                   .param("employees[0].start", "invalid")
@@ -2422,6 +2539,7 @@ class ShiftControllerTest {
       var request = post("/shift");
       List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
       for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].employmentType", "FULL_TIME");
         request.param("employees[" + i + "].name", names.get(i));
         request.param("employees[" + i + "].off", "false");
         request.param("employees[" + i + "].start", "07:30");
@@ -2448,6 +2566,7 @@ class ShiftControllerTest {
       var request = post("/shift");
       List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
       for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].employmentType", "FULL_TIME");
         request.param("employees[" + i + "].name", names.get(i));
         request.param("employees[" + i + "].off", "false");
         request.param("employees[" + i + "].start", "07:30");
@@ -2483,6 +2602,7 @@ class ShiftControllerTest {
         var request = post("/shift");
         List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
         for (int i = 0; i < names.size(); i++) {
+          request.param("employees[" + i + "].employmentType", "FULL_TIME");
           request.param("employees[" + i + "].name", names.get(i));
           request.param("employees[" + i + "].off", "false");
           request.param("employees[" + i + "].start", "07:30");
@@ -2528,6 +2648,7 @@ class ShiftControllerTest {
       try {
         var request = post("/shift");
         for (int i = 0; i < 8; i++) {
+          request.param("employees[" + i + "].employmentType", "FULL_TIME");
           request.param("employees[" + i + "].name", String.valueOf((char) ('A' + i)));
           request.param("employees[" + i + "].off", "false");
           request.param("employees[" + i + "].start", "07:30");
@@ -2632,6 +2753,7 @@ class ShiftControllerTest {
       String longName = "A".repeat(256);
       List<String> names = List.of(longName, "B", "C", "D", "E", "F", "G", "H");
       for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].employmentType", "FULL_TIME");
         request.param("employees[" + i + "].name", names.get(i));
         request.param("employees[" + i + "].off", "false");
         request.param("employees[" + i + "].start", "07:30");
@@ -2655,6 +2777,7 @@ class ShiftControllerTest {
       String maxName = "A".repeat(255);
       List<String> names = List.of(maxName, "B", "C", "D", "E", "F", "G", "H");
       for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].employmentType", "FULL_TIME");
         request.param("employees[" + i + "].name", names.get(i));
         request.param("employees[" + i + "].off", "false");
         request.param("employees[" + i + "].start", "07:30");
@@ -2674,6 +2797,7 @@ class ShiftControllerTest {
       String longName = "A".repeat(256);
       List<String> names = List.of(longName, "B", "C", "D", "E", "F", "G", "H");
       for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].employmentType", "FULL_TIME");
         request.param("employees[" + i + "].name", names.get(i));
         request.param("employees[" + i + "].off", "false");
         request.param("employees[" + i + "].start", "07:30");
@@ -2699,6 +2823,7 @@ class ShiftControllerTest {
       var request = post("/shift");
       List<String> names = List.of("", "B", "C", "D", "E", "F", "G", "H");
       for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].employmentType", "FULL_TIME");
         request.param("employees[" + i + "].name", names.get(i));
         request.param("employees[" + i + "].off", "false");
         request.param("employees[" + i + "].start", "07:30");
@@ -2725,6 +2850,7 @@ class ShiftControllerTest {
           .perform(
               post("/shift")
                   .header("Sec-Fetch-Site", "cross-site")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "false")
                   .param("employees[0].start", "07:30")
@@ -2746,34 +2872,42 @@ class ShiftControllerTest {
           .perform(
               post("/shift")
                   .header("Sec-Fetch-Site", "same-origin")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "false")
                   .param("employees[0].start", "07:30")
                   .param("employees[0].end", "18:30")
+                  .param("employees[1].employmentType", "FULL_TIME")
                   .param("employees[1].name", "B")
                   .param("employees[1].off", "false")
                   .param("employees[1].start", "07:30")
                   .param("employees[1].end", "18:30")
+                  .param("employees[2].employmentType", "FULL_TIME")
                   .param("employees[2].name", "C")
                   .param("employees[2].off", "false")
                   .param("employees[2].start", "07:30")
                   .param("employees[2].end", "18:30")
+                  .param("employees[3].employmentType", "FULL_TIME")
                   .param("employees[3].name", "D")
                   .param("employees[3].off", "false")
                   .param("employees[3].start", "07:30")
                   .param("employees[3].end", "18:30")
+                  .param("employees[4].employmentType", "FULL_TIME")
                   .param("employees[4].name", "E")
                   .param("employees[4].off", "false")
                   .param("employees[4].start", "07:30")
                   .param("employees[4].end", "18:30")
+                  .param("employees[5].employmentType", "FULL_TIME")
                   .param("employees[5].name", "F")
                   .param("employees[5].off", "false")
                   .param("employees[5].start", "07:30")
                   .param("employees[5].end", "18:30")
+                  .param("employees[6].employmentType", "FULL_TIME")
                   .param("employees[6].name", "G")
                   .param("employees[6].off", "false")
                   .param("employees[6].start", "07:30")
                   .param("employees[6].end", "18:30")
+                  .param("employees[7].employmentType", "FULL_TIME")
                   .param("employees[7].name", "H")
                   .param("employees[7].off", "false")
                   .param("employees[7].start", "07:30")
@@ -2794,34 +2928,42 @@ class ShiftControllerTest {
           .perform(
               post("/shift")
                   .header("Sec-Fetch-Site", "none")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "false")
                   .param("employees[0].start", "07:30")
                   .param("employees[0].end", "18:30")
+                  .param("employees[1].employmentType", "FULL_TIME")
                   .param("employees[1].name", "B")
                   .param("employees[1].off", "false")
                   .param("employees[1].start", "07:30")
                   .param("employees[1].end", "18:30")
+                  .param("employees[2].employmentType", "FULL_TIME")
                   .param("employees[2].name", "C")
                   .param("employees[2].off", "false")
                   .param("employees[2].start", "07:30")
                   .param("employees[2].end", "18:30")
+                  .param("employees[3].employmentType", "FULL_TIME")
                   .param("employees[3].name", "D")
                   .param("employees[3].off", "false")
                   .param("employees[3].start", "07:30")
                   .param("employees[3].end", "18:30")
+                  .param("employees[4].employmentType", "FULL_TIME")
                   .param("employees[4].name", "E")
                   .param("employees[4].off", "false")
                   .param("employees[4].start", "07:30")
                   .param("employees[4].end", "18:30")
+                  .param("employees[5].employmentType", "FULL_TIME")
                   .param("employees[5].name", "F")
                   .param("employees[5].off", "false")
                   .param("employees[5].start", "07:30")
                   .param("employees[5].end", "18:30")
+                  .param("employees[6].employmentType", "FULL_TIME")
                   .param("employees[6].name", "G")
                   .param("employees[6].off", "false")
                   .param("employees[6].start", "07:30")
                   .param("employees[6].end", "18:30")
+                  .param("employees[7].employmentType", "FULL_TIME")
                   .param("employees[7].name", "H")
                   .param("employees[7].off", "false")
                   .param("employees[7].start", "07:30")
@@ -2841,6 +2983,7 @@ class ShiftControllerTest {
               post("/shift")
                   .header("Origin", "http://evil.example")
                   .header("Host", "localhost:8080")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "false")
                   .param("employees[0].start", "07:30")
@@ -2865,34 +3008,42 @@ class ShiftControllerTest {
               post("/shift")
                   .header("Origin", "http://localhost:8080")
                   .header("Host", "localhost:8080")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "false")
                   .param("employees[0].start", "07:30")
                   .param("employees[0].end", "18:30")
+                  .param("employees[1].employmentType", "FULL_TIME")
                   .param("employees[1].name", "B")
                   .param("employees[1].off", "false")
                   .param("employees[1].start", "07:30")
                   .param("employees[1].end", "18:30")
+                  .param("employees[2].employmentType", "FULL_TIME")
                   .param("employees[2].name", "C")
                   .param("employees[2].off", "false")
                   .param("employees[2].start", "07:30")
                   .param("employees[2].end", "18:30")
+                  .param("employees[3].employmentType", "FULL_TIME")
                   .param("employees[3].name", "D")
                   .param("employees[3].off", "false")
                   .param("employees[3].start", "07:30")
                   .param("employees[3].end", "18:30")
+                  .param("employees[4].employmentType", "FULL_TIME")
                   .param("employees[4].name", "E")
                   .param("employees[4].off", "false")
                   .param("employees[4].start", "07:30")
                   .param("employees[4].end", "18:30")
+                  .param("employees[5].employmentType", "FULL_TIME")
                   .param("employees[5].name", "F")
                   .param("employees[5].off", "false")
                   .param("employees[5].start", "07:30")
                   .param("employees[5].end", "18:30")
+                  .param("employees[6].employmentType", "FULL_TIME")
                   .param("employees[6].name", "G")
                   .param("employees[6].off", "false")
                   .param("employees[6].start", "07:30")
                   .param("employees[6].end", "18:30")
+                  .param("employees[7].employmentType", "FULL_TIME")
                   .param("employees[7].name", "H")
                   .param("employees[7].off", "false")
                   .param("employees[7].start", "07:30")
@@ -2912,34 +3063,42 @@ class ShiftControllerTest {
       mockMvc
           .perform(
               post("/shift")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "false")
                   .param("employees[0].start", "07:30")
                   .param("employees[0].end", "18:30")
+                  .param("employees[1].employmentType", "FULL_TIME")
                   .param("employees[1].name", "B")
                   .param("employees[1].off", "false")
                   .param("employees[1].start", "07:30")
                   .param("employees[1].end", "18:30")
+                  .param("employees[2].employmentType", "FULL_TIME")
                   .param("employees[2].name", "C")
                   .param("employees[2].off", "false")
                   .param("employees[2].start", "07:30")
                   .param("employees[2].end", "18:30")
+                  .param("employees[3].employmentType", "FULL_TIME")
                   .param("employees[3].name", "D")
                   .param("employees[3].off", "false")
                   .param("employees[3].start", "07:30")
                   .param("employees[3].end", "18:30")
+                  .param("employees[4].employmentType", "FULL_TIME")
                   .param("employees[4].name", "E")
                   .param("employees[4].off", "false")
                   .param("employees[4].start", "07:30")
                   .param("employees[4].end", "18:30")
+                  .param("employees[5].employmentType", "FULL_TIME")
                   .param("employees[5].name", "F")
                   .param("employees[5].off", "false")
                   .param("employees[5].start", "07:30")
                   .param("employees[5].end", "18:30")
+                  .param("employees[6].employmentType", "FULL_TIME")
                   .param("employees[6].name", "G")
                   .param("employees[6].off", "false")
                   .param("employees[6].start", "07:30")
                   .param("employees[6].end", "18:30")
+                  .param("employees[7].employmentType", "FULL_TIME")
                   .param("employees[7].name", "H")
                   .param("employees[7].off", "false")
                   .param("employees[7].start", "07:30")
@@ -2965,6 +3124,7 @@ class ShiftControllerTest {
               post("/shift")
                   .header("Origin", "null")
                   .header("Host", "localhost:8080")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "false")
                   .param("employees[0].start", "07:30")
@@ -2985,6 +3145,7 @@ class ShiftControllerTest {
               post("/shift")
                   .header("Origin", "file:///x")
                   .header("Host", "localhost:8080")
+                  .param("employees[0].employmentType", "FULL_TIME")
                   .param("employees[0].name", "A")
                   .param("employees[0].off", "false")
                   .param("employees[0].start", "07:30")

@@ -16,8 +16,8 @@ public class EmployeeForm {
   @Size(max = 255, message = "氏名は255文字以内で入力してください。")
   private String name;
 
-  /** 雇用区分（FULL_TIME, PART_TIME, MANAGER）。初期値は常勤。 */
-  private String employmentType = "FULL_TIME";
+  /** 雇用区分（FULL_TIME, PART_TIME, MANAGER）。送信時は必須。 */
+  private String employmentType;
 
   /** 休みのチェック。true の場合は休み。 */
   private boolean off;

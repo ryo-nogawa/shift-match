@@ -125,7 +125,9 @@ public class ShiftController {
 
     // 不足分を空行で補う（最大12行）
     while (employees.size() < MAX_EMPLOYEE_COUNT) {
-      employees.add(new EmployeeForm());
+      EmployeeForm emptyEmployee = new EmployeeForm();
+      emptyEmployee.setEmploymentType("FULL_TIME"); // 空行の区分は常勤（既定値）
+      employees.add(emptyEmployee);
     }
 
     shiftForm.setEmployees(employees);
@@ -149,7 +151,9 @@ public class ShiftController {
       Model model) {
     // 仕様上、入力表には最低 1 行を残す必要があるため、行が 1 件も送られなかった場合だけ空行を補う
     if (shiftForm.getEmployees().isEmpty()) {
-      shiftForm.getEmployees().add(new EmployeeForm());
+      EmployeeForm emptyEmployee = new EmployeeForm();
+      emptyEmployee.setEmploymentType("FULL_TIME"); // 空行の区分は常勤（既定値）
+      shiftForm.getEmployees().add(emptyEmployee);
     }
 
     List<Employee> employees = convertToEmployees(shiftForm);
@@ -330,7 +334,7 @@ public class ShiftController {
   /**
    * 雇用区分の入力エラーを検証します（V-7）。
    *
-   * <p>従業員名が入力された行で、雇用区分が FULL_TIME, PART_TIME, MANAGER 以外の場合はエラーです。
+   * <p>従業員名が入力された行で、雇用区分が FULL_TIME, PART_TIME, MANAGER 以外の場合（未送信を含む）はエラーです。
    * 従業員名が空の行の不正な区分はエラーにしません。
    *
    * @param shiftForm フォームデータ
@@ -345,8 +349,9 @@ public class ShiftController {
       if (form.getName() == null || form.getName().isBlank()) {
         continue;
       }
-      // 雇用区分が 3 択以外の場合はエラー
-      if (EmploymentType.parse(form.getEmploymentType()).isEmpty()) {
+      // 雇用区分が未送信（null）または 3 択以外の場合はエラー
+      if (form.getEmploymentType() == null
+          || EmploymentType.parse(form.getEmploymentType()).isEmpty()) {
         errors.add(new InvalidEmploymentTypeError(i, "雇用区分は「常勤」「パート」「管理職」から選択してください。"));
       }
     }
