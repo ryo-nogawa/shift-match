@@ -1644,6 +1644,54 @@ class ShiftControllerTest {
           jsContent.contains("updateAddButtonState"),
           "shift-form.js should call updateAddButtonState function");
     }
+
+    @Test
+    @DisplayName(
+        "[F-8] Given: GETリクエストが与えられたとき, When: 入力表を確認すると,"
+            + " Then: 各入力行に move-up-btn と move-down-btn ボタンが含まれている")
+    void inputRowsContainMoveUpAndDownButtons() throws Exception {
+      String htmlContent =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // 入力行の行数を取得
+      Pattern rowPattern =
+          Pattern.compile("<tbody id=\"employee-rows\">.*?</tbody>", Pattern.DOTALL);
+      Matcher rowMatcher = rowPattern.matcher(htmlContent);
+      assertTrue(rowMatcher.find(), "Input table body should exist");
+      String tbody = rowMatcher.group(0);
+
+      // tbody内の<tr>の数を数える
+      Pattern trPattern = Pattern.compile("<tr>");
+      Matcher trMatcher = trPattern.matcher(tbody);
+      int rowCount = 0;
+      while (trMatcher.find()) {
+        rowCount++;
+      }
+
+      // move-up-btn と move-down-btn の数を確認
+      Pattern moveUpPattern = Pattern.compile("class=\"move-up-btn\"");
+      Matcher moveUpMatcher = moveUpPattern.matcher(htmlContent);
+      int moveUpCount = 0;
+      while (moveUpMatcher.find()) {
+        moveUpCount++;
+      }
+
+      Pattern moveDownPattern = Pattern.compile("class=\"move-down-btn\"");
+      Matcher moveDownMatcher = moveDownPattern.matcher(htmlContent);
+      int moveDownCount = 0;
+      while (moveDownMatcher.find()) {
+        moveDownCount++;
+      }
+
+      assertTrue(rowCount > 0, "Should have at least one input row");
+      assertEquals(rowCount, moveUpCount, "move-up-btn count should match input row count");
+      assertEquals(rowCount, moveDownCount, "move-down-btn count should match input row count");
+    }
   }
 
   @Nested
