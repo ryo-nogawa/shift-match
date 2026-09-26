@@ -56,6 +56,33 @@ public class LatestShiftRepository {
               employee.off() ? null : employee.end())
           .update();
     }
+
+    // 割り当て結果がある場合のみ保存
+    if (result.isPresent()) {
+      AssignmentResult assignmentResult = result.get();
+      var assignments = assignmentResult.assignments();
+      for (int i = 0; i < assignments.size(); i++) {
+        var assignment = assignments.get(i);
+        jdbcClient
+            .sql(
+                "INSERT INTO saved_assignment"
+                    + " (assignment_index, employee_name, slot, break_start, break_end)"
+                    + " VALUES (?, ?, ?, ?, ?)")
+            .params(
+                i,
+                assignment.employee().name(),
+                assignment.slot().name(),
+                assignment.breakStart(),
+                assignment.breakEnd())
+            .update();
+      }
+
+      // スコアを保存
+      jdbcClient
+          .sql("INSERT INTO saved_score (id, score) VALUES (?, ?)")
+          .params(1, assignmentResult.score())
+          .update();
+    }
   }
 
   /**

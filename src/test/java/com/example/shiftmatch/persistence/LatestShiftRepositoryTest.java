@@ -3,8 +3,12 @@ package com.example.shiftmatch.persistence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.ShiftAssignment;
+import com.example.shiftmatch.domain.ShiftSlot;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -92,6 +96,140 @@ class LatestShiftRepositoryTest {
       assertEquals(2, found.size());
       assertEquals("David", found.get(0).name());
       assertEquals("Emma", found.get(1).name());
+    }
+  }
+
+  @Nested
+  @DisplayName("決定したシフト（割り当てとスコア）を保存し、不成立のときは消す")
+  class SaveAssignmentAndScore {
+
+    @Test
+    @DisplayName("保存すると 8 件と得点が入る")
+    void savesAssignmentAndScore() {
+      List<Employee> employees =
+          List.of(
+              Employee.working("Alice", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Bob", LocalTime.of(8, 0), LocalTime.of(16, 0)),
+              Employee.working("Charlie", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("David", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Emma", LocalTime.of(8, 0), LocalTime.of(16, 0)),
+              Employee.working("Frank", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("Grace", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Henry", LocalTime.of(8, 0), LocalTime.of(16, 0)));
+
+      List<ShiftAssignment> assignments = new ArrayList<>();
+      for (int i = 0; i < ShiftSlot.totalEmployees(); i++) {
+        ShiftSlot slot = ShiftSlot.values()[i % ShiftSlot.values().length];
+        assignments.add(
+            new ShiftAssignment(employees.get(i), slot, LocalTime.of(12, 0), LocalTime.of(12, 45)));
+      }
+      AssignmentResult result = new AssignmentResult(assignments, 100, List.of());
+
+      repository.save(employees, Optional.of(result));
+
+      // 8 件の割り当てを確認
+      Integer assignmentCount =
+          jdbcClient.sql("SELECT COUNT(*) FROM saved_assignment").query(Integer.class).single();
+      assertEquals(8, assignmentCount);
+
+      // 1 件のスコアを確認
+      Integer scoreCount =
+          jdbcClient.sql("SELECT COUNT(*) FROM saved_score").query(Integer.class).single();
+      assertEquals(1, scoreCount);
+
+      Integer score =
+          jdbcClient
+              .sql("SELECT score FROM saved_score WHERE id = 1")
+              .query(Integer.class)
+              .single();
+      assertEquals(100, score);
+    }
+
+    @Test
+    @DisplayName("2 回保存しても 8 件のまま")
+    void multiplesSavesKeepEightAssignments() {
+      List<Employee> employees =
+          List.of(
+              Employee.working("Alice", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Bob", LocalTime.of(8, 0), LocalTime.of(16, 0)),
+              Employee.working("Charlie", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("David", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Emma", LocalTime.of(8, 0), LocalTime.of(16, 0)),
+              Employee.working("Frank", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("Grace", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Henry", LocalTime.of(8, 0), LocalTime.of(16, 0)));
+
+      // 1 回目の保存
+      List<ShiftAssignment> assignments1 = new ArrayList<>();
+      for (int i = 0; i < ShiftSlot.totalEmployees(); i++) {
+        ShiftSlot slot = ShiftSlot.values()[i % ShiftSlot.values().length];
+        assignments1.add(
+            new ShiftAssignment(employees.get(i), slot, LocalTime.of(12, 0), LocalTime.of(12, 45)));
+      }
+      AssignmentResult result1 = new AssignmentResult(assignments1, 100, List.of());
+      repository.save(employees, Optional.of(result1));
+
+      // 2 回目の保存
+      List<ShiftAssignment> assignments2 = new ArrayList<>();
+      for (int i = 0; i < ShiftSlot.totalEmployees(); i++) {
+        ShiftSlot slot = ShiftSlot.values()[(i + 1) % ShiftSlot.values().length];
+        assignments2.add(
+            new ShiftAssignment(employees.get(i), slot, LocalTime.of(13, 0), LocalTime.of(13, 45)));
+      }
+      AssignmentResult result2 = new AssignmentResult(assignments2, 150, List.of());
+      repository.save(employees, Optional.of(result2));
+
+      // 確認: 8 件のまま、スコアは更新
+      Integer assignmentCount =
+          jdbcClient.sql("SELECT COUNT(*) FROM saved_assignment").query(Integer.class).single();
+      assertEquals(8, assignmentCount);
+
+      Integer score =
+          jdbcClient
+              .sql("SELECT score FROM saved_score WHERE id = 1")
+              .query(Integer.class)
+              .single();
+      assertEquals(150, score);
+    }
+
+    @Test
+    @DisplayName("不成立（空）で割り当て・得点が消え、従業員入力は残る")
+    void clearsAssignmentAndScoreWhenResultIsEmpty() {
+      // 従業員と割り当て結果を保存
+      List<Employee> employees =
+          List.of(
+              Employee.working("Alice", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Bob", LocalTime.of(8, 0), LocalTime.of(16, 0)),
+              Employee.working("Charlie", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("David", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Emma", LocalTime.of(8, 0), LocalTime.of(16, 0)),
+              Employee.working("Frank", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("Grace", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.working("Henry", LocalTime.of(8, 0), LocalTime.of(16, 0)));
+
+      List<ShiftAssignment> assignments = new ArrayList<>();
+      for (int i = 0; i < ShiftSlot.totalEmployees(); i++) {
+        ShiftSlot slot = ShiftSlot.values()[i % ShiftSlot.values().length];
+        assignments.add(
+            new ShiftAssignment(employees.get(i), slot, LocalTime.of(12, 0), LocalTime.of(12, 45)));
+      }
+      AssignmentResult result = new AssignmentResult(assignments, 100, List.of());
+      repository.save(employees, Optional.of(result));
+
+      // 不成立として再保存
+      repository.save(employees, Optional.empty());
+
+      // 確認: 割り当てとスコアは消え、従業員入力は残る
+      Integer assignmentCount =
+          jdbcClient.sql("SELECT COUNT(*) FROM saved_assignment").query(Integer.class).single();
+      assertEquals(0, assignmentCount);
+
+      Integer scoreCount =
+          jdbcClient.sql("SELECT COUNT(*) FROM saved_score").query(Integer.class).single();
+      assertEquals(0, scoreCount);
+
+      List<Employee> foundEmployees = repository.findEmployees();
+      assertEquals(8, foundEmployees.size());
     }
   }
 }
