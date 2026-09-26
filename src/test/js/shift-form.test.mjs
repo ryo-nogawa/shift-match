@@ -16,8 +16,7 @@ describe("employee-list.js", () => {
     const row = (i) => ({
       rowFields: [{ name: `employees[${i}].name` }, { name: `employees[${i}].employmentType` }],
       panelFields: [
-        { name: `employees[${i}].days[0].off` },
-        { name: `_employees[${i}].days[0].off` },
+        { name: `employees[${i}].days[0].start` },
         { name: `employees[${i}].days[4].end` },
       ],
     });
@@ -29,37 +28,51 @@ describe("employee-list.js", () => {
       [0, 1, 2].map((i) => [
         `employees[${i}].name`,
         `employees[${i}].employmentType`,
-        `employees[${i}].days[0].off`,
-        `_employees[${i}].days[0].off`,
+        `employees[${i}].days[0].start`,
         `employees[${i}].days[4].end`,
       ])
     );
   });
 
-  test("[8.1節] 要約：全曜日同じ時間帯で水曜が休み", () => {
-    const d = { off: false, start: "07:30", end: "18:30" };
-    const off = { off: true, start: "", end: "" };
-    assert.equal(employeeList.summarize([d, d, off, d, d]), "07:30〜18:30／休：水");
+  test("[8.1節] 要約：全曜日同じ時間帯ならその時間帯", () => {
+    const d = { start: "07:30", end: "18:30" };
+    assert.equal(employeeList.summarize([d, d, d, d, d]), "07:30〜18:30");
   });
 
   test("[8.1節] 要約：時間帯が異なれば最も早い開始〜最も遅い終了", () => {
     assert.equal(
       employeeList.summarize([
-        { off: false, start: "09:00", end: "15:00" },
-        { off: false, start: "08:00", end: "14:30" },
-        { off: false, start: "10:00", end: "18:00" },
-        { off: true, start: "", end: "" },
-        { off: true, start: "", end: "" },
+        { start: "09:00", end: "15:00" },
+        { start: "08:00", end: "14:30" },
+        { start: "10:00", end: "18:00" },
+        { start: "09:00", end: "16:00" },
+        { start: "09:30", end: "17:00" },
       ]),
-      "08:00〜18:00／休：木金"
+      "08:00〜18:00"
     );
   });
 
-  test("[8.1節] 要約：全曜日休み・休みなし", () => {
-    const off = { off: true, start: "", end: "" };
-    const d = { off: false, start: "07:30", end: "18:30" };
-    assert.equal(employeeList.summarize([off, off, off, off, off]), "休：月火水木金");
-    assert.equal(employeeList.summarize([d, d, d, d, d]), "07:30〜18:30");
+  test("[8.1節] 要約：未選択の曜日は無視し、すべて未選択なら「未選択」", () => {
+    assert.equal(
+      employeeList.summarize([
+        { start: "", end: "" },
+        { start: "09:00", end: "15:00" },
+        { start: "", end: "" },
+        { start: "08:00", end: "17:00" },
+        { start: "", end: "" },
+      ]),
+      "08:00〜17:00"
+    );
+    assert.equal(employeeList.summarize([{ start: "", end: "" }]), "未選択");
+  });
+
+  test("[F-1][4.1節] 要約：基本シフトに休みはなく、off が渡されても「休：」は出さない", () => {
+    const summary = employeeList.summarize([
+      { off: true, start: "07:30", end: "18:30" },
+      { start: "09:00", end: "17:00" },
+    ]);
+    assert.equal(summary, "07:30〜18:30");
+    assert.ok(!summary.includes("休"));
   });
 
   test("[F-2][F-6][F-8] ボタンの有効・無効（端の▲▼、1 行で削除不可、12 行で追加不可）", () => {

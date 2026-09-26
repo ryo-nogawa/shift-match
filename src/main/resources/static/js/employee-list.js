@@ -20,7 +20,7 @@
   }
 
   /**
-   * 行ごとの入力（氏名・区分）とパネルの入力（曜日ごとの off/start/end）の name を、
+   * 行ごとの入力（氏名・区分）とパネルの入力（曜日ごとの start/end）の name を、
    * 並び順どおり 0 から欠番なく振り直す（8.5 節）。要素は name プロパティを持つものなら何でもよい。
    */
   function renumber(rows) {
@@ -31,16 +31,11 @@
     });
   }
 
-  /** 基本シフトの要約（例：07:30〜18:30／休：水）を作る（8.1 節）。 */
+  /** 基本シフトの要約（例：07:30〜18:30）を作る（8.1 節）。基本シフトに休みはない。 */
   function summarize(days) {
-    const offLabels = [];
     const starts = [];
     const ends = [];
-    days.forEach(function (day, d) {
-      if (day.off) {
-        offLabels.push(DAY_LABELS[d]);
-        return;
-      }
+    days.forEach(function (day) {
       if (day.start) {
         starts.push(day.start);
       }
@@ -48,18 +43,12 @@
         ends.push(day.end);
       }
     });
-    const offText = offLabels.length > 0 ? "休：" + offLabels.join("") : "";
-    if (offLabels.length === days.length) {
-      return offText;
-    }
     // HH:mm 形式はゼロ埋めされているので、文字列の大小比較で時刻の前後を判定できる
     starts.sort();
     ends.sort();
-    const range =
-      starts.length > 0 && ends.length > 0
-        ? starts[0] + "〜" + ends[ends.length - 1]
-        : "未選択";
-    return offText ? range + "／" + offText : range;
+    return starts.length > 0 && ends.length > 0
+      ? starts[0] + "〜" + ends[ends.length - 1]
+      : "未選択";
   }
 
   /** 行数に応じたボタンの有効・無効を返す（F-2・F-6・F-8）。 */
@@ -111,7 +100,6 @@
     function readDays(panel) {
       return Array.from(panel.querySelectorAll(".day-row")).map(function (dayRow) {
         return {
-          off: dayRow.querySelector(".off-input").checked,
           start: dayRow.querySelector(".start-select").value,
           end: dayRow.querySelector(".end-select").value,
         };
@@ -120,12 +108,6 @@
 
     function notifyChanged() {
       document.dispatchEvent(new CustomEvent("employees-changed"));
-    }
-
-    function applyOffState(dayRow) {
-      const off = dayRow.querySelector(".off-input").checked;
-      dayRow.querySelector(".start-select").disabled = off;
-      dayRow.querySelector(".end-select").disabled = off;
     }
 
     function updateSummary(row) {
@@ -246,7 +228,7 @@
       const table = document.createElement("table");
       const head = document.createElement("thead");
       const headRow = document.createElement("tr");
-      ["曜日", "休み", "開始", "終了", ""].forEach(function (label) {
+      ["曜日", "開始", "終了", ""].forEach(function (label) {
         const th = document.createElement("th");
         th.textContent = label;
         headRow.appendChild(th);
@@ -261,21 +243,6 @@
         const labelCell = cell(null);
         labelCell.textContent = label;
         dayRow.appendChild(labelCell);
-
-        const offCell = cell(null);
-        const off = document.createElement("input");
-        off.type = "checkbox";
-        off.className = "off-input";
-        off.name = "employees[0].days[" + d + "].off";
-        off.value = "true";
-        offCell.appendChild(off);
-        // Spring のチェックボックスのマーカー。未チェックでも false として確実にバインドさせる
-        const marker = document.createElement("input");
-        marker.type = "hidden";
-        marker.name = "_employees[0].days[" + d + "].off";
-        marker.value = "on";
-        offCell.appendChild(marker);
-        dayRow.appendChild(offCell);
 
         const start = createTimeSelect("start-select", DEFAULT_START);
         start.name = "employees[0].days[" + d + "].start";
@@ -342,14 +309,11 @@
     }
 
     function copyToAllDays(panel, sourceRow) {
-      const off = sourceRow.querySelector(".off-input").checked;
       const start = sourceRow.querySelector(".start-select").value;
       const end = sourceRow.querySelector(".end-select").value;
       panel.querySelectorAll(".day-row").forEach(function (dayRow) {
-        dayRow.querySelector(".off-input").checked = off;
         dayRow.querySelector(".start-select").value = start;
         dayRow.querySelector(".end-select").value = end;
-        applyOffState(dayRow);
       });
     }
 
@@ -396,9 +360,6 @@
       if (!panel) {
         return;
       }
-      if (event.target.classList.contains("off-input")) {
-        applyOffState(event.target.closest(".day-row"));
-      }
       const row = rowOfPanel(panel);
       if (row) {
         updateSummary(row);
@@ -424,9 +385,6 @@
 
     rows().forEach(function (row) {
       const panel = panelOf(row.getAttribute("data-row-id"));
-      if (panel) {
-        panel.querySelectorAll(".day-row").forEach(applyOffState);
-      }
       updateSummary(row);
     });
     refreshRows();
