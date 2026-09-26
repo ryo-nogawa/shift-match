@@ -4,14 +4,19 @@ import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.InvalidTimeRangeError;
 import com.example.shiftmatch.service.ShiftAssignmentService;
+import jakarta.validation.Valid;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -73,11 +78,15 @@ public class ShiftController {
    * シフトを作成します。
    *
    * @param shiftForm フォームデータ
+   * @param bindingResult バリデーション結果
    * @param model モデルオブジェクト
    * @return ビュー名
    */
   @PostMapping("/shift")
-  public String createShift(@ModelAttribute("shiftForm") ShiftForm shiftForm, Model model) {
+  public String createShift(
+      @Valid @ModelAttribute("shiftForm") ShiftForm shiftForm,
+      BindingResult bindingResult,
+      Model model) {
     // 仕様上、入力表には最低 1 行を残す必要があるため、行が 1 件も送られなかった場合だけ空行を補う
     if (shiftForm.getEmployees().isEmpty()) {
       shiftForm.getEmployees().add(new EmployeeForm());
@@ -91,7 +100,7 @@ public class ShiftController {
     // 空行を含む元のリストを渡す。サービス側が空行を除外しつつ元のインデックスを保持する
     List<DuplicateNameError> duplicateErrors = shiftAssignmentService.findDuplicateNames(employees);
 
-    List<InvalidTimeRangeError> timeRangeErrors = validateTimeRanges(shiftForm);
+    List<InvalidTimeRangeError> timeRangeErrors = toTimeRangeErrors(bindingResult);
 
     boolean limitExceeded = validEmployees.size() > MAX_EMPLOYEE_COUNT;
     if (limitExceeded) {
@@ -118,51 +127,55 @@ public class ShiftController {
   }
 
   /**
-   * 開始・終了の入力をチェックします（V-3）。
+   * BindingResult から開始・終了のエラーを InvalidTimeRangeError のリストに変換します。
    *
-   * <p>氏名が入力され、休みでない行だけを対象にします（V-1）。
+   * <p>行番号の昇順、同じ行では start → end の順に並べられます。
    *
-   * @param shiftForm フォームデータ
-   * @return 入力エラーのリスト（行順）。エラーがなければ空
+   * @param bindingResult バリデーション結果
+   * @return 開始・終了のエラーリスト（行順、プロパティ順）
    */
-  private List<InvalidTimeRangeError> validateTimeRanges(ShiftForm shiftForm) {
+  private List<InvalidTimeRangeError> toTimeRangeErrors(BindingResult bindingResult) {
     List<InvalidTimeRangeError> errors = new ArrayList<>();
-    List<EmployeeForm> forms = shiftForm.getEmployees();
-    for (int i = 0; i < forms.size(); i++) {
-      EmployeeForm form = forms.get(i);
-      if (form.getName() == null || form.getName().isBlank() || form.isOff()) {
+
+    // employees[N].start / employees[N].end のフィールドエラーを集める
+    for (FieldError error : bindingResult.getFieldErrors()) {
+      String field = error.getField();
+      if (!field.startsWith("employees[")) {
         continue;
       }
-      String startError = validateTimeOption(form.getStart(), "開始");
-      String endError = validateTimeOption(form.getEnd(), "終了");
-      if (startError != null) {
-        errors.add(new InvalidTimeRangeError(i, startError));
-      }
-      if (endError != null) {
-        errors.add(new InvalidTimeRangeError(i, endError));
-      }
-      if (startError == null && endError == null && form.getStart().compareTo(form.getEnd()) >= 0) {
-        errors.add(new InvalidTimeRangeError(i, "開始は終了より前にしてください"));
-      }
-    }
-    return errors;
-  }
 
-  /**
-   * 時刻が選択肢のいずれかであるかをチェックします。
-   *
-   * @param time 時刻（HH:mm）
-   * @param label 項目名（「開始」または「終了」）
-   * @return エラーメッセージ。問題がなければ null
-   */
-  private String validateTimeOption(String time, String label) {
-    if (time == null || time.isEmpty()) {
-      return label + "が未選択です";
+      // employees[N].start または employees[N].end を解析
+      Matcher matcher = Pattern.compile("employees\\[(\\d+)\\]\\.(start|end)").matcher(field);
+      if (matcher.matches()) {
+        int rowIndex = Integer.parseInt(matcher.group(1));
+        String propertyName = matcher.group(2);
+        String message = error.getDefaultMessage();
+
+        errors.add(new InvalidTimeRangeError(rowIndex, message));
+      }
     }
-    if (!TimeOptions.VALUES.contains(time)) {
-      return label + "は選択肢にありません";
-    }
-    return null;
+
+    // 行番号の昇順、同じ行では start → end の順にソート
+    errors.sort(
+        (e1, e2) -> {
+          if (e1.rowIndex() != e2.rowIndex()) {
+            return Integer.compare(e1.rowIndex(), e2.rowIndex());
+          }
+          // 同じ行の場合、start < end
+          String msg1 = e1.message();
+          String msg2 = e2.message();
+          boolean is1Start = msg1.startsWith("開始");
+          boolean is2Start = msg2.startsWith("開始");
+          if (is1Start && !is2Start) {
+            return -1;
+          }
+          if (!is1Start && is2Start) {
+            return 1;
+          }
+          return 0;
+        });
+
+    return errors;
   }
 
   /**
