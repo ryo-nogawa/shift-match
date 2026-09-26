@@ -5,8 +5,11 @@ import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
+import com.example.shiftmatch.domain.ShiftAdjustment;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -65,6 +68,16 @@ public class MonthlyInputValidator {
     // V-7: 雇用区分の検証
     List<InputError> v7Errors = validateEmploymentType(validEmployees);
     errors.addAll(v7Errors);
+
+    // V-8: 対象月の判定可能性チェック
+    List<InputError> v8Errors = validateMonthSupport(input.month());
+    errors.addAll(v8Errors);
+
+    // V-8 にエラーがなければ V-9 を実行
+    if (v8Errors.isEmpty()) {
+      List<InputError> v9Errors = validateAdjustmentDates(validEmployees, input);
+      errors.addAll(v9Errors);
+    }
 
     return errors;
   }
@@ -222,6 +235,38 @@ public class MonthlyInputValidator {
         errors.add(new InputError("V-7", message));
       }
     }
+    return errors;
+  }
+
+  private List<InputError> validateMonthSupport(YearMonth month) {
+    List<InputError> errors = new ArrayList<>();
+    if (!holidayService.isSupported(month)) {
+      String message = String.format("対象月 %s の祝日データが利用できません", month);
+      errors.add(new InputError("V-8", message));
+    }
+    return errors;
+  }
+
+  private List<InputError> validateAdjustmentDates(
+      List<EmployeeProfile> validEmployees, MonthlyShiftInput input) {
+    List<InputError> errors = new ArrayList<>();
+    Set<String> validNames = new HashSet<>();
+    for (EmployeeProfile profile : validEmployees) {
+      validNames.add(profile.name());
+    }
+
+    List<LocalDate> businessDays = holidayService.businessDays(input.month());
+    Set<LocalDate> businessDaySet = new HashSet<>(businessDays);
+
+    for (ShiftAdjustment adjustment : input.adjustments()) {
+      if (validNames.contains(adjustment.employeeName())) {
+        if (!businessDaySet.contains(adjustment.date())) {
+          String message = String.format("個別変更の日付が対象月の営業日ではありません（%s）", adjustment.date());
+          errors.add(new InputError("V-9", message));
+        }
+      }
+    }
+
     return errors;
   }
 }
