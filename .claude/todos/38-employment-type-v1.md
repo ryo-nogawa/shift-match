@@ -26,6 +26,7 @@
 
 - [x] **T1. 雇用区分の列挙型 `EmploymentType` を追加する**
 - [x] **T2. `Employee` に区分を持たせる**
+- [x] **T3. 区分によって割り当て結果が変わらないことをサービスのテストで固定する**
   - 依頼事項：`domain` パッケージに `EmploymentType`（`FULL_TIME`＝常勤、`PART_TIME`＝パート、`MANAGER`＝管理職）を作る。表示名を返す `label()` と、文字列から列挙値を得る `Optional<EmploymentType> parse(String)`（null・空・3 択以外は `Optional.empty()`）を持たせる。Javadoc は `.agents/rules/javadoc.md` に従う
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/EmploymentType.java`、`src/test/java/com/example/shiftmatch/domain/EmploymentTypeTest.java`
   - 完了条件：
