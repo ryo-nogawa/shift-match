@@ -88,7 +88,7 @@
     - `grep -rn "@SpringBootTest" src/test` の各テストが `holiday.refresh-on-startup=false` を指定している
     - `./mvnw test` の実行中に、内閣府のサイトへの接続を試みていない（ログに `www8.cao.go.jp` へのアクセスが出ない）
 
-- [ ] **T8. 全テストと静的解析を通す**
+- [x] **T8. 全テストと静的解析を通す**
   - 依頼事項：`./mvnw spotless:apply` を実行して整形し、`./mvnw test` で全テスト・Spotless・Checkstyle を通す。違反があれば直す（振る舞いを変える修正は、テストを先に書く）。`pom.xml` に変更がないことを確認する
   - 対象ファイル：変更した全ファイル
   - 完了条件：

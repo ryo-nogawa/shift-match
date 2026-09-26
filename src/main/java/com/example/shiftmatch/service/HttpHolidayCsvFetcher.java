@@ -26,8 +26,9 @@ public class HttpHolidayCsvFetcher implements HolidayCsvFetcher {
    * @param timeoutSeconds タイムアウト時間（秒）
    */
   public HttpHolidayCsvFetcher(
-      @Value("${holiday.csv.url}") String url,
-      @Value("${holiday.csv.timeout-seconds}") int timeoutSeconds) {
+      @Value("${holiday.csv.url:https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv}")
+          String url,
+      @Value("${holiday.csv.timeout-seconds:10}") int timeoutSeconds) {
     this.url = url;
     this.timeoutSeconds = timeoutSeconds;
   }
