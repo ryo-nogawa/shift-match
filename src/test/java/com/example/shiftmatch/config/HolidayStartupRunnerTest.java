@@ -39,18 +39,42 @@ class HolidayStartupRunnerTest {
 
       verify(holidayService, times(1)).refresh();
     }
+  }
+
+  @Nested
+  @DisplayName("[F-10] @ConditionalOnProperty の条件判定")
+  class ConditionalOnPropertyBehavior {
 
     @Test
     @DisplayName(
-        "[F-10] Given: holiday.refresh-on-startup=false のとき, When: 起動すると, Then: Bean が作られない")
+        "[F-10] Given: holiday.refresh-on-startup=false のとき, When: コンテキストを起動すると, Then:"
+            + " HolidayStartupRunner Bean が作られない")
     void beanNotCreatedWhenPropertyIsFalse() {
       contextRunner
-          .withPropertyValues("holiday.refresh-on-startup=false")
+          .withUserConfiguration(HolidayStartupRunner.class)
           .withBean(HolidayService.class, () -> mock(HolidayService.class))
+          .withPropertyValues("holiday.refresh-on-startup=false")
           .run(
               context -> {
                 if (context.containsBean("holidayStartupRunner")) {
                   throw new AssertionError("Bean should not be created when property is false");
+                }
+              });
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: holiday.refresh-on-startup=true のとき, When: コンテキストを起動すると, Then:"
+            + " HolidayStartupRunner Bean が作られる")
+    void beanCreatedWhenPropertyIsTrue() {
+      contextRunner
+          .withUserConfiguration(HolidayStartupRunner.class)
+          .withBean(HolidayService.class, () -> mock(HolidayService.class))
+          .withPropertyValues("holiday.refresh-on-startup=true")
+          .run(
+              context -> {
+                if (!context.containsBean("holidayStartupRunner")) {
+                  throw new AssertionError("Bean should be created when property is true");
                 }
               });
     }

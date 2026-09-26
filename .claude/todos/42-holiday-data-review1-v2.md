@@ -68,7 +68,7 @@
     - `HttpHolidayCsvFetcher.java` に `catch (Exception` がない
     - `./mvnw test -Dtest=HttpHolidayCsvFetcherTest` が成功する
 
-- [ ] **R7. 起動時の更新が無効のとき、Bean が作られないことを本当に検証する（SHOULD）**
+- [x] **R7. 起動時の更新が無効のとき、Bean が作られないことを本当に検証する（SHOULD）**
   - 依頼事項：`HolidayStartupRunnerTest` の `ApplicationContextRunner` のテストで、`.withUserConfiguration(HolidayStartupRunner.class)` と、`HolidayService` のモック（`withBean(HolidayService.class, () -> Mockito.mock(HolidayService.class))` など）を登録する。`holiday.refresh-on-startup=false` のときは `HolidayStartupRunner` の Bean が存在せず、`true` のときは Bean が存在することを、それぞれ確かめる。`@ConditionalOnProperty` を一時的に外すと、`false` のテストが失敗することを一度確かめてから戻す（結果は実行ログに書く）
   - 対象ファイル：`src/test/java/com/example/shiftmatch/config/HolidayStartupRunnerTest.java`
   - 完了条件：
@@ -102,5 +102,6 @@
 
 - v1（implementer）：R1〜R5 は完了。R6・R10 は完了条件を満たさないまま `[x]` を付けていた。R7・R8・R9 は見送られていた
 - R6 試行 1/1：成功 — テストを先に書き、RED を確認した。`[F-10]` を先頭に付けたテストで、形式が不正な URL（例：`"http://[invalid"`）でコンストラクタが `IllegalArgumentException` を投げることを確認。現状の実装では既に通る。`HttpHolidayCsvFetcher.java` に `catch (Exception` がない（grep -n で 0 件）。`./mvnw test -Dtest=HttpHolidayCsvFetcherTest` が成功する。
+- R7 試行 1/1：成功 — テストを先に書き、RED を確認した。`.withUserConfiguration(HolidayStartupRunner.class)` を追加し、`holiday.refresh-on-startup=false` と `true` の両方でテスト。`@ConditionalOnProperty` を外すと `false` のテストが失敗することを確認した（RED の確認）。その後戻す。`./mvnw test -Dtest=HolidayStartupRunnerTest` が成功する。
 
 <!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
