@@ -55,7 +55,7 @@
     - URL とタイムアウトのリテラルが Java コードにない（`grep -rn "cao.go.jp" src/main/java` が 0 件）
     - `./mvnw test -Dtest=HttpHolidayCsvFetcherTest` が成功する
 
-- [ ] **T4. 祝日データを更新するサービスを作る：失敗時は保存済みを使う（F-10）**
+- [x] **T4. 祝日データを更新するサービスを作る：失敗時は保存済みを使う（F-10）**
   - 依頼事項：`service/HolidayService.java`（インタフェース）と `service/HolidayServiceImpl.java`（`@Service`）を作り、まず `void refresh()` を実装する。`HolidayCsvFetcher` で取得 → `HolidayCsvParser` で解析 → `HolidayRepository.replaceAll` で保存する。取得（`HolidayFetchException`）または解析（`IllegalArgumentException`）に失敗したときは、例外を外に投げず、SLF4J のロガーで例外オブジェクト付きのエラーログを出し、保存済みのデータを変更しない。同時に複数のスレッドが `refresh` を呼んでも、保存が競合しないよう `synchronized` にする（`thread-safety.md`）。テストでは `HolidayCsvFetcher` を Mockito のモックまたはテスト用のスタブに差し替え、`HolidayRepository` は H2 のテスト（T2 の作り方）または Mockito で検証する
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HolidayService.java`、`src/main/java/com/example/shiftmatch/service/HolidayServiceImpl.java`、`src/test/java/com/example/shiftmatch/service/HolidayServiceImplTest.java`
   - 完了条件：
