@@ -14,11 +14,11 @@ Codex レビュー 2 ラウンド目の指摘に対応します。詳細は `/Us
 
 ## 完了条件
 
-- [ ] T1：V-4 のテストで `assignmentService.assign` を呼び出し順に基づいてスタブし、1 日目は具体的な `Optional<AssignmentResult>`（成立する結果）、2 日目は `Optional.empty()` を返す
-- [ ] T2：1 日目の `assignment().isPresent()` を検証
-- [ ] T3：2 日目の `assignment().isEmpty()` を検証（既存）
-- [ ] T4：`verify(assignmentService, times(2)).assign(anyList())` で両日分の呼び出しを検証
-- [ ] T5：`./mvnw test` で全テスト成功（Spotless・Checkstyle を含む）
+- [x] T1：V-4 のテストで `assignmentService.assign` を呼び出し順に基づいてスタブし、1 日目は具体的な `Optional<AssignmentResult>`（成立する結果）、2 日目は `Optional.empty()` を返す
+- [x] T2：1 日目の `assignment().isPresent()` を検証
+- [x] T3：2 日目の `assignment().isEmpty()` を検証（既存）
+- [x] T4：`verify(assignmentService, times(2)).assign(anyList())` で両日分の呼び出しを検証
+- [x] T5：`./mvnw test` で全テスト成功（Spotless・Checkstyle を含む）
 
 ## 実行ログ
 
