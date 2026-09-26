@@ -30,7 +30,9 @@
     ],
     "ask": [
       "Edit(/docs/**)",
-      "Write(/docs/**)"
+      "Write(/docs/**)",
+      "Edit(/pom.xml)",
+      "Write(/pom.xml)"
     ],
     "deny": [
       "Bash(mvn *)",

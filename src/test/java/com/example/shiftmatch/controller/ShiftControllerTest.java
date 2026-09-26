@@ -13,10 +13,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.core.read.ListAppender;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
+import com.example.shiftmatch.persistence.LatestShiftRepository;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.LocalTime;
@@ -30,6 +34,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -46,6 +51,8 @@ class ShiftControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private ShiftAssignmentService shiftAssignmentService;
+
+  @MockitoBean private LatestShiftRepository latestShiftRepository;
 
   /**
    * 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（小文字）。
@@ -1917,6 +1924,638 @@ class ShiftControllerTest {
           postWith(new AssignmentResult(createStandardResult().assignments(), 8, unassigned));
 
       assertEquals(3, html.split("class=\"chip\"", -1).length - 1);
+    }
+  }
+
+  @Nested
+  @DisplayName("画面表示時に保存済みの従業員入力を復元する")
+  class RestoreLatestShift {
+
+    @Test
+    @DisplayName("Given: 保存済みの従業員入力があるとき, When: 画面を表示すると, Then: 保存データが復元される")
+    void restoresAndDisplaysSavedEmployees() throws Exception {
+      List<Employee> savedEmployees =
+          List.of(
+              Employee.working("Alice", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.onLeave("Bob"));
+      when(latestShiftRepository.findEmployees()).thenReturn(savedEmployees);
+
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+
+      // モデルから ShiftForm を取出し、全12行の値を検証
+      ShiftForm form = (ShiftForm) result.getModelAndView().getModel().get("shiftForm");
+      assertNotNull(form);
+      assertEquals(12, form.getEmployees().size());
+
+      // 1行目: 名前「Alice」、休み false、開始「09:00」、終了「17:00」
+      EmployeeForm row0 = form.getEmployees().get(0);
+      assertEquals("Alice", row0.getName());
+      assertFalse(row0.isOff());
+      assertEquals("09:00", row0.getStart());
+      assertEquals("17:00", row0.getEnd());
+
+      // 2行目: 名前「Bob」、休み true、開始・終了は空文字
+      EmployeeForm row1 = form.getEmployees().get(1);
+      assertEquals("Bob", row1.getName());
+      assertTrue(row1.isOff());
+      assertEquals("", row1.getStart());
+      assertEquals("", row1.getEnd());
+
+      // 3行目以降は空
+      for (int i = 2; i < 12; i++) {
+        EmployeeForm row = form.getEmployees().get(i);
+        assertNull(row.getName());
+        assertFalse(row.isOff());
+        assertNull(row.getStart());
+        assertNull(row.getEnd());
+      }
+    }
+
+    @Test
+    @DisplayName("Given: 保存済みデータがないとき, When: 画面を表示すると, Then: 空の12行が表示される")
+    void showsEmptyRowsWhenNoSavedData() throws Exception {
+      when(latestShiftRepository.findEmployees()).thenReturn(List.of());
+
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+
+      String html = result.getResponse().getContentAsString();
+
+      // 12行の空行を確認
+      assertTrue(html.contains("id=\"row-count\""));
+      assertTrue(html.contains("name=\"employees[11].name\""));
+      assertFalse(html.contains("name=\"employees[12].name\""));
+
+      // モデルから ShiftForm を取出し、全12行の値を検証
+      ShiftForm form = (ShiftForm) result.getModelAndView().getModel().get("shiftForm");
+      assertNotNull(form);
+      assertEquals(12, form.getEmployees().size());
+
+      // 全12行が空であることを検証
+      for (int i = 0; i < 12; i++) {
+        EmployeeForm row = form.getEmployees().get(i);
+        assertNull(row.getName());
+        assertFalse(row.isOff());
+        assertNull(row.getStart());
+        assertNull(row.getEnd());
+      }
+    }
+  }
+
+  @Nested
+  @DisplayName("シフト算出後に従業員入力と結果を保存する")
+  class SaveAfterShiftAssignment {
+
+    @Test
+    @DisplayName("Given: シフト算出が成功したとき, When: POST /shift すると, Then: save が入力順と結果で呼ばれる")
+    void callsSaveWithCorrectArgumentsOnSuccess() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      var request = post("/shift");
+      List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      ArgumentCaptor<java.util.List<Employee>> captor =
+          ArgumentCaptor.forClass(java.util.List.class);
+      verify(latestShiftRepository).save(captor.capture(), any());
+
+      List<Employee> capturedEmployees = captor.getValue();
+      assertEquals(8, capturedEmployees.size());
+      for (int i = 0; i < 8; i++) {
+        assertEquals(names.get(i), capturedEmployees.get(i).name());
+      }
+    }
+
+    @Test
+    @DisplayName("Given: シフト算出が不成立のとき, When: POST /shift すると, Then: save が Optional.empty() で呼ばれる")
+    void callsSaveWithEmptyResultWhenUnassignable() throws Exception {
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.empty());
+
+      var request = post("/shift");
+      List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      ArgumentCaptor<java.util.Optional<AssignmentResult>> captor =
+          ArgumentCaptor.forClass(java.util.Optional.class);
+      verify(latestShiftRepository).save(any(), captor.capture());
+
+      assertTrue(captor.getValue().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Given: 入力エラーがあるとき, When: POST /shift すると, Then: save が呼ばれない")
+    void doesNotCallSaveOnInputError() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "invalid")
+                  .param("employees[0].end", "18:30"))
+          .andExpect(status().isOk());
+
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+  }
+
+  @Nested
+  @DisplayName("保存に失敗したらエラーとリトライを促す文言を表示する")
+  class SaveFailureErrorDisplay {
+
+    private static final String ERROR_MESSAGE = "保存に失敗しました。もう一度シフトを作成して保存し直してください。";
+
+    @Test
+    @DisplayName("Given: 保存処理で例外が発生したとき, When: POST /shift すると, Then: エラーメッセージと結果が表示される")
+    void displaysErrorMessageOnSaveFailure() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+      Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("test"))
+          .when(latestShiftRepository)
+          .save(any(), any());
+
+      var request = post("/shift");
+      List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      MvcResult mvcResult = mockMvc.perform(request).andExpect(status().isOk()).andReturn();
+
+      String html = mvcResult.getResponse().getContentAsString();
+
+      // エラーメッセージが含まれ、割当結果も表示
+      assertTrue(html.contains(ERROR_MESSAGE), "Error message should be displayed");
+      assertTrue(html.contains("class=\"card result\""), "Assignment result should be displayed");
+    }
+
+    @Test
+    @DisplayName("Given: 保存処理に成功したとき, When: POST /shift すると, Then: エラーメッセージが表示されない")
+    void doesNotDisplayErrorMessageOnSaveSuccess() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+      Mockito.doNothing().when(latestShiftRepository).save(any(), any());
+
+      var request = post("/shift");
+      List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      MvcResult mvcResult = mockMvc.perform(request).andExpect(status().isOk()).andReturn();
+
+      String html = mvcResult.getResponse().getContentAsString();
+
+      // エラーメッセージが含まれない
+      assertFalse(html.contains(ERROR_MESSAGE), "Error message should not be displayed");
+    }
+
+    @Test
+    @DisplayName("Given: 保存処理で例外が発生したとき, When: POST /shift すると, Then: エラーログがスタックトレース付きで出力される")
+    void logsErrorWithStacktraceOnSaveFailure() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+      Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("test"))
+          .when(latestShiftRepository)
+          .save(any(), any());
+
+      // ロガーに ListAppender を追加
+      Logger logger = (Logger) LoggerFactory.getLogger(ShiftController.class);
+      @SuppressWarnings("rawtypes")
+      ListAppender listAppender = new ListAppender();
+      listAppender.start();
+      logger.addAppender(listAppender);
+
+      try {
+        var request = post("/shift");
+        List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+        for (int i = 0; i < names.size(); i++) {
+          request.param("employees[" + i + "].name", names.get(i));
+          request.param("employees[" + i + "].off", "false");
+          request.param("employees[" + i + "].start", "07:30");
+          request.param("employees[" + i + "].end", "18:30");
+        }
+
+        mockMvc.perform(request).andExpect(status().isOk());
+
+        // ログの確認：ERROR レベルのログがあり、スタックトレース付き
+        assertTrue(
+            listAppender.list.stream()
+                .anyMatch(
+                    event -> {
+                      // 型安全なキャストを避けて、リフレクションで確認
+                      try {
+                        Object level = event.getClass().getMethod("getLevel").invoke(event);
+                        Object throwableProxy =
+                            event.getClass().getMethod("getThrowableProxy").invoke(event);
+                        return level == Level.ERROR && throwableProxy != null;
+                      } catch (Exception ex) {
+                        return false;
+                      }
+                    }),
+            "Error log with stack trace should be recorded");
+      } finally {
+        logger.detachAppender(listAppender);
+      }
+    }
+  }
+
+  @Nested
+  @DisplayName("氏名の最大長チェック")
+  class NameLengthValidation {
+
+    @Test
+    @DisplayName("Given: 256文字の氏名があるとき, When: POSTすると, Then: saveが呼ばれずindex が表示される")
+    void doesNotSaveWhenNameExceedsMaxLength() throws Exception {
+      var request = post("/shift");
+      String longName = "A".repeat(256);
+      List<String> names = List.of(longName, "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      // save が呼ばれていないことを確認
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("Given: 255文字の氏名があるとき, When: POSTすると, Then: saveが呼ばれる")
+    void saveWhenNameIsMaxLength() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      var request = post("/shift");
+      String maxName = "A".repeat(255);
+      List<String> names = List.of(maxName, "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      // save が呼ばれていることを確認
+      verify(latestShiftRepository).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("Given: 256文字の氏名があるとき, When: POSTすると, Then: エラーメッセージが表示される")
+    void displaysErrorMessageWhenNameExceedsMaxLength() throws Exception {
+      var request = post("/shift");
+      String longName = "A".repeat(256);
+      List<String> names = List.of(longName, "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      MvcResult mvcResult = mockMvc.perform(request).andExpect(status().isOk()).andReturn();
+      String html = mvcResult.getResponse().getContentAsString();
+
+      // エラーメッセージに行番号が含まれることを確認
+      assertTrue(
+          html.contains("1") && html.contains("255"),
+          "Error message should contain row number and max length");
+    }
+
+    @Test
+    @DisplayName("Given: 空の氏名があるとき, When: POSTすると, Then: エラーにならず除外される")
+    void excludesEmptyNameRows() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      var request = post("/shift");
+      List<String> names = List.of("", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      // save が呼ばれていることを確認（空行は除外される）
+      verify(latestShiftRepository).save(any(), any());
+    }
+  }
+
+  @Nested
+  @DisplayName("CSRF対策：別オリジンからのPOSTを拒否する")
+  class SameOriginProtection {
+
+    @Test
+    @DisplayName(
+        "Given: Sec-Fetch-Site: cross-site のとき, When: POST /shift すると, Then: 403で save/assign"
+            + " が呼ばれない")
+    void rejectsCrossSiteRequest() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .header("Sec-Fetch-Site", "cross-site")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30"))
+          .andExpect(status().isForbidden());
+
+      verify(shiftAssignmentService, never()).assign(any());
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("Given: Sec-Fetch-Site: same-origin のとき, When: POST /shift すると, Then: 200で処理される")
+    void allowsSameOriginRequest() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      mockMvc
+          .perform(
+              post("/shift")
+                  .header("Sec-Fetch-Site", "same-origin")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30")
+                  .param("employees[1].name", "B")
+                  .param("employees[1].off", "false")
+                  .param("employees[1].start", "07:30")
+                  .param("employees[1].end", "18:30")
+                  .param("employees[2].name", "C")
+                  .param("employees[2].off", "false")
+                  .param("employees[2].start", "07:30")
+                  .param("employees[2].end", "18:30")
+                  .param("employees[3].name", "D")
+                  .param("employees[3].off", "false")
+                  .param("employees[3].start", "07:30")
+                  .param("employees[3].end", "18:30")
+                  .param("employees[4].name", "E")
+                  .param("employees[4].off", "false")
+                  .param("employees[4].start", "07:30")
+                  .param("employees[4].end", "18:30")
+                  .param("employees[5].name", "F")
+                  .param("employees[5].off", "false")
+                  .param("employees[5].start", "07:30")
+                  .param("employees[5].end", "18:30")
+                  .param("employees[6].name", "G")
+                  .param("employees[6].off", "false")
+                  .param("employees[6].start", "07:30")
+                  .param("employees[6].end", "18:30")
+                  .param("employees[7].name", "H")
+                  .param("employees[7].off", "false")
+                  .param("employees[7].start", "07:30")
+                  .param("employees[7].end", "18:30"))
+          .andExpect(status().isOk());
+
+      verify(shiftAssignmentService).assign(any());
+    }
+
+    @Test
+    @DisplayName("Given: Sec-Fetch-Site: none のとき, When: POST /shift すると, Then: 200で処理される")
+    void allowsNoneOriginRequest() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      mockMvc
+          .perform(
+              post("/shift")
+                  .header("Sec-Fetch-Site", "none")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30")
+                  .param("employees[1].name", "B")
+                  .param("employees[1].off", "false")
+                  .param("employees[1].start", "07:30")
+                  .param("employees[1].end", "18:30")
+                  .param("employees[2].name", "C")
+                  .param("employees[2].off", "false")
+                  .param("employees[2].start", "07:30")
+                  .param("employees[2].end", "18:30")
+                  .param("employees[3].name", "D")
+                  .param("employees[3].off", "false")
+                  .param("employees[3].start", "07:30")
+                  .param("employees[3].end", "18:30")
+                  .param("employees[4].name", "E")
+                  .param("employees[4].off", "false")
+                  .param("employees[4].start", "07:30")
+                  .param("employees[4].end", "18:30")
+                  .param("employees[5].name", "F")
+                  .param("employees[5].off", "false")
+                  .param("employees[5].start", "07:30")
+                  .param("employees[5].end", "18:30")
+                  .param("employees[6].name", "G")
+                  .param("employees[6].off", "false")
+                  .param("employees[6].start", "07:30")
+                  .param("employees[6].end", "18:30")
+                  .param("employees[7].name", "H")
+                  .param("employees[7].off", "false")
+                  .param("employees[7].start", "07:30")
+                  .param("employees[7].end", "18:30"))
+          .andExpect(status().isOk());
+
+      verify(shiftAssignmentService).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "Given: Origin: http://evil.example, Host: localhost:8080 のとき, When: POST /shift すると, Then:"
+            + " 403で save/assign が呼ばれない")
+    void rejectsRequestWithMismatchedOrigin() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .header("Origin", "http://evil.example")
+                  .header("Host", "localhost:8080")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30"))
+          .andExpect(status().isForbidden());
+
+      verify(shiftAssignmentService, never()).assign(any());
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName(
+        "Given: Origin: http://localhost:8080, Host: localhost:8080 のとき, When: POST /shift すると,"
+            + " Then: 200で処理される")
+    void allowsRequestWithMatchingOrigin() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      mockMvc
+          .perform(
+              post("/shift")
+                  .header("Origin", "http://localhost:8080")
+                  .header("Host", "localhost:8080")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30")
+                  .param("employees[1].name", "B")
+                  .param("employees[1].off", "false")
+                  .param("employees[1].start", "07:30")
+                  .param("employees[1].end", "18:30")
+                  .param("employees[2].name", "C")
+                  .param("employees[2].off", "false")
+                  .param("employees[2].start", "07:30")
+                  .param("employees[2].end", "18:30")
+                  .param("employees[3].name", "D")
+                  .param("employees[3].off", "false")
+                  .param("employees[3].start", "07:30")
+                  .param("employees[3].end", "18:30")
+                  .param("employees[4].name", "E")
+                  .param("employees[4].off", "false")
+                  .param("employees[4].start", "07:30")
+                  .param("employees[4].end", "18:30")
+                  .param("employees[5].name", "F")
+                  .param("employees[5].off", "false")
+                  .param("employees[5].start", "07:30")
+                  .param("employees[5].end", "18:30")
+                  .param("employees[6].name", "G")
+                  .param("employees[6].off", "false")
+                  .param("employees[6].start", "07:30")
+                  .param("employees[6].end", "18:30")
+                  .param("employees[7].name", "H")
+                  .param("employees[7].off", "false")
+                  .param("employees[7].start", "07:30")
+                  .param("employees[7].end", "18:30"))
+          .andExpect(status().isOk());
+
+      verify(shiftAssignmentService).assign(any());
+    }
+
+    @Test
+    @DisplayName("Given: ヘッダなし(非ブラウザ/旧ブラウザ) のとき, When: POST /shift すると, Then: 200で処理される")
+    void allowsRequestWithoutHeaders() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30")
+                  .param("employees[1].name", "B")
+                  .param("employees[1].off", "false")
+                  .param("employees[1].start", "07:30")
+                  .param("employees[1].end", "18:30")
+                  .param("employees[2].name", "C")
+                  .param("employees[2].off", "false")
+                  .param("employees[2].start", "07:30")
+                  .param("employees[2].end", "18:30")
+                  .param("employees[3].name", "D")
+                  .param("employees[3].off", "false")
+                  .param("employees[3].start", "07:30")
+                  .param("employees[3].end", "18:30")
+                  .param("employees[4].name", "E")
+                  .param("employees[4].off", "false")
+                  .param("employees[4].start", "07:30")
+                  .param("employees[4].end", "18:30")
+                  .param("employees[5].name", "F")
+                  .param("employees[5].off", "false")
+                  .param("employees[5].start", "07:30")
+                  .param("employees[5].end", "18:30")
+                  .param("employees[6].name", "G")
+                  .param("employees[6].off", "false")
+                  .param("employees[6].start", "07:30")
+                  .param("employees[6].end", "18:30")
+                  .param("employees[7].name", "H")
+                  .param("employees[7].off", "false")
+                  .param("employees[7].start", "07:30")
+                  .param("employees[7].end", "18:30"))
+          .andExpect(status().isOk());
+
+      verify(shiftAssignmentService).assign(any());
+    }
+
+    @Test
+    @DisplayName("Given: GET /で Sec-Fetch-Site: cross-site のとき, When: アクセスすると, Then: 200で許可される")
+    void allowsCrossSiteGetRequest() throws Exception {
+      mockMvc.perform(get("/").header("Sec-Fetch-Site", "cross-site")).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName(
+        "Given: Origin: null, Host: localhost:8080 のとき, When: POST /shift すると, Then: 403で"
+            + " save/assign が呼ばれない")
+    void rejectsRequestWithNullOrigin() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .header("Origin", "null")
+                  .header("Host", "localhost:8080")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30"))
+          .andExpect(status().isForbidden());
+
+      verify(shiftAssignmentService, never()).assign(any());
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName(
+        "Given: Origin: file:///x (ホスト抽出不可), Host: localhost:8080 のとき, When: POST /shift すると,"
+            + " Then: 403で save/assign が呼ばれない")
+    void rejectsRequestWithNoHostOrigin() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .header("Origin", "file:///x")
+                  .header("Host", "localhost:8080")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "07:30")
+                  .param("employees[0].end", "18:30"))
+          .andExpect(status().isForbidden());
+
+      verify(shiftAssignmentService, never()).assign(any());
+      verify(latestShiftRepository, never()).save(any(), any());
     }
   }
 }

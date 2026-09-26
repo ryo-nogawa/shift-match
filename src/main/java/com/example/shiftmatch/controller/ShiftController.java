@@ -2,7 +2,9 @@ package com.example.shiftmatch.controller;
 
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.InvalidNameError;
 import com.example.shiftmatch.domain.InvalidTimeRangeError;
+import com.example.shiftmatch.persistence.LatestShiftRepository;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import jakarta.validation.Valid;
 import java.time.LocalTime;
@@ -13,7 +15,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -28,6 +33,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 @Controller
 public class ShiftController {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ShiftController.class);
+
   private static final int MAX_EMPLOYEE_COUNT = 12;
 
   private static final String START_PROPERTY = "start";
@@ -35,18 +42,25 @@ public class ShiftController {
   private static final Pattern TIME_RANGE_FIELD_PATTERN =
       Pattern.compile("employees\\[(\\d+)\\]\\.(start|end)");
 
+  private static final Pattern NAME_FIELD_PATTERN = Pattern.compile("employees\\[(\\d+)\\]\\.name");
+
   private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
   private final ShiftAssignmentService shiftAssignmentService;
+
+  private final LatestShiftRepository latestShiftRepository;
 
   /**
    * コンストラクタです。
    *
    * @param shiftAssignmentService シフト算出サービス
+   * @param latestShiftRepository 最新シフト結果リポジトリ
    */
   @Autowired
-  public ShiftController(ShiftAssignmentService shiftAssignmentService) {
+  public ShiftController(
+      ShiftAssignmentService shiftAssignmentService, LatestShiftRepository latestShiftRepository) {
     this.shiftAssignmentService = shiftAssignmentService;
+    this.latestShiftRepository = latestShiftRepository;
   }
 
   /**
@@ -62,7 +76,7 @@ public class ShiftController {
   }
 
   /**
-   * 初期フォームを表示します。
+   * 初期フォームを表示します。保存済みの従業員入力がある場合は復元します。
    *
    * @param model モデルオブジェクト
    * @return ビュー名
@@ -71,9 +85,30 @@ public class ShiftController {
   public String index(Model model) {
     ShiftForm shiftForm = new ShiftForm();
     List<EmployeeForm> employees = new ArrayList<>();
-    for (int i = 0; i < MAX_EMPLOYEE_COUNT; i++) {
+
+    // 保存済みの従業員を読み出す
+    List<Employee> savedEmployees = latestShiftRepository.findEmployees();
+
+    // 保存済みの従業員をフォームに詰める
+    for (Employee savedEmployee : savedEmployees) {
+      EmployeeForm form = new EmployeeForm();
+      form.setName(savedEmployee.name());
+      form.setOff(savedEmployee.off());
+      if (!savedEmployee.off()) {
+        form.setStart(savedEmployee.start().format(TIME_FORMATTER));
+        form.setEnd(savedEmployee.end().format(TIME_FORMATTER));
+      } else {
+        form.setStart("");
+        form.setEnd("");
+      }
+      employees.add(form);
+    }
+
+    // 不足分を空行で補う（最大12行）
+    while (employees.size() < MAX_EMPLOYEE_COUNT) {
       employees.add(new EmployeeForm());
     }
+
     shiftForm.setEmployees(employees);
     model.addAttribute("shiftForm", shiftForm);
 
@@ -108,20 +143,35 @@ public class ShiftController {
 
     List<InvalidTimeRangeError> timeRangeErrors = toTimeRangeErrors(bindingResult);
 
+    List<InvalidNameError> nameErrors = toNameErrors(bindingResult);
+
     boolean limitExceeded = validEmployees.size() > MAX_EMPLOYEE_COUNT;
     if (limitExceeded) {
       model.addAttribute(
           "limitExceededError", "従業員の入力行数が上限（" + MAX_EMPLOYEE_COUNT + "名）を超えています。入力行を減らしてください。");
     }
 
-    if (!duplicateErrors.isEmpty() || !timeRangeErrors.isEmpty() || limitExceeded) {
+    if (!duplicateErrors.isEmpty()
+        || !timeRangeErrors.isEmpty()
+        || !nameErrors.isEmpty()
+        || limitExceeded) {
       model.addAttribute("duplicateErrors", duplicateErrors);
       model.addAttribute("timeRangeErrors", timeRangeErrors);
+      model.addAttribute("nameErrors", nameErrors);
       model.addAttribute("shiftForm", shiftForm);
       return "index";
     }
 
     var result = shiftAssignmentService.assign(validEmployees);
+
+    // 入力エラーがなく算出まで完了したときに保存
+    try {
+      latestShiftRepository.save(validEmployees, result);
+    } catch (DataAccessException e) {
+      LOGGER.error("最新シフトの保存に失敗しました", e);
+      model.addAttribute("saveError", "保存に失敗しました。もう一度シフトを作成して保存し直してください。");
+    }
+
     if (result.isPresent()) {
       model.addAttribute("assignmentResult", result.get());
     } else {
@@ -159,6 +209,32 @@ public class ShiftController {
 
     return fieldErrors.stream()
         .map(fieldError -> new InvalidTimeRangeError(fieldError.rowIndex(), fieldError.message()))
+        .toList();
+  }
+
+  /**
+   * BindingResult から氏名のエラーを InvalidNameError のリストに変換します。
+   *
+   * <p>行番号の昇順で並べられます。
+   *
+   * @param bindingResult バリデーション結果
+   * @return 氏名のエラーリスト（行順）
+   */
+  private List<InvalidNameError> toNameErrors(BindingResult bindingResult) {
+    List<NameFieldError> fieldErrors = new ArrayList<>();
+
+    for (FieldError error : bindingResult.getFieldErrors()) {
+      Matcher matcher = NAME_FIELD_PATTERN.matcher(error.getField());
+      if (matcher.matches()) {
+        fieldErrors.add(
+            new NameFieldError(Integer.parseInt(matcher.group(1)), error.getDefaultMessage()));
+      }
+    }
+
+    fieldErrors.sort(Comparator.comparingInt(fieldError -> fieldError.rowIndex()));
+
+    return fieldErrors.stream()
+        .map(fieldError -> new InvalidNameError(fieldError.rowIndex(), fieldError.message()))
         .toList();
   }
 
@@ -206,4 +282,12 @@ public class ShiftController {
    * @param message エラーメッセージ
    */
   private record TimeRangeFieldError(int rowIndex, String property, String message) {}
+
+  /**
+   * 氏名のフィールドエラーを、並べ替えのために行番号とあわせて保持するレコードです。
+   *
+   * @param rowIndex 行番号（0 始まり）
+   * @param message エラーメッセージ
+   */
+  private record NameFieldError(int rowIndex, String message) {}
 }
