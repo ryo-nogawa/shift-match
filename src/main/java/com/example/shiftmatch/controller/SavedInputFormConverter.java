@@ -79,7 +79,7 @@ public class SavedInputFormConverter {
   }
 
   private DayForm toDayForm(DailyWish wish) {
-    if (wish == null) {
+    if (wish == null || wish.off()) {
       return emptyDayForm();
     }
     DayForm day = new DayForm();
