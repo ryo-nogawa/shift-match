@@ -46,7 +46,7 @@
     - `[F-10]` を含む `@DisplayName` のテストが存在する：保存して `findByYear` で年ごとに取得できる（日付順）、`replaceAll` が既存の全件を置き換える、`existsInYear` が保存済みの年で true・ない年で false、`SchemaTest` で `holiday` テーブルが作られる
     - `./mvnw test -Dtest=HolidayRepositoryTest+SchemaTest` が成功する
 
-- [ ] **T3. 祝日 CSV を取得するクラスを作る（F-10）**
+- [x] **T3. 祝日 CSV を取得するクラスを作る（F-10）**
   - 依頼事項：`service/HolidayCsvFetcher.java`（インタフェース：`byte[] fetch()`）と、`service/HttpHolidayCsvFetcher.java`（実装、`@Component`）を作る。実装は `java.net.http.HttpClient` で GET し、HTTP 200 のときだけボディをバイト列で返す。CSV の URL と、接続・応答のタイムアウト秒数は `application.properties` に `holiday.csv.url`（値は `https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv`）と `holiday.csv.timeout-seconds`（値は `10`）で定義し、`@Value` で注入する。200 以外のステータス、接続失敗、タイムアウトのときは、`service/HolidayFetchException.java`（`RuntimeException`。原因の例外を保持する）を投げる。`InterruptedException` を捕捉したときは、`Thread.currentThread().interrupt()` を呼んでから `HolidayFetchException` を投げる
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HolidayCsvFetcher.java`、`src/main/java/com/example/shiftmatch/service/HttpHolidayCsvFetcher.java`、`src/main/java/com/example/shiftmatch/service/HolidayFetchException.java`、`src/main/resources/application.properties`、`src/test/java/com/example/shiftmatch/service/HttpHolidayCsvFetcherTest.java`
   - 完了条件：
