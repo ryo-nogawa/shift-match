@@ -65,7 +65,7 @@
     - `git diff` 上、テストの期待値（アサーション）が変更されていない（`@DisplayName`・クラス構造・`@Nested` 化のための移動のみ）
     - `./mvnw test` が成功する
 
-- [ ] **R7. 全テストと静的解析を通す**
+- [x] **R7. 全テストと静的解析を通す**
   - 依頼事項：`./mvnw spotless:apply` の後、`./mvnw test` を実行して、全テスト・Spotless・Checkstyle が成功することを確認する。`git diff main --stat` に `pom.xml`・`controller/`・`templates/`・`static/`・`persistence/` が含まれないことも確認する
   - 対象ファイル：本 Issue で変更した全ファイル
   - 完了条件：
