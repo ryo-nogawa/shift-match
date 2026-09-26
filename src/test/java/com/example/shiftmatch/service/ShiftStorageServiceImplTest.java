@@ -76,6 +76,18 @@ class ShiftStorageServiceImplTest {
 
         verify(repository).save(input, result, List.of("佐藤", "鈴木"));
       }
+
+      @Test
+      @DisplayName(
+          "[V-1][F-7][8.4節] Given: 半角・全角の空白だけの名前を含む入力, When: 保存すると, Then: 空白だけの名前も除いてリポジトリへ渡す")
+      void excludesWhitespaceOnlyNames() {
+        MonthlyShiftInput input = inputOf("佐藤", " ", "　", "鈴木");
+        MonthlyShiftResult result = new MonthlyShiftResult(MONTH, List.of());
+
+        service.save(input, result);
+
+        verify(repository).save(input, result, List.of("佐藤", "鈴木"));
+      }
     }
 
     @Nested

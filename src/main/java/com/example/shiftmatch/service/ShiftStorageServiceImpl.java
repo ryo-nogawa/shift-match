@@ -35,7 +35,7 @@ public class ShiftStorageServiceImpl implements ShiftStorageService {
     List<String> employeeNames =
         input.employees().stream()
             .map(employee -> employee.name())
-            .filter(name -> name != null && !name.isEmpty())
+            .filter(name -> name != null && !name.isBlank())
             .toList();
     try {
       repository.save(input, result, employeeNames);
