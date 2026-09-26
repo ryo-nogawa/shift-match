@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -15,7 +14,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InputError;
@@ -265,27 +263,47 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
-        "[F-5] Given: 成立の日と不成立の日がある結果のとき, When: POST /shift を呼ぶと,"
-            + " Then: 画面 3 に日付・成立可否・勤務できる人数が出る")
-    void rendersMonthlyResultOnScreen3() throws Exception {
-      DailyShiftResult feasible =
-          new DailyShiftResult(
-              LocalDate.of(2026, 10, 1), 9, Optional.of(mock(AssignmentResult.class)));
-      DailyShiftResult infeasible =
-          new DailyShiftResult(LocalDate.of(2026, 10, 2), 5, Optional.empty());
+        "[F-4][7.1節] Given: 不成立 2 日の結果のとき, When: POST /shift の HTML を見ると,"
+            + " Then: 集計・3 つのタブボタン・3 つのパネルがあり、初期はカレンダーだけ表示される")
+    void rendersSummaryAndTabsOnScreen3() throws Exception {
+      DailyShiftResult failed1 =
+          new DailyShiftResult(LocalDate.of(2026, 10, 1), 5, Optional.empty());
+      DailyShiftResult failed2 =
+          new DailyShiftResult(LocalDate.of(2026, 10, 2), 6, Optional.empty());
       when(monthlyShiftService.create(any()))
-          .thenReturn(
-              new MonthlyShiftResult(YearMonth.of(2026, 10), List.of(feasible, infeasible)));
+          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of(failed1, failed2)));
 
       String html = bodyOf(perform(validRequest()));
 
       assertTrue(html.contains("data-initial-step=\"3\""));
-      assertTrue(html.contains("2026-10-01"));
-      assertTrue(html.contains("2026-10-02"));
-      assertTrue(html.contains(">不成立<"));
-      assertTrue(html.contains(">成立<"));
-      assertTrue(html.contains("勤務できる人数: 5"));
+      assertTrue(html.contains("id=\"result-summary\""));
+      assertTrue(html.contains("営業日数 2"));
+      assertTrue(html.contains("成立 0"));
+      assertTrue(html.contains("不成立 2"));
+      for (String tab : List.of("calendar", "employees", "detail")) {
+        assertTrue(html.contains("data-tab=\"" + tab + "\""), tab);
+        assertTrue(html.contains("id=\"tab-" + tab + "\""), tab);
+      }
+      assertTrue(html.contains(">カレンダー表示<"));
+      assertTrue(html.contains(">従業員別表示<"));
+      assertTrue(html.contains(">日別詳細<"));
+      assertFalse(html.contains("<div id=\"tab-calendar\" class=\"tab-panel\" hidden"));
+      assertTrue(html.contains("id=\"tab-employees\" class=\"tab-panel\" hidden"));
+      assertTrue(html.contains("id=\"tab-detail\" class=\"tab-panel\" hidden"));
+      assertTrue(html.contains("result-tabs.js"));
       assertFalse(html.contains("role=\"alert\""));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][8.3節] Given: 結果がない初期表示のとき, When: GET / の HTML を見ると,"
+            + " Then: 「結果はまだありません」が出て、タブや集計は出ない")
+    void rendersEmptyMessageWithoutResult() throws Exception {
+      String html = bodyOf(perform(get("/")));
+
+      assertTrue(html.contains("結果はまだありません"));
+      assertFalse(html.contains("id=\"result-summary\""));
+      assertFalse(html.contains("data-tab="));
     }
 
     @Test

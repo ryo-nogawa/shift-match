@@ -9,6 +9,7 @@ const require = createRequire(import.meta.url);
 const employeeList = require("../../main/resources/static/js/employee-list.js");
 const dayAdjustments = require("../../main/resources/static/js/day-adjustments.js");
 const stepNav = require("../../main/resources/static/js/step-nav.js");
+const resultTabs = require("../../main/resources/static/js/result-tabs.js");
 
 describe("employee-list.js", () => {
   test("[8.5節] 並べ替え後の 3 行は、行の入力とパネルの入力が 0,1,2 に振り直される", () => {
@@ -230,5 +231,55 @@ describe("step-nav.js", () => {
     assert.equal(stepNav.navState(2).nextType, "submit");
     assert.equal(stepNav.navState(2).nextLabel, "1 か月分のシフトを作成");
     assert.equal(stepNav.navState(3).nextHidden, true);
+  });
+});
+
+describe("result-tabs.js", () => {
+  function fakeButton(tab) {
+    const classes = new Set();
+    const attributes = { "data-tab": tab };
+    return {
+      classes,
+      attributes,
+      getAttribute: (name) => attributes[name],
+      setAttribute: (name, value) => {
+        attributes[name] = value;
+      },
+      classList: {
+        toggle: (name, force) => (force ? classes.add(name) : classes.delete(name)),
+      },
+    };
+  }
+
+  test("[7.1節] switchTab は指定したタブのパネルだけを表示し、ボタンを選択状態にする", () => {
+    const buttons = ["calendar", "employees", "detail"].map(fakeButton);
+    const panels = ["calendar", "employees", "detail"].map((tab) => ({
+      id: "tab-" + tab,
+      hidden: tab !== "calendar",
+    }));
+
+    const switched = resultTabs.switchTab("employees", buttons, panels);
+
+    assert.equal(switched, true);
+    assert.deepEqual(
+      panels.map((p) => p.hidden),
+      [true, false, true]
+    );
+    assert.deepEqual(
+      buttons.map((b) => b.classes.has("active")),
+      [false, true, false]
+    );
+    assert.deepEqual(
+      buttons.map((b) => b.attributes["aria-selected"]),
+      ["false", "true", "false"]
+    );
+  });
+
+  test("[7.1節] switchTab は未知のタブなら何も変えない", () => {
+    const buttons = [fakeButton("calendar")];
+    const panels = [{ id: "tab-calendar", hidden: false }];
+
+    assert.equal(resultTabs.switchTab("unknown", buttons, panels), false);
+    assert.equal(panels[0].hidden, false);
   });
 });

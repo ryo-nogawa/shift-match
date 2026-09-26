@@ -134,16 +134,20 @@
 
           <!-- 画面 3: 結果 -->
           <section id="screen-3" data-screen="3" hidden>
-            <div th:if="${monthlyResult}">
-              <h2>シフト作成結果</h2>
-              <div th:each="dayResult : ${monthlyResult.days()}">
-                <div th:text="${dayResult.date()}"></div>
-                <div th:if="${dayResult.assignment().isPresent()}" th:text="'成立'"></div>
-                <div th:if="${dayResult.assignment().isEmpty()}" th:text="'不成立'"></div>
-                <div th:text="'勤務できる人数: ' + ${dayResult.availableCount()}"></div>
+            <div th:if="${resultView}" class="result">
+              <p id="result-summary" class="result-summary" th:text="'営業日数 ' + ${resultView.businessDayCount()} + '・成立 ' + ${resultView.successCount()} + '・不成立 ' + ${resultView.failureCount()}"></p>
+              <div class="tab-buttons" role="tablist">
+                <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="calendar">カレンダー表示</button>
+                <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="employees">従業員別表示</button>
+                <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="detail">日別詳細</button>
+              </div>
+              <div class="tab-panels">
+                <div id="tab-calendar" class="tab-panel"></div>
+                <div id="tab-employees" class="tab-panel" hidden></div>
+                <div id="tab-detail" class="tab-panel" hidden></div>
               </div>
             </div>
-            <div th:unless="${monthlyResult}">
+            <div th:unless="${resultView}">
               <p>結果はまだありません</p>
             </div>
           </section>
@@ -160,5 +164,6 @@
     <script defer th:src="@{/js/step-nav.js}"></script>
     <script defer th:src="@{/js/employee-list.js}"></script>
     <script defer th:src="@{/js/day-adjustments.js}"></script>
+    <script defer th:src="@{/js/result-tabs.js}"></script>
   </body>
 </html>
