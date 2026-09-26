@@ -59,6 +59,28 @@ public record Employee(String name, boolean off, LocalTime start, LocalTime end)
   }
 
   /**
+   * この従業員が出勤しない理由を返します。
+   *
+   * <p>出勤する場合（割り当てられる可能性がある場合）や、出勤しない場合でも理由が異なります：
+   * <ul>
+   *   <li>{@link UnassignedReason#ON_LEAVE} : 従業員が休み
+   *   <li>{@link UnassignedReason#NO_AVAILABLE_SLOT} : 入れる枠がない
+   *   <li>{@link UnassignedReason#LOWER_GAP_CHOSEN} : 入れる枠はあったが、より小さいずれの案が選ばれた
+   * </ul>
+   *
+   * @return 未出勤の理由
+   */
+  public UnassignedReason unassignedReason() {
+    if (off) {
+      return UnassignedReason.ON_LEAVE;
+    }
+    if (workableSlots().isEmpty()) {
+      return UnassignedReason.NO_AVAILABLE_SLOT;
+    }
+    return UnassignedReason.LOWER_GAP_CHOSEN;
+  }
+
+  /**
    * 入力した時間帯と枠の勤務時間のずれ（分）を計算します。
    *
    * <p>ずれ = 入力時間帯の長さ（分） − 枠の勤務時間（分）

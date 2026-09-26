@@ -170,6 +170,51 @@ class EmployeeTest {
   }
 
   @Nested
+  @DisplayName("[F-4][H-3] 未出勤の理由を判定")
+  class UnassignedReasonTest {
+
+    @Test
+    @DisplayName("[F-4] Given: 休みの従業員K, When: unassignedReason()を呼ぶと, Then: ON_LEAVE を返す")
+    void onLeaveEmployeeReturnsOnLeave() {
+      Employee employee = Employee.onLeave("K");
+
+      assertEquals(UnassignedReason.ON_LEAVE, employee.unassignedReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][H-3] Given: 開始・終了がnullの従業員, When: unassignedReason()を呼ぶと, Then:"
+            + " NO_AVAILABLE_SLOT を返す")
+    void nullTimeRangeReturnsNoAvailableSlot() {
+      Employee employee = new Employee("X", false, null, null);
+
+      assertEquals(UnassignedReason.NO_AVAILABLE_SLOT, employee.unassignedReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][H-3] Given: 9:00〜10:00の従業員（どの枠にも入らない), When: unassignedReason()を呼ぶと, Then:"
+            + " NO_AVAILABLE_SLOT を返す")
+    void noSuitableSlotReturnsNoAvailableSlot() {
+      Employee employee =
+          Employee.working("J", java.time.LocalTime.of(9, 0), java.time.LocalTime.of(10, 0));
+
+      assertEquals(UnassignedReason.NO_AVAILABLE_SLOT, employee.unassignedReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][H-3] Given: 7:30〜18:30の従業員（入れる枠がある), When: unassignedReason()を呼ぶと, Then:"
+            + " LOWER_GAP_CHOSEN を返す")
+    void withWorkableSlotsReturnsLowerGapChosen() {
+      Employee employee =
+          Employee.working("I", java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30));
+
+      assertEquals(UnassignedReason.LOWER_GAP_CHOSEN, employee.unassignedReason());
+    }
+  }
+
+  @Nested
   @DisplayName("[F-3] 「ずれ」（入力時間帯と枠の勤務時間の差）を計算")
   class GapMinutes {
 
