@@ -53,7 +53,7 @@
     - `@WebMvcTest(CalendarController.class)` と `@MockitoBean HolidayService` で、次を検証する `[F-9]` 付きのテストがある：営業日の一覧・営業日数・祝日（日付と名前）・祝日数が JSON で返る／`month` が不正形式のとき 400／`isSupported` が false のとき 400 でメッセージが返る
     - `./mvnw test -Dtest=CalendarControllerTest` が成功する
 
-- [ ] **T3. GET / を月間フォームの初期表示にする（F-1、F-2、8.1 節）**
+- [x] **T3. GET / を月間フォームの初期表示にする（F-1、F-2、8.1 節）**
   - 依頼事項：`ShiftController` を月間用に書き直す（この Todo では `GET /` のみ。`POST /shift` は T4）。コンストラクタは `MonthlyShiftService` と `MonthlyFormConverter` を受け取る（`ShiftAssignmentService`・`LatestShiftRepository` への依存は外す。`ShiftControllerTest` の `@MockitoBean` もそれに合わせて直す）。`GET /` は `ShiftForm` を作り、`targetMonth` を今月（`YearMonth.now()` を `YYYY-MM` で）、`employees` を **12 行**（名前は空、区分は `FULL_TIME`、`days` は月〜金 5 件で休みなし・`07:30`〜`18:30`）、`adjustments` は空にしてモデル `shiftForm` に入れ、`index` を返す。`@ModelAttribute("timeOptions")`・`employmentTypes` は残す。旧 `ShiftControllerTest` の 1 日分向けのテストは、この Todo で月間用に書き直すか削除する（仕様と異なる期待値へ書き換えない。1 日分の振る舞いを検証していたものは削除する）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
