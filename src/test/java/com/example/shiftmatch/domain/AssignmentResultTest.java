@@ -108,6 +108,56 @@ class AssignmentResultTest {
     }
   }
 
+  @Nested
+  @DisplayName("[F-4][F-3] 未出勤者の理由")
+  class UnassignedReasonLabel {
+
+    private AssignmentResult resultWithUnassigned(Employee unassigned) {
+      return new AssignmentResult(createStandardAssignments(), 0, List.of(unassigned));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-3][F-4] Given: 未出勤者が割り当て済みの人と入れ替えてもずれの合計が変わらないとき,"
+            + " When: 理由を取得すると, Then: 同じずれの案があり、優先度が高い割り当て済みの人が選ばれたと氏名つきで示す")
+    void namesTheAssignedEmployeeWhenSwapKeepsTotalGap() {
+      // Employee0 は枠 1 で 660 分の時間帯。同じ 660 分の Ito も枠 1 に入れ、ずれは 240 分で同じになる
+      Employee ito = Employee.working("Ito", LocalTime.of(7, 30), LocalTime.of(18, 30));
+
+      String label = resultWithUnassigned(ito).unassignedReasonLabel(ito);
+
+      assertEquals("入れる枠はあったが、同じずれの案があり、入力順で優先度が高い Employee0 が選ばれた", label);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: どの割り当て済みの人と入れ替えてもずれの合計が変わるとき," + " When: 理由を取得すると, Then: より小さいずれの案が選ばれたと示す")
+    void saysLowerGapWhenNoSwapKeepsTotalGap() {
+      // 7:30〜18:00（630 分）は枠 1〜5 に入れるが、どの枠でも 660 分の人とはずれが異なる
+      Employee shorter = Employee.working("Short", LocalTime.of(7, 30), LocalTime.of(18, 0));
+
+      String label = resultWithUnassigned(shorter).unassignedReasonLabel(shorter);
+
+      assertEquals("入れる枠はあったが、より小さいずれの案が選ばれた", label);
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 未出勤者が休みのとき, When: 理由を取得すると, Then: 「休み」を返す")
+    void returnsOffLabelForEmployeeOnLeave() {
+      Employee off = Employee.onLeave("Off");
+
+      assertEquals("休み", resultWithUnassigned(off).unassignedReasonLabel(off));
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 未出勤者がどの枠にも入れないとき, When: 理由を取得すると, Then: 「どの枠にも入れない」を返す")
+    void returnsNoAvailableSlotLabel() {
+      Employee narrow = Employee.working("Narrow", LocalTime.of(9, 0), LocalTime.of(10, 0));
+
+      assertEquals("どの枠にも入れない", resultWithUnassigned(narrow).unassignedReasonLabel(narrow));
+    }
+  }
+
   private List<ShiftAssignment> createStandardAssignments() {
     List<ShiftAssignment> assignments = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
