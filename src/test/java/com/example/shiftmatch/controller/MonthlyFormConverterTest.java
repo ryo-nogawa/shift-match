@@ -28,9 +28,8 @@ class MonthlyFormConverterTest {
     converter = new MonthlyFormConverter();
   }
 
-  private static DayForm day(boolean off, String start, String end) {
+  private static DayForm day(String start, String end) {
     DayForm day = new DayForm();
-    day.setOff(off);
     day.setStart(start);
     day.setEnd(end);
     return day;
@@ -39,7 +38,7 @@ class MonthlyFormConverterTest {
   private static List<DayForm> fullWeek() {
     List<DayForm> days = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      days.add(day(false, "07:30", "18:30"));
+      days.add(day("07:30", "18:30"));
     }
     return days;
   }
@@ -112,7 +111,7 @@ class MonthlyFormConverterTest {
             + " Then: days[0] が月曜、days[1] が火曜に対応する")
     void mapsDayIndexToDayOfWeek() {
       List<DayForm> days = fullWeek();
-      days.set(0, day(false, "08:00", "17:00"));
+      days.set(0, day("08:00", "17:00"));
       ShiftForm form =
           form("2026-10", List.of(employee("太郎", "FULL_TIME", days)), new ArrayList<>());
 
@@ -123,23 +122,6 @@ class MonthlyFormConverterTest {
       assertEquals(LocalTime.of(17, 0), monday.end());
       DailyWish tuesday = input.employees().get(0).baseShifts().get(DayOfWeek.TUESDAY);
       assertEquals(LocalTime.of(7, 30), tuesday.start());
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: 月曜が休みの基本シフトのとき, When: 変換すると," + " Then: 月曜は off=true で開始・終了が null になる")
-    void mapsOffDayToOffWishWithoutTimes() {
-      List<DayForm> days = fullWeek();
-      days.set(0, day(true, null, null));
-      ShiftForm form =
-          form("2026-10", List.of(employee("太郎", "FULL_TIME", days)), new ArrayList<>());
-
-      MonthlyShiftInput input = converter.toInput(form);
-
-      DailyWish monday = input.employees().get(0).baseShifts().get(DayOfWeek.MONDAY);
-      assertTrue(monday.off());
-      assertNull(monday.start());
-      assertNull(monday.end());
     }
 
     @Test
@@ -195,7 +177,7 @@ class MonthlyFormConverterTest {
     @DisplayName("[V-3] Given: 開始時刻が HH:mm 形式でないとき, When: 変換すると, Then: 開始時刻が null になる")
     void returnsNullStartWhenTimeIsInvalid() {
       List<DayForm> days = fullWeek();
-      days.set(0, day(false, "invalid", "18:30"));
+      days.set(0, day("invalid", "18:30"));
       ShiftForm form =
           form("2026-10", List.of(employee("太郎", "FULL_TIME", days)), new ArrayList<>());
 
@@ -209,7 +191,7 @@ class MonthlyFormConverterTest {
         "[V-3] Given: 基本シフトが月曜の 1 件しかないとき, When: 変換すると," + " Then: 不足する曜日は休みなし・開始終了 null になる")
     void fillsMissingDaysWithEmptyWish() {
       List<DayForm> days = new ArrayList<>();
-      days.add(day(false, "07:30", "18:30"));
+      days.add(day("07:30", "18:30"));
       ShiftForm form =
           form("2026-10", List.of(employee("太郎", "FULL_TIME", days)), new ArrayList<>());
 

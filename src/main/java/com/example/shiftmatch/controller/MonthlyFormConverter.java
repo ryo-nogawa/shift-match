@@ -123,10 +123,6 @@ public class MonthlyFormConverter {
    * @return 変換後の希望
    */
   private DailyWish convertDay(DayForm form) {
-    if (form.isOff()) {
-      return new DailyWish(true, null, null);
-    }
-
     LocalTime start = parseTime(form.getStart());
     LocalTime end = parseTime(form.getEnd());
     return new DailyWish(false, start, end);

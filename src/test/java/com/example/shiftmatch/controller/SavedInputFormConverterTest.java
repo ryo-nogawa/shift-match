@@ -51,7 +51,6 @@ class SavedInputFormConverterTest {
     assertEquals("FULL_TIME", row.getEmploymentType());
     assertEquals(5, row.getDays().size());
     for (DayForm day : row.getDays()) {
-      assertFalse(day.isOff());
       assertEquals("07:30", day.getStart());
       assertEquals("18:30", day.getEnd());
     }
@@ -95,8 +94,8 @@ class SavedInputFormConverterTest {
       List<DayForm> days = converter.toForm(saved, DEFAULT_MONTH).getEmployees().get(0).getDays();
 
       assertEquals(5, days.size());
-      assertTrue(days.get(0).isOff());
-      assertFalse(days.get(1).isOff());
+      assertEquals("07:30", days.get(0).getStart());
+      assertEquals("18:30", days.get(0).getEnd());
       assertEquals("08:00", days.get(1).getStart());
       assertEquals("17:30", days.get(1).getEnd());
       assertEquals("09:00", days.get(2).getStart());
