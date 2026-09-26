@@ -1,6 +1,7 @@
 package com.example.shiftmatch.domain;
 
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * 従業員情報を表すレコード。
@@ -44,6 +45,17 @@ public record Employee(String name, boolean off, LocalTime start, LocalTime end)
       return false;
     }
     return !slot.startTime().isBefore(start) && !slot.endTime().isAfter(end);
+  }
+
+  /**
+   * この従業員が入れる枠を、枠 1 → 6 の順で返します。
+   *
+   * <p>枠の勤務時間が入力時間帯に完全に含まれる枠のみを返します。休みの従業員、または開始・終了時刻が設定されていない場合は空のリストを返します。
+   *
+   * @return 入れる枠のリスト
+   */
+  public List<ShiftSlot> workableSlots() {
+    return java.util.Arrays.stream(ShiftSlot.values()).filter(slot -> this.canWork(slot)).toList();
   }
 
   /**
