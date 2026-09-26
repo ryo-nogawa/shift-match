@@ -222,10 +222,7 @@
                       <ul class="unassigned-list">
                         <li th:each="employee : ${result.unassignedEmployees()}" th:text="${employee.name()} + '（' + ${employee.employmentType().label()} + '）：' + ${result.unassignedReasonLabel(employee)}"></li>
                       </ul>
-                      <div class="legend">
-                        <span class="legend-work">勤務</span>
-                        <span class="legend-break">休憩</span>
-                      </div>
+                      <p class="tl-legend"><span class="lg"></span><span>勤務</span><span class="lg brk"></span><span>休憩</span></p>
                       <div class="timeline">
                         <div class="tl-row" th:each="assignment : ${result.assignments()}">
                           <span class="tl-name" th:text="${assignment.employee().name()}"></span>
