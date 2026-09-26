@@ -24,7 +24,7 @@
   - 完了条件：
     - テストを先に書き、旧データが消えて RED になることを確認した
     - `./mvnw test -Dtest=LatestShiftRepositoryTest` が成功する
-- [ ] **T2. 保存失敗の例外をログに出す**
+- [x] **T2. 保存失敗の例外をログに出す**
   - 依頼事項：`ShiftController` の `DataAccessException` を捕まえる箇所で、SLF4J（`LoggerFactory.getLogger(ShiftController.class)` の `private static final Logger`）を使い、`LOGGER.error("最新シフトの保存に失敗しました", e)` の形でスタックトレース付きで記録してから、既存の画面表示を行う（`.agents/rules/exception.md`）。テスト：保存失敗時にログが出ることを、`ListAppender`（Logback。`ch.qos.logback.core.read.ListAppender`）を `ShiftController` のロガーに付けて、ERROR レベルのイベントが 1 件あり `getThrowableProxy()` が null でないことで検証する
   - 対象ファイル：`ShiftController.java`、`ShiftControllerTest.java`
   - 完了条件：

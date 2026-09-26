@@ -14,6 +14,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Controller;
@@ -29,6 +31,8 @@ import org.springframework.web.bind.annotation.PostMapping;
  */
 @Controller
 public class ShiftController {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ShiftController.class);
 
   private static final int MAX_EMPLOYEE_COUNT = 12;
 
@@ -155,6 +159,7 @@ public class ShiftController {
     try {
       latestShiftRepository.save(validEmployees, result);
     } catch (DataAccessException e) {
+      LOGGER.error("最新シフトの保存に失敗しました", e);
       model.addAttribute("saveError", "保存に失敗しました。もう一度シフトを作成して保存し直してください。");
     }
 

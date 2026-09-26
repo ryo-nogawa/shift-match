@@ -13,6 +13,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.core.read.ListAppender;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.ShiftAssignment;
@@ -31,6 +34,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -2104,6 +2108,56 @@ class ShiftControllerTest {
 
       // エラーメッセージが含まれない
       assertFalse(html.contains(ERROR_MESSAGE), "Error message should not be displayed");
+    }
+
+    @Test
+    @DisplayName("保存失敗時にエラーログがスタックトレース付きで出力される")
+    void logsErrorWithStacktraceOnSaveFailure() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+      Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("test"))
+          .when(latestShiftRepository)
+          .save(any(), any());
+
+      // ロガーに ListAppender を追加
+      Logger logger = (Logger) LoggerFactory.getLogger(ShiftController.class);
+      @SuppressWarnings("rawtypes")
+      ListAppender listAppender = new ListAppender();
+      listAppender.start();
+      logger.addAppender(listAppender);
+
+      try {
+        var request = post("/shift");
+        List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+        for (int i = 0; i < names.size(); i++) {
+          request.param("employees[" + i + "].name", names.get(i));
+          request.param("employees[" + i + "].off", "false");
+          request.param("employees[" + i + "].start", "07:30");
+          request.param("employees[" + i + "].end", "18:30");
+        }
+
+        mockMvc.perform(request).andExpect(status().isOk());
+
+        // ログの確認：ERROR レベルのログがあり、スタックトレース付き
+        assertTrue(
+            listAppender.list.stream()
+                .anyMatch(
+                    event -> {
+                      // 型安全なキャストを避けて、リフレクションで確認
+                      try {
+                        Object level = event.getClass().getMethod("getLevel").invoke(event);
+                        Object throwableProxy =
+                            event.getClass().getMethod("getThrowableProxy").invoke(event);
+                        return level == Level.ERROR && throwableProxy != null;
+                      } catch (Exception ex) {
+                        return false;
+                      }
+                    }),
+            "Error log with stack trace should be recorded");
+      } finally {
+        logger.detachAppender(listAppender);
+      }
     }
   }
 }
