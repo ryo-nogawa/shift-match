@@ -176,8 +176,7 @@
             </td>
             <td th:text="${assignment.gapMinutes()}"></td>
             <td>
-              <span class="slot-tag slot-chosen" th:text="|${#temporals.format(assignment.slot().startTime(), 'HH:mm')}〜${#temporals.format(assignment.slot().endTime(), 'HH:mm')}|"></span>
-              <span class="slot-tag" th:each="slot : ${assignment.employee().workableSlots()}" th:if="${slot != assignment.slot()}" th:text="|${#temporals.format(slot.startTime(), 'HH:mm')}〜${#temporals.format(slot.endTime(), 'HH:mm')}|"></span>
+              <span class="slot-tag" th:classappend="${slot == assignment.slot()} ? 'slot-chosen' : ''" th:each="slot : ${assignment.employee().workableSlots()}" th:text="|${#temporals.format(slot.startTime(), 'HH:mm')}〜${#temporals.format(slot.endTime(), 'HH:mm')}|"></span>
             </td>
           </tr>
         </tbody>
