@@ -91,7 +91,7 @@
     - `[V-5]` 12 名はエラーにならず 13 名でエラーになる（境界値）、`[V-6]` 255 文字はエラーにならず 256 文字でエラーになり行番号が分かる、`[V-7]` 区分が null の有効な従業員でエラーになり行番号が分かる、をそれぞれ検証するテストがある
     - `./mvnw test -Dtest=MonthlyInputValidatorTest` が成功する
 
-- [ ] **T7. 入力チェック V-8・V-9 と検証順序、`create` への組み込み（V-8、V-9）**
+- [x] **T7. 入力チェック V-8・V-9 と検証順序、`create` への組み込み（V-8、V-9）**
   - 依頼事項：`MonthlyInputValidator`（コンストラクタで `HolidayService` を受け取る）に次を追加する。V-8：`HolidayService.isSupported(input.month())` が false の月はエラー。V-9：有効な従業員に一致する個別変更のうち、日付が対象月の営業日（`HolidayService.businessDays`）でないもの（土曜・日曜・祝日・対象月以外の日付）は、該当する日付を示すエラー。V-8 のエラーがあるときは `businessDays` を呼ばず（`HolidayDataUnavailableError` を避ける）、V-9 の検証はしない。氏名が有効な従業員と一致しない個別変更は V-9 の対象外（無視する）。次に `MonthlyShiftServiceImpl.create` の先頭で `MonthlyInputValidator.validate` を呼び、エラーがあれば `InvalidMonthlyInputException` を投げて **算出しない**（`ShiftAssignmentService.assign` を呼ばない）ようにする。V-4 はエラーにならない（T4 のとおり）ので、勤務できる人が 8 名未満でも例外にしない
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/MonthlyInputValidator.java`、`src/main/java/com/example/shiftmatch/service/MonthlyShiftServiceImpl.java`、対応するテスト
   - 完了条件：
