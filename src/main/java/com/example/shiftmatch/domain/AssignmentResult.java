@@ -5,7 +5,8 @@ import java.util.List;
 /**
  * シフト割り当て結果を表すレコード。
  *
- * <p>8 人分の割り当て、スコア、未出勤者を保持します。
+ * <p>8 人分の割り当て、ずれの合計（分）、未出勤者を保持します。スコアは「入力時間帯と割り当てた枠の差（ずれ）」の合計で、0
+ * が最良です。
  */
 public record AssignmentResult(
     List<ShiftAssignment> assignments, int score, List<Employee> unassignedEmployees) {

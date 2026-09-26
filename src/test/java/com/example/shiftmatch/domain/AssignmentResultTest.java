@@ -74,15 +74,7 @@ class AssignmentResultTest {
 
   private ShiftAssignment createAssignment(int id, ShiftSlot slot) {
     Employee employee =
-        new Employee(
-            "Employee" + id,
-            List.of(
-                Wish.AVAILABLE,
-                Wish.AVAILABLE,
-                Wish.AVAILABLE,
-                Wish.AVAILABLE,
-                Wish.AVAILABLE,
-                Wish.AVAILABLE));
+        Employee.working("Employee" + id, LocalTime.of(7, 30), LocalTime.of(18, 30));
     return new ShiftAssignment(employee, slot, LocalTime.of(12, 0), LocalTime.of(12, 45));
   }
 }

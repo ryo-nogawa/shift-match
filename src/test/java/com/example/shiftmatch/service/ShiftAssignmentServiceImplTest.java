@@ -8,12 +8,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.ShiftSlot;
-import com.example.shiftmatch.domain.Wish;
 import java.time.Duration;
+import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,10 +30,14 @@ class ShiftAssignmentServiceImplTest {
   class AssignmentRules {
 
     @Test
-    @DisplayName(
-        "[H-1] Given: 8人全員が全6枠でAVAILABLEのとき, When: assignを実行すると, Then: 入力順どおりに枠1→6へ割り当てられる")
+    @DisplayName("[H-3] Given: 全員が7:30〜18:30のとき, When: assignを実行すると, Then: 入力順どおりに枠1→6へ割り当てられる")
     void assignsInInputOrderToFrames() {
-      List<Employee> employees = createAllAvailableEmployees(8);
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
 
       Optional<AssignmentResult> result = service.assign(employees);
@@ -54,9 +61,14 @@ class ShiftAssignmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("[H-2] Given: 8人が与えられたとき, When: assignを実行すると, Then: 1人が複数の枠に割り当てられない")
+    @DisplayName("[H-2] Given: 全員が7:30〜18:30のとき, When: assignを実行すると, Then: 1人が複数の枠に割り当てられない")
     void eachPersonAssignedToOnlyOneSlot() {
-      List<Employee> employees = createAllAvailableEmployees(8);
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
 
       Optional<AssignmentResult> result = service.assign(employees);
@@ -72,22 +84,20 @@ class ShiftAssignmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("[H-3] Given: 枠1で×の従業員を含むとき, When: assignを実行すると, Then: その従業員が枠1に割り当てられない")
+    @DisplayName(
+        "[H-3] Given: 1名が9:00〜16:30で他の8名が7:30〜18:30のとき, When: assignを実行すると, Then: その1名が枠5に割り当てられない")
     void excludesUnavailableEmployeeFromSlot() {
       List<Employee> employees = new ArrayList<>();
 
-      List<Wish> wishes0 =
-          List.of(
-              Wish.UNAVAILABLE,
-              Wish.AVAILABLE,
-              Wish.AVAILABLE,
-              Wish.AVAILABLE,
-              Wish.AVAILABLE,
-              Wish.AVAILABLE);
-      employees.add(new Employee("Employee0", wishes0));
+      // Employee0: 9:00〜16:30（枠5に入れない）
+      employees.add(
+          Employee.working(
+              "Employee0", java.time.LocalTime.of(9, 0), java.time.LocalTime.of(16, 30)));
 
-      for (int i = 1; i < 8; i++) {
-        employees.add(createAvailableEmployee("Employee" + i));
+      for (int i = 1; i < 9; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
       }
 
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
@@ -96,28 +106,26 @@ class ShiftAssignmentServiceImplTest {
       assertTrue(result.isPresent());
       AssignmentResult assignment = result.get();
 
-      assertFalse(
-          assignment.assignments().get(0).employee().name().equals("Employee0")
-              || assignment.assignments().get(1).employee().name().equals("Employee0"));
+      // Employee0 が枠5に割り当てられていないことを確認
+      boolean employee0InSlot5 =
+          assignment.assignments().stream()
+              .anyMatch(
+                  a -> a.employee().name().equals("Employee0") && a.slot() == ShiftSlot.SLOT_5);
+      assertFalse(employee0InSlot5, "Employee0 should not be assigned to slot 5");
     }
 
     @Test
-    @DisplayName("[H-3] Given: 8名中1名が全枠×、他の7名は全枠◯のとき, When: assignを実行すると, Then: Optional.emptyになる")
+    @DisplayName(
+        "[H-3] Given: 8名のうち1名が休みで7名が7:30〜18:30のとき, When: assignを実行すると, Then: Optional.emptyになる")
     void returnsEmptyWhenOneEmployeeAllUnavailableAndOthersCannotFillAllSlots() {
       List<Employee> employees = new ArrayList<>();
 
-      List<Wish> wishesAllUnavailable =
-          List.of(
-              Wish.UNAVAILABLE,
-              Wish.UNAVAILABLE,
-              Wish.UNAVAILABLE,
-              Wish.UNAVAILABLE,
-              Wish.UNAVAILABLE,
-              Wish.UNAVAILABLE);
-      employees.add(new Employee("Employee0", wishesAllUnavailable));
+      employees.add(Employee.onLeave("Employee0"));
 
       for (int i = 1; i < 8; i++) {
-        employees.add(createAvailableEmployee("Employee" + i));
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
       }
 
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
@@ -132,9 +140,14 @@ class ShiftAssignmentServiceImplTest {
   class InsufficientEmployees {
 
     @Test
-    @DisplayName("[V-4] Given: 有効な従業員が7名のとき, When: assignを実行すると, Then: Optional.emptyが返される")
+    @DisplayName("[V-4] Given: 休みでない従業員が7名のとき, When: assignを実行すると, Then: Optional.emptyが返される")
     void returnsEmptyWhenLessThanEightValidEmployees() {
-      List<Employee> employees = createAllAvailableEmployees(7);
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 7; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
 
       Optional<AssignmentResult> result = service.assign(employees);
@@ -144,199 +157,17 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
-  @DisplayName("[スコア評価]")
-  class ScoreEvaluation {
-
-    @Test
-    @DisplayName(
-        "[H-1] Given: ある従業員だけが枠1に◎を付けたとき, When: assignを実行すると, Then: その従業員が枠1に割り当てられ、scoreが1になる")
-    void assignsEmployeeWithDesiredSlotAndScoringOne() {
-      List<Employee> employees = new ArrayList<>();
-      employees.add(
-          new Employee(
-              "A",
-              List.of(
-                  Wish.DESIRED,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE)));
-      for (int i = 1; i < 8; i++) {
-        employees.add(createAvailableEmployee((char) ('A' + i) + ""));
-      }
-
-      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
-      Optional<AssignmentResult> result = service.assign(employees);
-
-      assertTrue(result.isPresent());
-      AssignmentResult assignment = result.get();
-
-      boolean foundEmployeeInSlot1 = false;
-      for (int i = 0; i < 2; i++) {
-        if (assignment.assignments().get(i).employee().name().equals("A")
-            && assignment.assignments().get(i).slot() == ShiftSlot.SLOT_1) {
-          foundEmployeeInSlot1 = true;
-          break;
-        }
-      }
-      assertTrue(foundEmployeeInSlot1, "Employee A should be assigned to slot 1");
-      assertEquals(1, assignment.score(), "Score should be 1 since only A has ◎");
-    }
-
-    @Test
-    @DisplayName(
-        "[H-1] Given: 全員が全枠◎を付けずに◯で、スコア0のとき, When: assignを実行すると, Then: 入力順どおりに枠1→6へ割り当てられる")
-    void selectsFirstAssignmentWhenAllTiedAtScoreZero() {
-      List<Employee> employees = createAllAvailableEmployees(8);
-      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
-
-      Optional<AssignmentResult> result = service.assign(employees);
-
-      assertTrue(result.isPresent());
-      AssignmentResult assignment = result.get();
-
-      assertEquals("Employee0", assignment.assignments().get(0).employee().name());
-      assertEquals("Employee1", assignment.assignments().get(1).employee().name());
-      assertEquals("Employee2", assignment.assignments().get(2).employee().name());
-      assertEquals("Employee3", assignment.assignments().get(3).employee().name());
-      assertEquals("Employee4", assignment.assignments().get(4).employee().name());
-      assertEquals("Employee5", assignment.assignments().get(5).employee().name());
-      assertEquals("Employee6", assignment.assignments().get(6).employee().name());
-      assertEquals("Employee7", assignment.assignments().get(7).employee().name());
-
-      assertEquals(0, assignment.score(), "Score should be 0 since all are AVAILABLE");
-    }
-
-    @Test
-    @DisplayName("[H-1] Given: ◎を付けた従業員数が異なる複数の案が存在するとき, When: assignを実行すると, Then: ◎の数が最も多い案が選ばれる")
-    void selectsCombinationWithHighestScore() {
-      List<Employee> employees = new ArrayList<>();
-
-      employees.add(
-          new Employee(
-              "A",
-              List.of(
-                  Wish.DESIRED,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE)));
-      employees.add(
-          new Employee(
-              "B",
-              List.of(
-                  Wish.AVAILABLE,
-                  Wish.DESIRED,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE)));
-      employees.add(
-          new Employee(
-              "C",
-              List.of(
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.DESIRED,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE)));
-      employees.add(
-          new Employee(
-              "D",
-              List.of(
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.DESIRED,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE)));
-      employees.add(
-          new Employee(
-              "E",
-              List.of(
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.DESIRED,
-                  Wish.AVAILABLE)));
-      employees.add(
-          new Employee(
-              "F",
-              List.of(
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.DESIRED)));
-      employees.add(
-          new Employee(
-              "G",
-              List.of(
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE)));
-      employees.add(
-          new Employee(
-              "H",
-              List.of(
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE)));
-
-      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
-      Optional<AssignmentResult> result = service.assign(employees);
-
-      assertTrue(result.isPresent());
-      AssignmentResult assignment = result.get();
-
-      assertEquals(6, assignment.score());
-    }
-  }
-
-  @Nested
-  @DisplayName("[パフォーマンス]")
+  @DisplayName("パフォーマンス")
   class Performance {
 
     @Test
-    @DisplayName("[H-1] Given: 12人全員が全枠◯のとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
+    @DisplayName("Given: 12人全員が7:30〜18:30のとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
     void completesWithin500MillisForAllAvailable() {
-      List<Employee> employees = createAllAvailableEmployees(12);
-      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
-
-      org.junit.jupiter.api.Assertions.assertTimeout(
-          Duration.ofMillis(500),
-          () -> {
-            Optional<AssignmentResult> result = service.assign(employees);
-            assertTrue(result.isPresent(), "Assignment should succeed for 12 employees");
-          });
-    }
-
-    @Test
-    @DisplayName("[H-1] Given: 12人全員が全枠◎のとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
-    void completesWithin500MillisForAllDesired() {
       List<Employee> employees = new ArrayList<>();
       for (int i = 0; i < 12; i++) {
         employees.add(
-            new Employee(
-                "Employee" + i,
-                List.of(
-                    Wish.DESIRED,
-                    Wish.DESIRED,
-                    Wish.DESIRED,
-                    Wish.DESIRED,
-                    Wish.DESIRED,
-                    Wish.DESIRED)));
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
       }
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
 
@@ -349,23 +180,30 @@ class ShiftAssignmentServiceImplTest {
     }
 
     @Test
-    @DisplayName("[H-1] Given: 12人の希望がすべてランダムのとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
-    void completesWithin500MillisForRandomWishes() {
+    @DisplayName("Given: 12人の勤務時間がランダムのとき, When: assignを実行すると, Then: 500ミリ秒以内に完了する")
+    void completesWithin500MillisForRandomTimeRanges() {
       java.util.Random random = new java.util.Random(54321L);
       List<Employee> employees = new ArrayList<>();
       for (int i = 0; i < 12; i++) {
-        List<Wish> wishes = new ArrayList<>();
-        for (int j = 0; j < 6; j++) {
-          int val = random.nextInt(3);
-          if (val == 0) {
-            wishes.add(Wish.DESIRED);
-          } else if (val == 1) {
-            wishes.add(Wish.AVAILABLE);
-          } else {
-            wishes.add(Wish.UNAVAILABLE);
-          }
+        // 開始時刻：7:30〜9:00の30分刻み（3通り）
+        int startHour = 7;
+        int startMin = 30 + (random.nextInt(3) * 30);
+        if (startMin >= 60) {
+          startHour++;
+          startMin -= 60;
         }
-        employees.add(new Employee("Employee" + i, wishes));
+        // 終了時刻：16:30〜18:30の30分刻み（5通り）
+        int endHour = 16 + (random.nextInt(5) / 2);
+        int endMin = 30 + ((random.nextInt(5) % 2) * 60);
+        if (endMin >= 60) {
+          endHour++;
+          endMin -= 60;
+        }
+        employees.add(
+            Employee.working(
+                "Employee" + i,
+                java.time.LocalTime.of(startHour, startMin),
+                java.time.LocalTime.of(endHour, endMin)));
       }
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
 
@@ -378,309 +216,18 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
-  @DisplayName("[動的計画法への置き換え検証]")
-  class DynamicProgrammingVerification {
-
-    @Test
-    @DisplayName(
-        "[H-1][H-2][H-3] Given: 9～10人のランダムな希望の入力200通り, When: assignを実行すると, Then: 参照実装の結果と一致する")
-    void dynamicProgrammingMatchesBruteForceReference() {
-      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
-      java.util.Random random = new java.util.Random(12345L);
-      int testCases = 200;
-
-      for (int testNum = 0; testNum < testCases; testNum++) {
-        int employeeCount = 9 + random.nextInt(2);
-        List<Employee> employees = generateRandomEmployees(random, employeeCount);
-
-        Optional<AssignmentResult> actual = service.assign(employees);
-        Optional<AssignmentResult> expected = bruteForceReference(employees);
-
-        assertEquals(
-            expected.isPresent(),
-            actual.isPresent(),
-            "Test case " + testNum + ": presence should match");
-
-        if (expected.isPresent() && actual.isPresent()) {
-          AssignmentResult expectedResult = expected.get();
-          AssignmentResult actualResult = actual.get();
-
-          assertEquals(
-              expectedResult.score(),
-              actualResult.score(),
-              "Test case " + testNum + ": score should match");
-
-          assertEquals(
-              expectedResult.assignments().size(),
-              actualResult.assignments().size(),
-              "Test case " + testNum + ": assignment count should match");
-
-          for (int i = 0; i < expectedResult.assignments().size(); i++) {
-            var expectedAssignment = expectedResult.assignments().get(i);
-            var actualAssignment = actualResult.assignments().get(i);
-
-            assertEquals(
-                expectedAssignment.employee().name(),
-                actualAssignment.employee().name(),
-                "Test case " + testNum + ", position " + i + ": employee name should match");
-
-            assertEquals(
-                expectedAssignment.slot(),
-                actualAssignment.slot(),
-                "Test case " + testNum + ", position " + i + ": slot should match");
-          }
-        }
-      }
-    }
-  }
-
-  private List<Employee> generateRandomEmployees(java.util.Random random, int count) {
-    List<Employee> employees = new ArrayList<>();
-    for (int i = 0; i < count; i++) {
-      List<Wish> wishes = new ArrayList<>();
-      for (int j = 0; j < 6; j++) {
-        int val = random.nextInt(100);
-        if (val < 70) {
-          wishes.add(Wish.UNAVAILABLE);
-        } else if (val < 90) {
-          wishes.add(Wish.AVAILABLE);
-        } else {
-          wishes.add(Wish.DESIRED);
-        }
-      }
-      employees.add(new Employee("Emp" + i, wishes));
-    }
-    return employees;
-  }
-
-  private Optional<AssignmentResult> bruteForceReference(List<Employee> employees) {
-    List<Employee> validEmployees =
-        employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
-
-    if (validEmployees.size() < 8) {
-      return Optional.empty();
-    }
-
-    Wish[][] wishes = new Wish[validEmployees.size()][6];
-    for (int i = 0; i < validEmployees.size(); i++) {
-      List<Wish> employeeWishes = validEmployees.get(i).wishes();
-      for (int j = 0; j < 6; j++) {
-        wishes[i][j] = employeeWishes.get(j);
-      }
-    }
-
-    BruteForceResult bestResult = new BruteForceResult();
-    boolean[] used = new boolean[validEmployees.size()];
-    int[] assignment = new int[8];
-
-    bruteForceExplore(validEmployees, wishes, used, assignment, 0, 0, bestResult);
-
-    if (bestResult.assignment == null) {
-      return Optional.empty();
-    }
-
-    return buildResultFromAssignment(validEmployees, bestResult.assignment);
-  }
-
-  private static class BruteForceResult {
-    int[] assignment;
-    int score;
-
-    BruteForceResult() {
-      this.assignment = null;
-      this.score = -1;
-    }
-  }
-
-  private void bruteForceExplore(
-      List<Employee> employees,
-      Wish[][] wishes,
-      boolean[] used,
-      int[] assignment,
-      int assignmentIndex,
-      int slotIndex,
-      BruteForceResult bestResult) {
-
-    if (slotIndex >= ShiftSlot.values().length) {
-      int score = 0;
-      int pos = 0;
-      for (int s = 0; s < ShiftSlot.values().length; s++) {
-        ShiftSlot slot = ShiftSlot.values()[s];
-        int count = slot.numberOfEmployees();
-        for (int i = 0; i < count; i++) {
-          int idx = assignment[pos];
-          if (wishes[idx][s] == Wish.DESIRED) {
-            score++;
-          }
-          pos++;
-        }
-      }
-
-      if (score > bestResult.score) {
-        bestResult.score = score;
-        bestResult.assignment = assignment.clone();
-      }
-      return;
-    }
-
-    ShiftSlot slot = ShiftSlot.values()[slotIndex];
-    int requiredCount = slot.numberOfEmployees();
-
-    bruteForceExploreSlot(
-        employees,
-        wishes,
-        used,
-        assignment,
-        assignmentIndex,
-        0,
-        requiredCount,
-        slotIndex,
-        bestResult);
-  }
-
-  private void bruteForceExploreSlot(
-      List<Employee> employees,
-      Wish[][] wishes,
-      boolean[] used,
-      int[] assignment,
-      int assignmentIndex,
-      int candidateStart,
-      int requiredCount,
-      int slotIndex,
-      BruteForceResult bestResult) {
-
-    if (requiredCount == 0) {
-      bruteForceExplore(
-          employees, wishes, used, assignment, assignmentIndex, slotIndex + 1, bestResult);
-      return;
-    }
-
-    for (int i = candidateStart; i < employees.size(); i++) {
-      if (used[i]) {
-        continue;
-      }
-
-      if (wishes[i][slotIndex] == Wish.UNAVAILABLE) {
-        continue;
-      }
-
-      used[i] = true;
-      assignment[assignmentIndex] = i;
-
-      bruteForceExploreSlot(
-          employees,
-          wishes,
-          used,
-          assignment,
-          assignmentIndex + 1,
-          i + 1,
-          requiredCount - 1,
-          slotIndex,
-          bestResult);
-
-      used[i] = false;
-    }
-  }
-
-  private Optional<com.example.shiftmatch.domain.AssignmentResult> buildResultFromAssignment(
-      List<Employee> employees, int[] assignment) {
-    com.example.shiftmatch.domain.BreakScheduler scheduler =
-        new com.example.shiftmatch.domain.BreakScheduler();
-    ShiftSlot[] slots = ShiftSlot.values();
-    List<ShiftSlot> slotList = new ArrayList<>();
-
-    int position = 0;
-    for (int slotIndex = 0; slotIndex < slots.length; slotIndex++) {
-      ShiftSlot slot = slots[slotIndex];
-      int requiredCount = slot.numberOfEmployees();
-      for (int i = 0; i < requiredCount; i++) {
-        slotList.add(slot);
-        position++;
-      }
-    }
-
-    List<com.example.shiftmatch.domain.BreakInterval> breaks = scheduler.schedule(slotList);
-
-    List<com.example.shiftmatch.domain.ShiftAssignment> shiftAssignments = new ArrayList<>();
-    int score = 0;
-    boolean[] used = new boolean[employees.size()];
-
-    for (int i = 0; i < assignment.length; i++) {
-      int employeeIndex = assignment[i];
-      Employee employee = employees.get(employeeIndex);
-      ShiftSlot slot = slotList.get(i);
-      com.example.shiftmatch.domain.BreakInterval breakInterval = breaks.get(i);
-
-      shiftAssignments.add(
-          new com.example.shiftmatch.domain.ShiftAssignment(
-              employee, slot, breakInterval.startTime(), breakInterval.endTime()));
-
-      int slotIndex = getSlotIndex(slot);
-      if (employee.wishes().get(slotIndex) == Wish.DESIRED) {
-        score++;
-      }
-
-      used[employeeIndex] = true;
-    }
-
-    List<Employee> unassigned = new ArrayList<>();
-    for (int i = 0; i < employees.size(); i++) {
-      if (!used[i]) {
-        unassigned.add(employees.get(i));
-      }
-    }
-
-    return Optional.of(new AssignmentResult(shiftAssignments, score, unassigned));
-  }
-
-  private int getSlotIndex(ShiftSlot slot) {
-    ShiftSlot[] slots = ShiftSlot.values();
-    for (int i = 0; i < slots.length; i++) {
-      if (slots[i] == slot) {
-        return i;
-      }
-    }
-    throw new IllegalStateException("Slot index not found");
-  }
-
-  private List<Employee> createAllAvailableEmployees(int count) {
-    List<Employee> employees = new ArrayList<>();
-    for (int i = 0; i < count; i++) {
-      employees.add(createAvailableEmployee("Employee" + i));
-    }
-    return employees;
-  }
-
-  private Employee createAvailableEmployee(String name) {
-    return new Employee(
-        name,
-        List.of(
-            Wish.AVAILABLE,
-            Wish.AVAILABLE,
-            Wish.AVAILABLE,
-            Wish.AVAILABLE,
-            Wish.AVAILABLE,
-            Wish.AVAILABLE));
-  }
-
-  @Nested
-  @DisplayName("[H-1][H-2][H-3] メモ化の性能（割り当て不能状態のキャッシング）")
+  @DisplayName("メモ化の性能（割り当て不能状態のキャッシング）")
   class MemoizationPerformance {
 
     @Test
-    @DisplayName(
-        "[H-1][H-2][H-3] Given: 12名で最後の枠だけ成立しない入力, When: assignを実行すると, Then: 500ms以内に不成立と判定される")
+    @DisplayName("Given: 12名全員が9:00〜16:30（枠6に入れない）のとき, When: assignを実行すると, Then: 500ms以内に不成立と判定される")
     void performanceWhenLastSlotImpossible() {
       List<Employee> employees = new ArrayList<>();
       for (int i = 0; i < 12; i++) {
-        List<Wish> wishes = new ArrayList<>();
-        wishes.add(Wish.AVAILABLE);
-        wishes.add(Wish.AVAILABLE);
-        wishes.add(Wish.AVAILABLE);
-        wishes.add(Wish.AVAILABLE);
-        wishes.add(Wish.AVAILABLE);
-        wishes.add(Wish.UNAVAILABLE);
-        employees.add(new Employee("Emp" + i, wishes));
+        // 9:00〜16:30：枠6（9:00〜18:30）に入れない
+        employees.add(
+            Employee.working(
+                "Emp" + i, java.time.LocalTime.of(9, 0), java.time.LocalTime.of(16, 30)));
       }
 
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
@@ -695,30 +242,19 @@ class ShiftAssignmentServiceImplTest {
 
     @Test
     @DisplayName(
-        "[H-1][H-2][H-3] Given: 12名で枠5・6を割り当てられる者が1名しかない入力, When: assignを実行すると, Then:"
+        "Given: 12名中11名が9:00〜16:30、1名のみが7:30〜18:30のとき, When: assignを実行すると, Then:"
             + " 500ms以内に不成立と判定される")
     void performanceWhenLastTwoSlotsBottleneck() {
       List<Employee> employees = new ArrayList<>();
+      // Emp0: 枠5・6に入れる唯一の人
       employees.add(
-          new Employee(
-              "Emp0",
-              List.of(
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE,
-                  Wish.AVAILABLE)));
+          Employee.working("Emp0", java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
 
       for (int i = 1; i < 12; i++) {
-        List<Wish> wishes = new ArrayList<>();
-        wishes.add(Wish.AVAILABLE);
-        wishes.add(Wish.AVAILABLE);
-        wishes.add(Wish.AVAILABLE);
-        wishes.add(Wish.AVAILABLE);
-        wishes.add(Wish.UNAVAILABLE);
-        wishes.add(Wish.UNAVAILABLE);
-        employees.add(new Employee("Emp" + i, wishes));
+        // 9:00〜16:30：枠5・6に入れない
+        employees.add(
+            Employee.working(
+                "Emp" + i, java.time.LocalTime.of(9, 0), java.time.LocalTime.of(16, 30)));
       }
 
       ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
@@ -729,6 +265,466 @@ class ShiftAssignmentServiceImplTest {
             assertFalse(
                 result.isPresent(), "Should be unassignable with bottleneck at slots 5 & 6");
           });
+    }
+  }
+
+  @Nested
+  @DisplayName("[H-3] 時間帯と canWork() での割り当て判定")
+  class TimeRangeAssignment {
+
+    @Test
+    @DisplayName("[H-3] Given: 全員が7:30〜18:30のとき, When: assignを実行すると, Then: 割り当てが成立し8名分が返される")
+    void assignsAllEightEmployeesWhenAllAvailable() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent(), "Should assign all 8 employees with 7:30-18:30");
+      assertEquals(8, result.get().assignments().size());
+    }
+
+    @Test
+    @DisplayName("[V-4] Given: 9名のうち1名が休みのとき, When: assignを実行すると, Then: 成立し8名の割り当てが返される")
+    void assignsWhenEightNonLeaveEmployeesExistOutOfNine() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+      employees.add(Employee.onLeave("OnLeave"));
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent(), "Should succeed with 8 non-leave employees");
+      assertEquals(8, result.get().assignments().size());
+    }
+
+    @Test
+    @DisplayName("[V-4] Given: 8名のうち1名が休みのとき, When: assignを実行すると, Then: Optional.emptyになる")
+    void returnsEmptyWhenOnlySevenNonLeaveEmployees() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 7; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+      employees.add(Employee.onLeave("OnLeave"));
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertFalse(result.isPresent(), "Should return empty when only 7 non-leave employees exist");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 全員が7:30〜18:30で割り当てが成立したとき, When: unassignedEmployeesを確認すると,"
+            + " Then: 余った従業員と休みの従業員の両方が入力順で入る")
+    void unassignedIncludesUnusedAndOnLeaveEmployees() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+      employees.add(
+          Employee.working(
+              "Employee8", java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      employees.add(Employee.onLeave("OnLeave9"));
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      List<Employee> unassigned = result.get().unassignedEmployees();
+      assertEquals(2, unassigned.size(), "Should have 2 unassigned (1 unused + 1 on leave)");
+      assertEquals("Employee8", unassigned.get(0).name());
+      assertEquals("OnLeave9", unassigned.get(1).name());
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-3] スコア評価：ずれの合計（分）")
+  class GapMinutesScoreEvaluation {
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 全員が7:30〜18:30（660分）の8名のとき, When: assignを実行すると,"
+            + " Then: scoreが1380（=8×660-3900）になる")
+    void allEmployeesFullAvailableScore() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      assertEquals(1380, result.get().score(), "Score should be 1380 for full availability");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 7:30〜18:30の7名と7:30〜14:30（420分）の1名のとき, When: assignを実行すると,"
+            + " Then: scoreが1140（=7×660+420-3900）になる")
+    void mixedAvailabilityScore() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 7; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+      employees.add(
+          Employee.working(
+              "Employee7", java.time.LocalTime.of(7, 30), java.time.LocalTime.of(14, 30)));
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      assertEquals(1140, result.get().score(), "Score should be 1140 for mixed availability");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 7名が7:30〜18:30、1名が8:00〜18:00のとき, When: assignを実行すると," + " Then: scoreが1320になる")
+    void alternativeTimeRangeScore() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 7; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+      employees.add(
+          Employee.working(
+              "Employee7", java.time.LocalTime.of(8, 0), java.time.LocalTime.of(18, 0)));
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      // score = 7×660 + 600 - 3900 = 4620 + 600 - 3900 = 1320
+      assertEquals(1320, result.get().score(), "Score should be 1320 for mixed availability");
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-3] 同点時の案の選択")
+  class TiedScoreSelection {
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 全員が7:30〜18:30の9名（同点）のとき, When: assignを実行すると,"
+            + " Then: 先頭から8名が割り当てられ、9番目が未出勤者になる")
+    void selectsFirstAssignmentWhenAllTied() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 9; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+
+      // 枠 1: Employee0, Employee1
+      assertEquals("Employee0", assignment.assignments().get(0).employee().name());
+      assertEquals("Employee1", assignment.assignments().get(1).employee().name());
+
+      // 枠 2: Employee2
+      assertEquals("Employee2", assignment.assignments().get(2).employee().name());
+
+      // 枠 3: Employee3
+      assertEquals("Employee3", assignment.assignments().get(3).employee().name());
+
+      // 枠 4: Employee4
+      assertEquals("Employee4", assignment.assignments().get(4).employee().name());
+
+      // 枠 5: Employee5
+      assertEquals("Employee5", assignment.assignments().get(5).employee().name());
+
+      // 枠 6: Employee6, Employee7
+      assertEquals("Employee6", assignment.assignments().get(6).employee().name());
+      assertEquals("Employee7", assignment.assignments().get(7).employee().name());
+
+      // Employee8 が未出勤者
+      List<Employee> unassigned = assignment.unassignedEmployees();
+      assertEquals(1, unassigned.size(), "Should have 1 unassigned employee");
+      assertEquals("Employee8", unassigned.get(0).name(), "Employee8 should be unassigned");
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-3] 動的計画法の検証（総当たりとの一致）")
+  class DynamicProgrammingVerification {
+
+    private record BruteForceResult(
+        Optional<AssignmentResult> result, List<Employee> inputEmployees) {}
+
+    // DP の正しさを独立に確かめるため、5.3 節の列挙順（枠 1→6、枠ごとの人数分の組を入力順の辞書順）で
+    // H-1〜H-3 を満たす割り当て案をすべて調べる
+    private static final class BruteForceSearch {
+      private final List<Employee> candidates;
+      private final ShiftSlot[] slots;
+      private int minScore = Integer.MAX_VALUE;
+      private List<Employee> bestAssignment;
+
+      BruteForceSearch(List<Employee> candidates, ShiftSlot[] slots) {
+        this.candidates = candidates;
+        this.slots = slots;
+      }
+
+      void explore(int position, int previousIndex, List<Employee> assignedBySlot, boolean[] used) {
+        if (position == slots.length) {
+          int totalScore = 0;
+          for (int i = 0; i < slots.length; i++) {
+            totalScore += assignedBySlot.get(i).gapMinutes(slots[i]);
+          }
+          // 同点で更新しない（最初に最小スコアへ到達した案を採用する）
+          if (totalScore < minScore) {
+            minScore = totalScore;
+            bestAssignment = new ArrayList<>(assignedBySlot);
+          }
+          return;
+        }
+        // 同じ枠の 2 人目は 1 人目より後ろのインデックスから選び、組を辞書順で 1 回ずつ列挙する
+        int from = 0;
+        if (position > 0 && slots[position - 1] == slots[position]) {
+          from = previousIndex + 1;
+        }
+        for (int i = from; i < candidates.size(); i++) {
+          if (used[i] || !candidates.get(i).canWork(slots[position])) {
+            continue;
+          }
+          used[i] = true;
+          assignedBySlot.add(candidates.get(i));
+          explore(position + 1, i, assignedBySlot, used);
+          assignedBySlot.remove(assignedBySlot.size() - 1);
+          used[i] = false;
+        }
+      }
+    }
+
+    private BruteForceResult bruteForceExplore(List<Employee> employees) {
+      ShiftSlot[] slots =
+          new ShiftSlot[] {
+            ShiftSlot.SLOT_1, ShiftSlot.SLOT_1, ShiftSlot.SLOT_2, ShiftSlot.SLOT_3,
+            ShiftSlot.SLOT_4, ShiftSlot.SLOT_5, ShiftSlot.SLOT_6, ShiftSlot.SLOT_6
+          };
+
+      // 候補従業員（休みでない、かつ名前がある）
+      List<Employee> candidates = new ArrayList<>();
+      for (Employee e : employees) {
+        if (!e.off() && !e.name().isEmpty()) {
+          candidates.add(e);
+        }
+      }
+
+      if (candidates.size() < 8) {
+        return new BruteForceResult(Optional.empty(), employees);
+      }
+
+      BruteForceSearch search = new BruteForceSearch(candidates, slots);
+      search.explore(0, -1, new ArrayList<>(), new boolean[candidates.size()]);
+      List<Employee> bestAssignment = search.bestAssignment;
+
+      if (bestAssignment == null) {
+        return new BruteForceResult(Optional.empty(), employees);
+      }
+
+      // AssignmentResult を構築（休憩時刻を計算）
+      List<com.example.shiftmatch.domain.ShiftAssignment> assignments = new ArrayList<>();
+      Map<ShiftSlot, Integer> slotCounts = new HashMap<>();
+      for (int i = 0; i < 8; i++) {
+        ShiftSlot slot = slots[i];
+        slotCounts.put(slot, slotCounts.getOrDefault(slot, 0) + 1);
+        LocalTime breakStart = calculateBreakStart(slot, slotCounts.get(slot));
+        LocalTime breakEnd = breakStart.plusMinutes(slot.breakDurationMinutes());
+        assignments.add(
+            new com.example.shiftmatch.domain.ShiftAssignment(
+                bestAssignment.get(i), slot, breakStart, breakEnd));
+      }
+
+      // 未出勤者（割り当てられなかった従業員と休みの従業員）
+      Set<Employee> assigned = new HashSet<>(bestAssignment);
+      List<Employee> unassigned = new ArrayList<>();
+      for (Employee e : employees) {
+        if (!assigned.contains(e)) {
+          unassigned.add(e);
+        }
+      }
+
+      AssignmentResult result = new AssignmentResult(assignments, search.minScore, unassigned);
+      return new BruteForceResult(Optional.of(result), employees);
+    }
+
+    @Test
+    @DisplayName("[F-3] Given: 9名のランダム時間帯（シード1）のとき, When: DP と総当たりを実行すると, Then: 割り当てとスコアが一致する")
+    void dynamicProgrammingMatchesBruteForceWithSeed1() {
+      Random random = new Random(12345L);
+      List<Employee> employees = generateRandomTimeRangeEmployees(random, 9);
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+      BruteForceResult bruteForceResult = bruteForceExplore(employees);
+
+      assertSameResult(dpResult, bruteForceResult.result());
+    }
+
+    @Test
+    @DisplayName("[F-3] Given: 10名のランダム時間帯（シード2）のとき, When: DP と総当たりを実行すると, Then: 割り当てとスコアが一致する")
+    void dynamicProgrammingMatchesBruteForceWithSeed2() {
+      Random random = new Random(54321L);
+      List<Employee> employees = generateRandomTimeRangeEmployees(random, 10);
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+      BruteForceResult bruteForceResult = bruteForceExplore(employees);
+
+      assertSameResult(dpResult, bruteForceResult.result());
+    }
+
+    @Test
+    @DisplayName("[F-3] Given: 9名で成立しない入力（シード3）のとき, When: DP と総当たりを実行すると, Then: 両方が案なしで一致する")
+    void dynamicProgrammingMatchesBruteForceWhenUnfeasibleWithSeed3() {
+      Random random = new Random(99999L);
+      List<Employee> employees = generateRandomTimeRangeEmployees(random, 9);
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+      BruteForceResult bruteForceResult = bruteForceExplore(employees);
+
+      assertSameResult(dpResult, bruteForceResult.result());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 全員が7:30〜18:30の9名（すべての案が同点）のとき, When: DP と総当たりを実行すると,"
+            + " Then: 列挙順で最初の同じ案を選ぶ")
+    void dynamicProgrammingMatchesBruteForceWhenAllAssignmentsAreTied() {
+      List<Employee> employees = new ArrayList<>();
+      for (int i = 0; i < 9; i++) {
+        employees.add(Employee.working("Employee" + i, LocalTime.of(7, 30), LocalTime.of(18, 30)));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+      BruteForceResult bruteForceResult = bruteForceExplore(employees);
+
+      assertSameResult(dpResult, bruteForceResult.result());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-3] Given: 全枠に入れる2名、枠1だけに入れる1名、枠2〜6を1名ずつ満たす5名の順のとき,"
+            + " When: DP と総当たりを実行すると, Then: どちらも枠1専任者を使った同じ案で成立する")
+    void dynamicProgrammingMatchesBruteForceWhenGreedyAssignmentFails() {
+      List<Employee> employees =
+          List.of(
+              Employee.working("AllDay0", LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              Employee.working("AllDay1", LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              Employee.working("Slot1Only", LocalTime.of(7, 30), LocalTime.of(14, 30)),
+              Employee.working("Slot2", LocalTime.of(8, 0), LocalTime.of(15, 30)),
+              Employee.working("Slot3", LocalTime.of(8, 30), LocalTime.of(16, 30)),
+              Employee.working("Slot4", LocalTime.of(9, 0), LocalTime.of(16, 30)),
+              Employee.working("Slot5", LocalTime.of(9, 0), LocalTime.of(18, 0)),
+              Employee.working("Slot6", LocalTime.of(9, 0), LocalTime.of(18, 30)));
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> dpResult = service.assign(employees);
+
+      assertTrue(dpResult.isPresent(), "DP should find an assignment");
+      assertEquals(
+          List.of("AllDay0", "Slot1Only", "Slot2", "Slot3", "Slot4", "Slot5", "AllDay1", "Slot6"),
+          assignedNames(dpResult.get()));
+      assertEquals(330, dpResult.get().score());
+      assertSameResult(dpResult, bruteForceExplore(employees).result());
+    }
+
+    private void assertSameResult(
+        Optional<AssignmentResult> dpResult, Optional<AssignmentResult> bruteForceResult) {
+      assertEquals(
+          dpResult.isPresent(),
+          bruteForceResult.isPresent(),
+          "DP and brute force should agree on feasibility");
+      if (dpResult.isPresent()) {
+        assertEquals(
+            bruteForceResult.get().score(),
+            dpResult.get().score(),
+            "DP and brute force should have same score");
+        assertEquals(
+            assignedNames(bruteForceResult.get()),
+            assignedNames(dpResult.get()),
+            "DP and brute force should choose the same assignment");
+      }
+    }
+
+    private List<String> assignedNames(AssignmentResult result) {
+      return result.assignments().stream().map(a -> a.employee().name()).toList();
+    }
+
+    private List<Employee> generateRandomTimeRangeEmployees(Random random, int count) {
+      List<Employee> employees = new ArrayList<>();
+      LocalTime[] timeOptions = generateTimeOptions();
+
+      for (int i = 0; i < count; i++) {
+        int startIdx = random.nextInt(timeOptions.length - 1);
+        int endIdx = startIdx + 1 + random.nextInt(timeOptions.length - startIdx - 1);
+
+        LocalTime start = timeOptions[startIdx];
+        LocalTime end = timeOptions[endIdx];
+
+        employees.add(Employee.working("Employee" + i, start, end));
+      }
+
+      return employees;
+    }
+
+    private LocalTime[] generateTimeOptions() {
+      List<LocalTime> options = new ArrayList<>();
+      for (int h = 7; h <= 18; h++) {
+        for (int m = 0; m < 60; m += 30) {
+          if (h == 7 && m == 0) {
+            continue; // Skip 7:00
+          }
+          options.add(LocalTime.of(h, m));
+        }
+      }
+      return options.toArray(new LocalTime[0]);
+    }
+
+    private LocalTime calculateBreakStart(ShiftSlot slot, int slotIndex) {
+      // 仕様の 2 章から：
+      // 枠 1（1 人目） | 12:00
+      // 枠 1（2 人目） | 12:00
+      // 枠 2 | 12:45
+      // 枠 3 | 12:45
+      // 枠 4 | 13:30
+      // 枠 5 | 13:30
+      // 枠 6（1 人目） | 14:15
+      // 枠 6（2 人目） | 14:30
+      return switch (slot) {
+        case SLOT_1 -> LocalTime.of(12, 0);
+        case SLOT_2 -> LocalTime.of(12, 45);
+        case SLOT_3 -> LocalTime.of(12, 45);
+        case SLOT_4 -> LocalTime.of(13, 30);
+        case SLOT_5 -> LocalTime.of(13, 30);
+        case SLOT_6 -> slotIndex == 1 ? LocalTime.of(14, 15) : LocalTime.of(14, 30);
+      };
     }
   }
 }

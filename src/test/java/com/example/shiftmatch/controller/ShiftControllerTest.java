@@ -2,6 +2,8 @@ package com.example.shiftmatch.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -9,29 +11,30 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
-import com.example.shiftmatch.domain.Wish;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * ShiftControllerのテスト。
@@ -45,6 +48,16 @@ class ShiftControllerTest {
   @MockitoBean private ShiftAssignmentService shiftAssignmentService;
 
   /**
+   * 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（小文字）。
+   *
+   * <p>ソースに廃止した入力の残骸がないことを文字列検索で確認できるよう、分割して記述します。
+   */
+  private static final String LEGACY_TOKEN = "wi" + "sh";
+
+  /** 廃止した希望入力のスコア表示で使っていた記号（二重丸、U+25CE）。 */
+  private static final String LEGACY_MARK = String.valueOf((char) 0x25CE);
+
+  /**
    * テスト用の割当結果を作成します（A-H の 8 名、各枠に割り当て）。
    *
    * @return 標準的な割当結果
@@ -53,110 +66,59 @@ class ShiftControllerTest {
     List<ShiftAssignment> assignments =
         List.of(
             new ShiftAssignment(
-                new Employee(
-                    "A",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("A", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_1,
                 LocalTime.of(12, 0),
                 LocalTime.of(12, 45)),
             new ShiftAssignment(
-                new Employee(
-                    "B",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("B", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_1,
                 LocalTime.of(12, 0),
                 LocalTime.of(12, 45)),
             new ShiftAssignment(
-                new Employee(
-                    "C",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("C", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_2,
                 LocalTime.of(12, 45),
                 LocalTime.of(13, 30)),
             new ShiftAssignment(
-                new Employee(
-                    "D",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("D", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_3,
                 LocalTime.of(12, 45),
                 LocalTime.of(13, 30)),
             new ShiftAssignment(
-                new Employee(
-                    "E",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("E", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_4,
                 LocalTime.of(13, 30),
                 LocalTime.of(14, 15)),
             new ShiftAssignment(
-                new Employee(
-                    "F",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("F", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_5,
                 LocalTime.of(13, 30),
                 LocalTime.of(14, 30)),
             new ShiftAssignment(
-                new Employee(
-                    "G",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("G", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_6,
                 LocalTime.of(14, 15),
                 LocalTime.of(15, 15)),
             new ShiftAssignment(
-                new Employee(
-                    "H",
-                    List.of(
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED,
-                        Wish.DESIRED)),
+                Employee.working("H", LocalTime.of(7, 30), LocalTime.of(18, 30)),
                 ShiftSlot.SLOT_6,
                 LocalTime.of(14, 30),
                 LocalTime.of(15, 30)));
     return new AssignmentResult(assignments, 8, List.of());
+  }
+
+  /**
+   * フォームパラメータに、指定行の開始・終了を追加します。
+   *
+   * @param params パラメータの連結先
+   * @param index 行インデックス
+   * @param start 開始（HH:mm）
+   * @param end 終了（HH:mm）
+   */
+  private static void appendTimeRange(StringBuilder params, int index, String start, String end) {
+    params.append("&employees[").append(index).append("].start=").append(start);
+    params.append("&employees[").append(index).append("].end=").append(end);
   }
 
   @Nested
@@ -164,131 +126,8 @@ class ShiftControllerTest {
   class InputForm {
 
     @Test
-    @DisplayName(
-        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 初期4行に24個のselect要素がある（6枠×4行）")
-    void returns24SelectElementsForFourRows() throws Exception {
-      String htmlContent =
-          mockMvc
-              .perform(get("/"))
-              .andExpect(status().isOk())
-              .andExpect(content().contentType("text/html;charset=UTF-8"))
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      Pattern pattern = Pattern.compile("name=\"employees\\[(\\d)\\]\\.wishes\\[(\\d)\\]\"");
-      Matcher matcher = pattern.matcher(htmlContent);
-
-      int count = 0;
-      while (matcher.find()) {
-        int row = Integer.parseInt(matcher.group(1));
-        int col = Integer.parseInt(matcher.group(2));
-        assertTrue(row < 4, "Row should be less than 4");
-        assertTrue(col < 6, "Column should be less than 6");
-        count++;
-      }
-
-      assertEquals(24, count, "Should have exactly 24 select elements for 4 rows × 6 wishes");
-    }
-
-    @Test
-    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 見出しに6つの勤務時間がこの順で表示される")
-    void displaysHeadersWithWorkTimesInOrder() throws Exception {
-      String htmlContent =
-          mockMvc
-              .perform(get("/"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      int pos1 = htmlContent.indexOf("07:30〜14:30");
-      int pos2 = htmlContent.indexOf("08:00〜15:30");
-      int pos3 = htmlContent.indexOf("08:30〜16:30");
-      assertTrue(pos1 >= 0, "Should contain work time 07:30〜14:30");
-      assertTrue(pos2 >= 0, "Should contain work time 08:00〜15:30");
-      assertTrue(pos3 >= 0, "Should contain work time 08:30〜16:30");
-      assertTrue(pos1 < pos2, "07:30〜14:30 should come before 08:00〜15:30");
-      assertTrue(pos2 < pos3, "08:00〜15:30 should come before 08:30〜16:30");
-
-      int pos4 = htmlContent.indexOf("09:00〜16:30");
-      int pos5 = htmlContent.indexOf("09:00〜18:00");
-      int pos6 = htmlContent.indexOf("09:00〜18:30");
-      assertTrue(pos4 >= 0, "Should contain work time 09:00〜16:30");
-      assertTrue(pos5 >= 0, "Should contain work time 09:00〜18:00");
-      assertTrue(pos6 >= 0, "Should contain work time 09:00〜18:30");
-      assertTrue(pos3 < pos4, "08:30〜16:30 should come before 09:00〜16:30");
-      assertTrue(pos4 < pos5, "09:00〜16:30 should come before 09:00〜18:00");
-      assertTrue(pos5 < pos6, "09:00〜18:00 should come before 09:00〜18:30");
-    }
-
-    @Test
-    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 各selectのdata-labelが勤務時間である")
-    void selectsHaveCorrectDataLabels() throws Exception {
-      String htmlContent =
-          mockMvc
-              .perform(get("/"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      String[] workTimes = {
-        "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
-      };
-
-      for (int slot = 0; slot < 6; slot++) {
-        String selectName = "name=\"employees[0].wishes[" + slot + "]\"";
-        String expectedLabel = "data-label=\"" + workTimes[slot] + "\"";
-        int selectIndex = htmlContent.indexOf(selectName);
-        assertTrue(selectIndex >= 0, "Should find select for slot " + slot);
-
-        int tagEndIndex = htmlContent.indexOf(">", selectIndex);
-        assertTrue(tagEndIndex > selectIndex, "Should find end of select tag for slot " + slot);
-
-        String tagContent = htmlContent.substring(selectIndex - 100, tagEndIndex);
-        assertTrue(
-            tagContent.contains(expectedLabel),
-            "Select for slot "
-                + slot
-                + " should have "
-                + expectedLabel
-                + " (found: "
-                + tagContent
-                + ")");
-      }
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: data-slot-labels属性が6つの勤務時間を含む")
-    void tableHasDataSlotLabelsWithAllWorkTimes() throws Exception {
-      String htmlContent =
-          mockMvc
-              .perform(get("/"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      Pattern pattern = Pattern.compile("data-slot-labels=\"([^\"]+)\"");
-      Matcher matcher = pattern.matcher(htmlContent);
-      assertTrue(matcher.find(), "Should have data-slot-labels attribute");
-
-      String slotLabels = matcher.group(1);
-      String[] workTimes = {
-        "07:30〜14:30", "08:00〜15:30", "08:30〜16:30", "09:00〜16:30", "09:00〜18:00", "09:00〜18:30"
-      };
-
-      for (String workTime : workTimes) {
-        assertTrue(
-            slotLabels.contains(workTime), "data-slot-labels should contain work time " + workTime);
-      }
-    }
-
-    @Test
-    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 旧earlyWish・lateWishは存在しない")
-    void doesNotContainOldEarlyOrLateWish() throws Exception {
+    @DisplayName("[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then: 廃止した希望入力の語が存在しない")
+    void doesNotContainLegacyInputTerms() throws Exception {
       String htmlContent =
           mockMvc
               .perform(get("/"))
@@ -298,11 +137,159 @@ class ShiftControllerTest {
               .getContentAsString();
 
       assertFalse(
-          htmlContent.contains("name=\"employees[0].earlyWish\""),
-          "HTML should not contain old earlyWish");
+          htmlContent.toLowerCase(Locale.ROOT).contains(LEGACY_TOKEN),
+          "HTML should not contain legacy input terms");
+    }
+
+    private String getIndexHtml() throws Exception {
+      return mockMvc
+          .perform(get("/"))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
+    }
+
+    /** 指定した name 属性を持つ要素の開始タグを返します。 */
+    private String findTag(String html, String tagName, String name) {
+      Matcher matcher =
+          Pattern.compile("<" + tagName + "\\b[^>]*name=\"" + Pattern.quote(name) + "\"[^>]*>")
+              .matcher(html);
+      assertTrue(matcher.find(), "Should find <" + tagName + "> with name " + name);
+      return matcher.group();
+    }
+
+    /** 指定した name 属性を持つ select 要素全体（option を含む）を返します。 */
+    private String findSelect(String html, String name) {
+      Matcher matcher =
+          Pattern.compile(
+                  "<select\\b[^>]*name=\"" + Pattern.quote(name) + "\"[^>]*>.*?</select>",
+                  Pattern.DOTALL)
+              .matcher(html);
+      assertTrue(matcher.find(), "Should find <select> with name " + name);
+      return matcher.group();
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
+            + " Then: 休み・開始・終了のname属性があり、廃止した希望のname属性はない")
+    void containsOffStartEndInputsWithoutLegacyInputs() throws Exception {
+      String html = getIndexHtml();
+
+      String offTag = findTag(html, "input", "employees[0].off");
+      assertTrue(offTag.contains("type=\"checkbox\""), "off should be a checkbox");
+      findSelect(html, "employees[0].start");
+      findSelect(html, "employees[0].end");
+      findSelect(html, "employees[3].end");
       assertFalse(
-          htmlContent.contains("name=\"employees[0].lateWish\""),
-          "HTML should not contain old lateWish");
+          html.contains("employees[0]." + LEGACY_TOKEN + "es"),
+          "HTML should not contain legacy inputs");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: GETリクエストが与えられたとき, When: /にアクセスすると," + " Then: 従業員の上限と同じ12行の空の入力行が表示される")
+    void showsTwelveEmptyRowsInitially() throws Exception {
+      String html = getIndexHtml();
+
+      findTag(html, "input", "employees[11].name");
+      assertFalse(
+          html.contains("name=\"employees[12].name\""), "Should not render a 13th input row");
+      assertTrue(
+          Pattern.compile("id=\"row-count\"[^>]*>12<").matcher(html).find(),
+          "Row counter should show 12");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: 開始・終了の選択肢を確認すると,"
+            + " Then: 未選択と07:30〜18:30があり、07:45はない")
+    void startAndEndSelectsHaveThirtyMinuteOptions() throws Exception {
+      String html = getIndexHtml();
+
+      for (String name : List.of("employees[0].start", "employees[0].end")) {
+        String select = findSelect(html, name);
+        assertTrue(select.contains("<option value=\"\">-- 未選択 --</option>"), name + " 未選択");
+        assertTrue(select.contains("value=\"07:30\""), name + " should contain 07:30");
+        assertTrue(select.contains("value=\"12:00\""), name + " should contain 12:00");
+        assertTrue(select.contains("value=\"18:30\""), name + " should contain 18:30");
+        assertFalse(select.contains("07:45"), name + " should not contain 07:45");
+        assertEquals(24, select.split("<option").length - 1, name + " should have 1 + 23 options");
+      }
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
+            + " Then: 廃止した3段階の希望の凡例・枠ごとの見出しがなく、時間帯を入力する説明文がある")
+    void doesNotContainLegacyLegendOrSlotHeaders() throws Exception {
+      String html = getIndexHtml();
+
+      assertFalse(html.contains(LEGACY_TOKEN + "-legend"), "Legacy legend should be removed");
+      assertFalse(html.contains(LEGACY_MARK), "Legacy mark should not be displayed");
+      assertFalse(html.contains("data-slot-labels"), "data-slot-labels should be removed");
+      assertTrue(html.contains("従業員の勤務できる時間帯を入力すると"), "Lead text should be updated");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 1行目を休みにして送信し入力エラーで再表示されるとき, When: 画面を確認すると,"
+            + " Then: 1行目の開始・終了はdisabledで、2行目はdisabledでない")
+    void rendersStartAndEndDisabledForOffRow() throws Exception {
+      String html =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].off", "true")
+                      .param("employees[1].name", "B")
+                      .param("employees[1].start", "")
+                      .param("employees[1].end", "17:00"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(html.contains("2行目 開始が未選択です"), "Should be re-rendered with V-3 error");
+      assertTrue(
+          findTag(html, "input", "employees[0].off").contains("checked"), "off should be checked");
+      assertTrue(findTag(html, "select", "employees[0].start").contains("disabled"));
+      assertTrue(findTag(html, "select", "employees[0].end").contains("disabled"));
+      assertFalse(findTag(html, "select", "employees[1].start").contains("disabled"));
+      assertFalse(findTag(html, "select", "employees[1].end").contains("disabled"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 開始08:00・終了17:00で送信し入力エラーで再表示されるとき, When: 画面を確認すると,"
+            + " Then: 選択した値が選択状態で再表示される")
+    void rendersSelectedStartAndEndAfterError() throws Exception {
+      String html =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].start", "08:00")
+                      .param("employees[0].end", "17:00")
+                      .param("employees[1].name", "B")
+                      .param("employees[1].start", "")
+                      .param("employees[1].end", ""))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          Pattern.compile("<option value=\"08:00\" selected=\"selected\">")
+              .matcher(findSelect(html, "employees[0].start"))
+              .find(),
+          "08:00 should be selected for start");
+      assertTrue(
+          Pattern.compile("<option value=\"17:00\" selected=\"selected\">")
+              .matcher(findSelect(html, "employees[0].end"))
+              .find(),
+          "17:00 should be selected for end");
     }
   }
 
@@ -316,14 +303,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 13; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -355,14 +335,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 12; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -387,20 +360,11 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 11; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
       for (int i = 11; i < 13; i++) {
         params.append("&employees[").append(i).append("].name=");
-        for (int j = 0; j < 6; j++) {
-          params.append("&employees[").append(i).append("].wishes[").append(j).append("]=");
-        }
+        appendTimeRange(params, i, "", "");
       }
 
       String responseContent =
@@ -419,21 +383,66 @@ class ShiftControllerTest {
           "Limit error should not be shown for 11 valid employees");
     }
 
+    /**
+     * 勤務する従業員と休みの従業員を指定人数分送信し、レスポンス本文を返します。
+     *
+     * @param workingCount 勤務する従業員数（7:30〜18:30）
+     * @param offCount 休みの従業員数
+     * @return レスポンス本文
+     * @throws Exception リクエストの実行に失敗した場合
+     */
+    private String postWorkingAndOffEmployees(int workingCount, int offCount) throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < workingCount; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        appendTimeRange(params, i, "07:30", "18:30");
+      }
+      for (int i = workingCount; i < workingCount + offCount; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        params.append("&employees[").append(i).append("].off=true");
+      }
+      return mockMvc
+          .perform(
+              post("/shift")
+                  .contentType("application/x-www-form-urlencoded")
+                  .content(params.toString().substring(1)))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
+    }
+
+    @Test
+    @DisplayName("[V-5] Given: 休み5名を含む有効な従業員13名のとき, When: POSTすると, Then: 上限エラーが表示され、assignが呼ばれない")
+    void showsErrorWhen13ValidEmployeesIncludingOff() throws Exception {
+      String responseContent = postWorkingAndOffEmployees(8, 5);
+
+      assertTrue(
+          responseContent.contains("上限（12名）を超えています"),
+          "Limit error should count employees on leave");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName("[V-5] Given: 休み4名を含む有効な従業員12名のとき, When: POSTすると, Then: 上限エラーにならず、assignが呼ばれる")
+    void callsAssignWhen12ValidEmployeesIncludingOff() throws Exception {
+      String responseContent = postWorkingAndOffEmployees(8, 4);
+
+      assertFalse(
+          responseContent.contains("上限（12名）を超えています"),
+          "Limit error should not be shown for 12 employees including those on leave");
+      verify(shiftAssignmentService).assign(any());
+    }
+
     @Test
     @DisplayName(
         "[V-4][F-5] Given: assignがOptional.empty()を返すとき, When: POSTすると, Then: 不成立メッセージが表示される")
     void showsUnassignableMessageWhenNoValidCombination() throws Exception {
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.empty());
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=UNAVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -461,14 +470,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=UNAVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -512,17 +514,11 @@ class ShiftControllerTest {
     void displaysDuplicateLineNumbersCorrectlyWithBlankRowBefore() throws Exception {
       StringBuilder params = new StringBuilder();
       params.append("&employees[0].name=");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 0, "07:30", "18:30");
       params.append("&employees[1].name=A");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 1, "07:30", "18:30");
       params.append("&employees[2].name=A");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 2, "07:30", "18:30");
 
       String responseContent =
           mockMvc
@@ -551,17 +547,11 @@ class ShiftControllerTest {
     void displaysDuplicateLineNumbersCorrectlyWithBlankRowBetween() throws Exception {
       StringBuilder params = new StringBuilder();
       params.append("&employees[0].name=A");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[0].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 0, "07:30", "18:30");
       params.append("&employees[1].name=");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[1].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 1, "07:30", "18:30");
       params.append("&employees[2].name=A");
-      for (int j = 0; j < 6; j++) {
-        params.append("&employees[2].wishes[").append(j).append("]=AVAILABLE");
-      }
+      appendTimeRange(params, 2, "07:30", "18:30");
 
       String responseContent =
           mockMvc
@@ -587,265 +577,279 @@ class ShiftControllerTest {
   }
 
   @Nested
-  @DisplayName("[V-3][V-1] 希望の入力チェック")
-  class WishValidation {
+  @DisplayName("[F-1][V-1] フォームから従業員への変換")
+  class FormConversion {
+
+    @SuppressWarnings("unchecked")
+    private List<Employee> captureAssignedEmployees() {
+      ArgumentCaptor<List<Employee>> captor = ArgumentCaptor.forClass(List.class);
+      verify(shiftAssignmentService).assign(captor.capture());
+      return captor.getValue();
+    }
 
     @Test
     @DisplayName(
-        "[V-3] Given: wishes[2]だけが未選択のとき, When: POSTすると, Then: 08:30〜16:30を含むエラーが表示され、assignが呼ばれない")
-    void showsErrorForMissingWishSlot2() throws Exception {
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .param("employees[0].name", "Employee A")
-                      .param("employees[0].wishes[0]", "AVAILABLE")
-                      .param("employees[0].wishes[1]", "AVAILABLE")
-                      .param("employees[0].wishes[3]", "AVAILABLE")
-                      .param("employees[0].wishes[4]", "AVAILABLE")
-                      .param("employees[0].wishes[5]", "AVAILABLE"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
+        "[F-1] Given: 開始08:00・終了17:00の行があるとき, When: POSTすると,"
+            + " Then: assignに渡される従業員の開始が08:00、終了が17:00である")
+    void convertsStartAndEndToLocalTime() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].start", "08:00")
+                  .param("employees[0].end", "17:00"))
+          .andExpect(status().isOk());
 
-      assertTrue(
-          responseContent.contains("08:30〜16:30"),
-          "Error message should contain work time 08:30〜16:30");
-      assertTrue(responseContent.contains("class=\"alert\""), "Error section should be displayed");
-
-      verify(shiftAssignmentService, never()).assign(any());
+      List<Employee> employees = captureAssignedEmployees();
+      assertEquals(1, employees.size());
+      assertEquals("A", employees.get(0).name());
+      assertFalse(employees.get(0).off());
+      assertEquals(LocalTime.of(8, 0), employees.get(0).start());
+      assertEquals(LocalTime.of(17, 0), employees.get(0).end());
     }
 
     @Test
-    @DisplayName("[V-3] Given: 2つの枠が不正なとき, When: POSTすると, Then: エラーが2件表示される")
-    void showsMultipleErrors() throws Exception {
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .param("employees[0].name", "Employee A")
-                      .param("employees[0].wishes[2]", "AVAILABLE")
-                      .param("employees[0].wishes[3]", "AVAILABLE")
-                      .param("employees[0].wishes[4]", "AVAILABLE")
-                      .param("employees[0].wishes[5]", "AVAILABLE"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
+    @DisplayName(
+        "[F-1] Given: 休みにチェックした行があるとき, When: POSTすると," + " Then: assignに渡される従業員は休みで、開始・終了がnullである")
+    void convertsOffRowToEmployeeOnLeave() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "true")
+                  .param("employees[0].start", "08:00")
+                  .param("employees[0].end", "17:00"))
+          .andExpect(status().isOk());
 
-      int alertCount = 0;
-      for (int i = 0; i < responseContent.length() - 4; i++) {
-        if (responseContent.substring(i, i + 4).equals("<li>")) {
-          alertCount++;
-        }
-      }
-
-      assertTrue(alertCount >= 2, "Should display at least 2 errors");
+      List<Employee> employees = captureAssignedEmployees();
+      assertEquals(1, employees.size());
+      assertTrue(employees.get(0).off());
+      assertNull(employees.get(0).start());
+      assertNull(employees.get(0).end());
     }
 
     @Test
-    @DisplayName("[V-1] Given: 氏名が空の行のとき, When: POSTすると, Then: 希望が未選択でもエラーにならない")
-    void ignoresEmptyNameRow() throws Exception {
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .param("employees[0].name", "")
-                      .param("employees[0].wishes[0]", "")
-                      .param("employees[0].wishes[1]", "")
-                      .param("employees[0].wishes[2]", "")
-                      .param("employees[0].wishes[3]", "")
-                      .param("employees[0].wishes[4]", "")
-                      .param("employees[0].wishes[5]", ""))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
+    @DisplayName(
+        "[V-1] Given: 1行目の氏名が空で2行目に氏名があるとき, When: POSTすると," + " Then: assignには氏名がある2行目の従業員だけが渡される")
+    void excludesBlankNameRowFromAssignment() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "")
+                  .param("employees[0].start", "")
+                  .param("employees[0].end", "")
+                  .param("employees[1].name", "B")
+                  .param("employees[1].start", "07:30")
+                  .param("employees[1].end", "18:30"))
+          .andExpect(status().isOk());
 
-      assertFalse(
-          responseContent.contains("入力エラー"), "Should not show input error for empty name row");
-    }
-
-    @Test
-    @DisplayName("[V-3] Given: 不正な値が入力されたとき, When: POSTすると, Then: エラーが表示される")
-    void showsErrorForInvalidWishValue() throws Exception {
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .param("employees[0].name", "Employee A")
-                      .param("employees[0].wishes[0]", "INVALID")
-                      .param("employees[0].wishes[1]", "AVAILABLE")
-                      .param("employees[0].wishes[2]", "AVAILABLE")
-                      .param("employees[0].wishes[3]", "AVAILABLE")
-                      .param("employees[0].wishes[4]", "AVAILABLE")
-                      .param("employees[0].wishes[5]", "AVAILABLE"))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      assertTrue(
-          responseContent.contains("class=\"alert\""),
-          "Error section should be displayed for invalid value");
+      List<Employee> employees = captureAssignedEmployees();
+      assertEquals(1, employees.size());
+      assertEquals("B", employees.get(0).name());
     }
   }
 
   @Nested
-  @DisplayName("[F-1] POST の全戻り経路で slotLabels をモデルに設定")
-  class PostReturnPathsIncludeSlotLabels {
+  @DisplayName("[V-3][V-1] 開始・終了の入力チェック")
+  class TimeRangeValidation {
 
-    @Test
-    @DisplayName("[F-1] Given: POSTで成立するとき, When: レスポンスHTMLを確認すると, Then: 6つの勤務時間と6個のselect要素がある")
-    void includesSlotLabelsWhenAssignmentSucceeds() throws Exception {
+    private String postRows(String... rows) throws Exception {
       StringBuilder params = new StringBuilder();
-      for (int i = 0; i < 8; i++) {
-        params
-            .append("&employees[")
-            .append(i)
-            .append("].name=")
-            .append(String.valueOf((char) ('A' + i)));
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
+      for (int i = 0; i < rows.length; i++) {
+        String[] cols = rows[i].split(",", -1);
+        params.append("&employees[").append(i).append("].name=").append(cols[0]);
+        if (cols[1].equals("off")) {
+          params.append("&employees[").append(i).append("].off=true");
         }
+        appendTimeRange(params, i, cols[2], cols[3]);
       }
-
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .contentType("application/x-www-form-urlencoded")
-                      .content(params.toString().substring(1)))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
-      assertTrue(responseContent.contains("08:00〜15:30"), "Should contain work time 08:00〜15:30");
-      assertTrue(responseContent.contains("08:30〜16:30"), "Should contain work time 08:30〜16:30");
-      assertTrue(responseContent.contains("09:00〜16:30"), "Should contain work time 09:00〜16:30");
-      assertTrue(responseContent.contains("09:00〜18:00"), "Should contain work time 09:00〜18:00");
-      assertTrue(responseContent.contains("09:00〜18:30"), "Should contain work time 09:00〜18:30");
-
-      assertTrue(
-          responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
-
-      Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
-      Matcher selectMatcher = selectPattern.matcher(responseContent);
-      int selectCount = 0;
-      while (selectMatcher.find()) {
-        selectCount++;
-      }
-      assertEquals(6, selectCount, "Row 0 should have 6 select elements");
+      return mockMvc
+          .perform(
+              post("/shift")
+                  .contentType("application/x-www-form-urlencoded")
+                  .content(params.substring(1)))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
     }
 
     @Test
     @DisplayName(
-        "[F-1] Given: POSTでV-3エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsと6個のselect要素がある")
-    void includesSlotLabelsWhenV3Error() throws Exception {
-      String responseContent =
+        "[V-3] Given: 2行目の開始が未選択のとき, When: POSTすると," + " Then: 「2行目 開始が未選択です」が表示され、assignが呼ばれない")
+    void showsErrorWhenStartIsMissing() throws Exception {
+      String response = postRows("A,,07:30,18:30", "B,,,17:00");
+
+      assertTrue(response.contains("2行目 開始が未選択です"), "Should show start missing error");
+      assertFalse(response.contains("1行目"), "Valid row should not have an error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の終了が未選択のとき, When: POSTすると," + " Then: 「1行目 終了が未選択です」が表示され、assignが呼ばれない")
+    void showsErrorWhenEndIsMissing() throws Exception {
+      String response = postRows("A,,08:00,");
+
+      assertTrue(response.contains("1行目 終了が未選択です"), "Should show end missing error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の開始が選択肢外（08:10）のとき, When: POSTすると,"
+            + " Then: 「1行目 開始は選択肢にありません」が表示され、assignが呼ばれない")
+    void showsErrorWhenStartIsNotAnOption() throws Exception {
+      String response = postRows("A,,08:10,17:00");
+
+      assertTrue(response.contains("1行目 開始は選択肢にありません"), "Should show start not-an-option error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の終了が選択肢外（19:00）のとき, When: POSTすると,"
+            + " Then: 「1行目 終了は選択肢にありません」が表示され、assignが呼ばれない")
+    void showsErrorWhenEndIsNotAnOption() throws Exception {
+      String response = postRows("A,,08:00,19:00");
+
+      assertTrue(response.contains("1行目 終了は選択肢にありません"), "Should show end not-an-option error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の開始と終了が同じ（09:00）とき, When: POSTすると,"
+            + " Then: 「1行目 開始は終了より前にしてください」が表示され、assignが呼ばれない")
+    void showsErrorWhenStartEqualsEnd() throws Exception {
+      String response = postRows("A,,09:00,09:00");
+
+      assertTrue(response.contains("1行目 開始は終了より前にしてください"), "Should show order error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 1行目の開始が終了より後（17:00〜08:00）のとき, When: POSTすると,"
+            + " Then: 「1行目 開始は終了より前にしてください」が表示され、assignが呼ばれない")
+    void showsErrorWhenStartIsAfterEnd() throws Exception {
+      String response = postRows("A,,17:00,08:00");
+
+      assertTrue(response.contains("1行目 開始は終了より前にしてください"), "Should show order error");
+      verify(shiftAssignmentService, never()).assign(any());
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 休みにチェックした行の開始・終了が空のとき, When: POSTすると," + " Then: 入力エラーにならず、assignが呼ばれる")
+    void doesNotShowErrorForOffRowWithoutTimeRange() throws Exception {
+      String response = postRows("A,off,,");
+
+      assertFalse(response.contains("入力エラー"), "Off row should not produce an input error");
+      verify(shiftAssignmentService).assign(any());
+    }
+
+    @Test
+    @DisplayName("[V-1] Given: 氏名が空の行の開始・終了が不正なとき, When: POSTすると," + " Then: 入力エラーにならず、assignが呼ばれる")
+    void doesNotShowErrorForBlankNameRowWithInvalidTimeRange() throws Exception {
+      String response = postRows("A,,07:30,18:30", ",,08:10,");
+
+      assertFalse(response.contains("入力エラー"), "Blank name row should not produce an error");
+      verify(shiftAssignmentService).assign(any());
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-1] GET・POST の全戻り経路で timeOptions をモデルに設定")
+  class TimeOptionsInModel {
+
+    @SuppressWarnings("unchecked")
+    private void assertTimeOptions(MvcResult result) {
+      List<String> timeOptions =
+          (List<String>) result.getModelAndView().getModel().get("timeOptions");
+      assertNotNull(timeOptions, "Model should contain timeOptions");
+      assertEquals(23, timeOptions.size(), "timeOptions should have 23 items");
+      assertEquals("07:30", timeOptions.get(0), "First option should be 07:30");
+      assertEquals("08:00", timeOptions.get(1), "Second option should be 08:00");
+      assertEquals("18:30", timeOptions.get(22), "Last option should be 18:30");
+    }
+
+    private MvcResult postEmployees(int count) throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < count; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        appendTimeRange(params, i, "07:30", "18:30");
+      }
+      return mockMvc
+          .perform(
+              post("/shift")
+                  .contentType("application/x-www-form-urlencoded")
+                  .content(params.substring(1)))
+          .andExpect(status().isOk())
+          .andReturn();
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: GETリクエストが与えられたとき, When: /にアクセスすると,"
+            + " Then: timeOptionsが07:30〜18:30の30分刻み23件である")
+    void includesTimeOptionsOnGet() throws Exception {
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+
+      assertTimeOptions(result);
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: POSTで成立するとき, When: モデルを確認すると, Then: timeOptionsが07:30〜18:30の23件である")
+    void includesTimeOptionsWhenAssignmentSucceeds() throws Exception {
+      when(shiftAssignmentService.assign(any()))
+          .thenReturn(java.util.Optional.of(createStandardResult()));
+
+      MvcResult result = postEmployees(8);
+
+      assertNotNull(result.getModelAndView().getModel().get("assignmentResult"));
+      assertTimeOptions(result);
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: POSTで不成立のとき, When: モデルを確認すると, Then: timeOptionsが07:30〜18:30の23件である")
+    void includesTimeOptionsWhenUnassignable() throws Exception {
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.empty());
+
+      MvcResult result = postEmployees(8);
+
+      assertEquals(true, result.getModelAndView().getModel().get("unassignable"));
+      assertTimeOptions(result);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: POSTでV-3の入力エラーのとき, When: モデルを確認すると,"
+            + " Then: timeOptionsが07:30〜18:30の23件である")
+    void includesTimeOptionsWhenV3Error() throws Exception {
+      MvcResult result =
           mockMvc
               .perform(
                   post("/shift")
                       .param("employees[0].name", "Employee A")
-                      .param("employees[0].wishes[0]", "AVAILABLE")
-                      .param("employees[0].wishes[1]", "AVAILABLE")
-                      .param("employees[0].wishes[3]", "AVAILABLE")
-                      .param("employees[0].wishes[4]", "AVAILABLE")
-                      .param("employees[0].wishes[5]", "AVAILABLE"))
+                      .param("employees[0].start", "")
+                      .param("employees[0].end", "17:00"))
               .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
+              .andReturn();
 
-      assertTrue(responseContent.contains("07:30〜14:30"), "Should contain work time 07:30〜14:30");
-      assertTrue(
-          responseContent.contains("data-slot-labels"), "Should have data-slot-labels attribute");
-
-      Pattern selectPattern = Pattern.compile("name=\"employees\\[0\\]\\.wishes\\[\\d\\]\"");
-      Matcher selectMatcher = selectPattern.matcher(responseContent);
-      int selectCount = 0;
-      while (selectMatcher.find()) {
-        selectCount++;
-      }
-      assertEquals(6, selectCount, "Row should have 6 select elements even with V-3 error");
+      assertTrue(result.getResponse().getContentAsString().contains("開始が未選択です"));
+      assertTimeOptions(result);
     }
 
     @Test
-    @DisplayName("[F-1] Given: POSTでV-5エラーのとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
-    void includesSlotLabelsWhenV5Error() throws Exception {
-      StringBuilder params = new StringBuilder();
-      for (int i = 0; i < 13; i++) {
-        params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
-      }
+    @DisplayName(
+        "[F-1] Given: POSTでV-5の入力エラーのとき, When: モデルを確認すると,"
+            + " Then: timeOptionsが07:30〜18:30の23件である")
+    void includesTimeOptionsWhenV5Error() throws Exception {
+      MvcResult result = postEmployees(13);
 
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .contentType("application/x-www-form-urlencoded")
-                      .content(params.toString().substring(1)))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      assertTrue(
-          responseContent.contains("07:30〜14:30"),
-          "Should contain work time 07:30〜14:30 even with V-5 error");
-      assertTrue(
-          responseContent.contains("data-slot-labels"),
-          "Should have data-slot-labels attribute even with V-5 error");
-    }
-
-    @Test
-    @DisplayName("[F-1] Given: POSTで不成立のとき, When: レスポンスHTMLを確認すると, Then: slotLabelsがある")
-    void includesSlotLabelsWhenUnassignable() throws Exception {
-      StringBuilder params = new StringBuilder();
-      for (int i = 0; i < 8; i++) {
-        params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=UNAVAILABLE");
-        }
-      }
-
-      String responseContent =
-          mockMvc
-              .perform(
-                  post("/shift")
-                      .contentType("application/x-www-form-urlencoded")
-                      .content(params.toString().substring(1)))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
-
-      assertTrue(
-          responseContent.contains("07:30〜14:30"),
-          "Should contain work time 07:30〜14:30 even when unassignable");
-      assertTrue(
-          responseContent.contains("data-slot-labels"),
-          "Should have data-slot-labels attribute even when unassignable");
+      assertNotNull(result.getModelAndView().getModel().get("limitExceededError"));
+      assertTimeOptions(result);
     }
   }
 
@@ -865,14 +869,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -910,14 +907,7 @@ class ShiftControllerTest {
             .append(i)
             .append("].name=")
             .append(String.valueOf((char) ('A' + i)));
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1011,14 +1001,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1049,14 +1032,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1110,44 +1086,83 @@ class ShiftControllerTest {
           .thenReturn(java.util.Optional.of(createStandardResult()));
     }
 
+    /**
+     * 全員 7:30〜18:30 の従業員を指定人数分送信し、レスポンス本文を返します。
+     *
+     * @param count 従業員数
+     * @return レスポンス本文
+     * @throws Exception リクエストの実行に失敗した場合
+     */
+    private String postEmployees(int count) throws Exception {
+      StringBuilder params = new StringBuilder();
+      for (int i = 0; i < count; i++) {
+        params
+            .append("&employees[")
+            .append(i)
+            .append("].name=")
+            .append(String.valueOf((char) ('A' + i)));
+        appendTimeRange(params, i, "07:30", "18:30");
+      }
+      return mockMvc
+          .perform(
+              post("/shift")
+                  .contentType("application/x-www-form-urlencoded")
+                  .content(params.toString().substring(1)))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
+    }
+
     @Test
     @DisplayName(
-        "[F-4] Given: スコア5の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then: '.score-num'に'5'と'/ 8'が表示される")
-    void displaysScoreFiveWithCorrectFormat() throws Exception {
+        "[F-4] Given: ずれの合計が90分の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then:"
+            + " '.score-num'に'90'と'分'が表示され、'/ 8'は表示されない")
+    void displaysGapTotalInMinutes() throws Exception {
+      AssignmentResult result =
+          new AssignmentResult(createStandardResult().assignments(), 90, List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      String responseContent = postEmployees(8);
+
+      Matcher matcher =
+          Pattern.compile("class=\"score-num\"[^>]*>\\s*<span>(\\d+)</span><small> 分</small>")
+              .matcher(responseContent);
+      assertTrue(matcher.find(), "Score should be displayed as '<n> 分'");
+      assertEquals("90", matcher.group(1));
+      assertFalse(responseContent.contains("/ 8"), "Score should not show '/ 8'");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 割当結果が表示されるとき, When: スコアのラベルを確認すると, Then:"
+            + " 'ずれの合計'のラベルがあり、旧スコアの記号（U+25CE）は表示されない")
+    void displaysGapTotalLabelWithoutDesiredMark() throws Exception {
+      String responseContent = postEmployees(8);
+
+      assertTrue(
+          responseContent.contains("ずれの合計（入力時間帯と割り当てた枠の差。0 が最良）"),
+          "Score label should describe the gap total");
+      assertFalse(
+          responseContent.contains(LEGACY_MARK), "Result should not contain the old score mark");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 未出勤者に休みの従業員（K）を含む割当結果が表示されるとき, When: 未出勤者セクションを確認すると, Then:"
+            + " 休みの従業員の氏名がチップで表示される")
+    void displaysEmployeeOnLeaveAsUnassigned() throws Exception {
+      AssignmentResult result =
+          new AssignmentResult(
+              createStandardResult().assignments(), 0, List.of(Employee.onLeave("K")));
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
       StringBuilder params = new StringBuilder();
-
-      for (int i = 0; i < 5; i++) {
-        params
-            .append("&employees[")
-            .append(i)
-            .append("].name=")
-            .append(String.valueOf((char) ('A' + i)));
-        params.append("&employees[").append(i).append("].wishes[0]=DESIRED");
-        for (int j = 1; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+      for (int i = 0; i < 8; i++) {
+        params.append("&employees[").append(i).append("].name=Employee").append(i);
+        appendTimeRange(params, i, "07:30", "18:30");
       }
-
-      for (int i = 5; i < 8; i++) {
-        params
-            .append("&employees[")
-            .append(i)
-            .append("].name=")
-            .append(String.valueOf((char) ('A' + i)));
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
-      }
+      params.append("&employees[8].name=K&employees[8].off=true");
 
       String responseContent =
           mockMvc
@@ -1161,11 +1176,8 @@ class ShiftControllerTest {
               .getContentAsString();
 
       assertTrue(
-          responseContent.contains("class=\"score-num\""),
-          "Score display section should be present");
-      assertTrue(
-          responseContent.contains("5") && responseContent.contains("/ 8"),
-          "Score should show 5 / 8");
+          responseContent.contains("class=\"chip\">K</span>"),
+          "Employee on leave should be displayed as unassigned");
     }
 
     @Test
@@ -1175,24 +1187,8 @@ class ShiftControllerTest {
       // 未出勤者2名を含む結果をスタブ
       List<Employee> unassignedEmployees =
           List.of(
-              new Employee(
-                  "I",
-                  List.of(
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED)),
-              new Employee(
-                  "J",
-                  List.of(
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED,
-                      Wish.DESIRED)));
+              Employee.working("I", LocalTime.of(7, 30), LocalTime.of(18, 30)),
+              Employee.working("J", LocalTime.of(7, 30), LocalTime.of(18, 30)));
       AssignmentResult resultWithUnassigned =
           new AssignmentResult(createStandardResult().assignments(), 5, unassignedEmployees);
       when(shiftAssignmentService.assign(any()))
@@ -1205,14 +1201,7 @@ class ShiftControllerTest {
             .append(i)
             .append("].name=")
             .append(String.valueOf((char) ('A' + i)));
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1253,14 +1242,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1297,14 +1279,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1350,14 +1325,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1383,14 +1351,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1420,14 +1381,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1454,14 +1408,7 @@ class ShiftControllerTest {
       StringBuilder params = new StringBuilder();
       for (int i = 0; i < 8; i++) {
         params.append("&employees[").append(i).append("].name=Employee").append(i);
-        for (int j = 0; j < 6; j++) {
-          params
-              .append("&employees[")
-              .append(i)
-              .append("].wishes[")
-              .append(j)
-              .append("]=AVAILABLE");
-        }
+        appendTimeRange(params, i, "07:30", "18:30");
       }
 
       String responseContent =
@@ -1493,6 +1440,84 @@ class ShiftControllerTest {
   @DisplayName("[F-2][F-6] JavaScriptの行追加・削除機能")
   class JavaScriptAddDeleteRows {
 
+    private String readShiftFormJs() throws Exception {
+      return new String(
+          java.nio.file.Files.readAllBytes(
+              java.nio.file.Paths.get("src/main/resources/static/js/shift-form.js")),
+          java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-2] Given: GETリクエストが与えられたとき, When: 入力表を確認すると,"
+            + " Then: data-time-optionsに07:30〜18:30の23件が「|」区切りで入っている")
+    void inputTableHasDataTimeOptions() throws Exception {
+      String html =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      Matcher matcher =
+          Pattern.compile("<table[^>]*class=\"input-table\"[^>]*data-time-options=\"([^\"]*)\"")
+              .matcher(html);
+      assertTrue(matcher.find(), "Input table should have data-time-options attribute");
+      String[] options = matcher.group(1).split("\\|");
+      assertEquals(23, options.length, "data-time-options should have 23 items");
+      assertEquals("07:30", options[0]);
+      assertEquals("18:30", options[22]);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-2][F-6] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: 休み・開始・終了のname生成とdata-time-optionsの読み取りがあり、廃止した希望のselect生成がない")
+    void shiftFormJsGeneratesOffStartEndInputs() throws Exception {
+      String jsContent = readShiftFormJs();
+
+      assertTrue(jsContent.contains("\".off\""), "shift-form.js should build employees[N].off");
+      assertTrue(jsContent.contains("\".start\""), "shift-form.js should build employees[N].start");
+      assertTrue(jsContent.contains("\".end\""), "shift-form.js should build employees[N].end");
+      assertTrue(
+          jsContent.contains("data-time-options"), "shift-form.js should read data-time-options");
+      assertFalse(
+          jsContent.toLowerCase(Locale.ROOT).contains(LEGACY_TOKEN),
+          "shift-form.js should not contain legacy input logic");
+      assertFalse(
+          jsContent.contains("data-slot-labels"),
+          "shift-form.js should not contain 'data-slot-labels'");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-6] Given: shift-form.jsをロードしたとき, When: インデックスの振り直し処理を確認すると,"
+            + " Then: 休みの隠しフィールド（_employees[N].off）も振り直しの対象である")
+    void shiftFormJsRenumbersHiddenCheckboxFields() throws Exception {
+      String jsContent = readShiftFormJs();
+
+      assertTrue(
+          jsContent.contains("/(_?employees)\\[\\d+\\]/"),
+          "renumber regex should match both employees[N] and _employees[N]");
+      assertTrue(
+          jsContent.contains("_employees["), "shift-form.js should mention _employees[ fields");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: shift-form.jsをロードしたとき, When: 休みチェックの処理を確認すると,"
+            + " Then: 同じ行の開始・終了のdisabledを切り替える処理がある")
+    void shiftFormJsTogglesTimeSelectsByOffCheckbox() throws Exception {
+      String jsContent = readShiftFormJs();
+
+      assertTrue(
+          jsContent.contains("function updateTimeSelectsState"),
+          "shift-form.js should have updateTimeSelectsState function");
+      assertTrue(
+          jsContent.contains("off-checkbox"), "shift-form.js should handle .off-checkbox changes");
+    }
+
     @Test
     @DisplayName(
         "[F-2] Given: GETリクエストが与えられたとき, When: /にアクセスすると, Then:"
@@ -1516,9 +1541,8 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
-        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:"
-            + " 'wishes['を使ったname生成と'disabled'の設定がある")
-    void shiftFormJsContainsWishesArrayLogic() throws Exception {
+        "[F-2] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:" + " 'disabled'の設定がある")
+    void shiftFormJsContainsDisabledLogic() throws Exception {
       String htmlContent =
           mockMvc
               .perform(get("/"))
@@ -1538,9 +1562,6 @@ class ShiftControllerTest {
       String jsContent = new String(java.nio.file.Files.readAllBytes(path));
 
       assertTrue(
-          jsContent.contains("wishes["),
-          "shift-form.js should contain 'wishes[' for new 6-slot structure");
-      assertTrue(
           jsContent.contains(".disabled"),
           "shift-form.js should contain '.disabled' for button state management");
     }
@@ -1548,14 +1569,15 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-6] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると, Then:"
-            + " 'earlyWish'・'lateWish'・「早番」・「遅番」の文字列が存在しない")
+            + " 廃止した希望入力の語・「早番」・「遅番」の文字列が存在しない")
     void shiftFormJsDoesNotContainOldTerms() throws Exception {
       String jsFilePath = "src/main/resources/static/js/shift-form.js";
       java.nio.file.Path path = java.nio.file.Paths.get(jsFilePath);
       String jsContent = new String(java.nio.file.Files.readAllBytes(path));
 
-      assertFalse(jsContent.contains("earlyWish"), "shift-form.js should not contain 'earlyWish'");
-      assertFalse(jsContent.contains("lateWish"), "shift-form.js should not contain 'lateWish'");
+      assertFalse(
+          jsContent.toLowerCase(Locale.ROOT).contains(LEGACY_TOKEN),
+          "shift-form.js should not contain legacy input terms");
       assertFalse(jsContent.contains("早番"), "shift-form.js should not contain '早番'");
       assertFalse(jsContent.contains("遅番"), "shift-form.js should not contain '遅番'");
     }

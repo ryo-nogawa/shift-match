@@ -11,7 +11,7 @@
     <header class="hero">
       <p class="eyebrow">Shift Match</p>
       <h1>シフト作成</h1>
-      <p class="lead">従業員の希望を入力すると、6 つの勤務枠（8 名）の最適な割り当て案を提案します。</p>
+      <p class="lead">従業員の勤務できる時間帯を入力すると、6 つの勤務枠（8 名）の最適な割り当て案を提案します。</p>
     </header>
 
     <section class="alert" role="alert" th:if="${limitExceededError != null}">
@@ -28,11 +28,11 @@
       </ul>
     </section>
 
-    <section class="alert" role="alert" th:if="${wishErrors != null && !wishErrors.isEmpty()}">
+    <section class="alert" role="alert" th:if="${timeRangeErrors != null && !timeRangeErrors.isEmpty()}">
       <h2>入力エラー</h2>
       <ul>
-        <li th:each="error : ${wishErrors}">
-          <span th:text="|${error.getRowIndex() + 1}行目 ${error.getWishLabel()}: 不正な値です|"></span>
+        <li th:each="error : ${timeRangeErrors}">
+          <span th:text="|${error.rowIndex() + 1}行目 ${error.message()}|"></span>
         </li>
       </ul>
     </section>
@@ -44,15 +44,19 @@
       class="card"
     >
       <div class="card-head">
-        <h2>従業員の希望</h2>
+        <h2>従業員の勤務できる時間帯</h2>
         <span class="count"><b id="row-count" th:text="${shiftForm.employees.size()}">0</b> 名</span>
       </div>
-      <p class="wish-legend"><b class="w d">◎</b>希望 <b class="w a">○</b>可能 <b class="w u">×</b>不可</p>
-      <table class="input-table" th:attr="data-slot-labels=${#strings.listJoin(slotLabels, '|')}">
+      <table
+        class="input-table"
+        th:attr="data-time-options=${#strings.listJoin(timeOptions, '|')}"
+      >
         <thead>
           <tr>
             <th>氏名</th>
-            <th th:each="label, stat : ${slotLabels}">枠<span th:text="${stat.index + 1}">1</span><small th:text="${label}">時刻</small></th>
+            <th>休み</th>
+            <th>開始</th>
+            <th>終了</th>
             <th></th>
           </tr>
         </thead>
@@ -65,19 +69,25 @@
                 placeholder="氏名を入力"
               />
             </td>
-            <td
-              th:each="label, slotStat : ${slotLabels}"
-              th:attr="data-label=${label}"
-            >
+            <td data-label="休み">
+              <input type="checkbox" class="off-checkbox" th:field="*{employees[__${stat.index}__].off}" />
+            </td>
+            <td data-label="開始">
               <select
-                th:field="*{employees[__${stat.index}__].wishes[__${slotStat.index}__]}"
-                data-value=""
-                th:attr="data-label=${label}"
+                th:field="*{employees[__${stat.index}__].start}"
+                th:disabled="${employee.off}"
               >
                 <option value="">-- 未選択 --</option>
-                <option value="DESIRED">◎ 希望</option>
-                <option value="AVAILABLE">○ 可能</option>
-                <option value="UNAVAILABLE">× 不可</option>
+                <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}">07:30</option>
+              </select>
+            </td>
+            <td data-label="終了">
+              <select
+                th:field="*{employees[__${stat.index}__].end}"
+                th:disabled="${employee.off}"
+              >
+                <option value="">-- 未選択 --</option>
+                <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}">18:30</option>
               </select>
             </td>
             <td>
@@ -111,9 +121,9 @@
       </div>
       <div class="score">
         <span class="score-num"
-          ><span th:text="${assignmentResult.score()}">0</span><small> / 8</small></span
+          ><span th:text="${assignmentResult.score()}">0</span><small> 分</small></span
         >
-        <span class="score-label">スコア（◎ が反映された人数）</span>
+        <span class="score-label">ずれの合計（入力時間帯と割り当てた枠の差。0 が最良）</span>
       </div>
       <div class="timeline">
         <div class="tl-axis">
