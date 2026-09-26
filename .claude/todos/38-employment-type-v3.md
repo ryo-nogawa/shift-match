@@ -67,4 +67,4 @@
 
 ## 実行ログ
 
-<!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
+- T9 試行 1/4：部分完了 — docs の修正が implementer では禁止されている（Hook 制限）。AGENTS.md と README.md の修正は完了、仕様書（specifications.md・requirements.md）の修正は実装不可
