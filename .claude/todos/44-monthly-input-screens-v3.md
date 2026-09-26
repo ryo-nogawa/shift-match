@@ -116,7 +116,7 @@
     - ファイルに、`employees-changed`・`.move-up-btn`・`.move-down-btn`・`.delete-btn`・`base-panel`・`data-row-id` の記述がある（`grep` で確認）
     - `./mvnw test` が成功する
 
-- [ ] **T8. 日ごとの希望（営業日カレンダー・個別変更）（F-11、8.2 節）**
+- [x] **T8. 日ごとの希望（営業日カレンダー・個別変更）（F-11、8.2 節）**
   - 依頼事項：`static/js/day-adjustments.js` を作る。純粋なロジックは先頭の関数に分ける。
     - **カレンダー**：`calendar-loaded`（T6）の応答（`businessDays`・`holidays`）を使い、`#calendar` に、対象月の営業日を月〜金の週ごとに並べて描画する（週の最初の行は、月曜より前の日を空欄にする）。祝日は祝日名を表示して選択不可（`disabled`／クリック無効）。土日は表示しない。個別変更がある日は色を変え（CSS クラス `has-change`）、「変更 n 名」と表示する。日付をクリックすると選択され、`#day-panel` にその日の入力が出る（初期は最初の営業日）
     - **選択日の入力（`#day-panel`）**：有効な従業員（氏名が空でない行）ごとに、氏名・休み・開始・終了を出す（この入力には `name` 属性を付けない。送信は `#adjustment-inputs` の hidden だけで行う）。初期値はその日の曜日の基本シフト（`employees[i].days[d]` を DOM から読む）か、その従業員のその日の個別変更があればその内容。**基本シフトと同じ内容（休み／開始・終了）にすると、その従業員の個別変更を削除する**。同じでなければ設定する。「この日を基本に戻す」ボタンで、その日の個別変更をすべて消す
@@ -142,3 +142,4 @@
 - T5 試行 1/1：成功 — テンプレート構造（3画面・error alert・adjustment inputs）完成、T5テスト 7/7 合格
 - T6 試行 1/1：成功 — step-nav.js と CSS 更新完成、月切り替え機能と calendar-loaded イベント実装
 - T7 試行 1/1：成功 — employee-list.js 完成、renumber と summarize 関数動作確認、employees-changed イベント実装
+- T8 試行 1/1：成功 — day-adjustments.js 完成、isAdjustmentSame と buildAdjustmentList 関数で個別変更判定、node --check ✓、./mvnw test 成功（全263テスト）
