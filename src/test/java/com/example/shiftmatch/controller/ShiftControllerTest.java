@@ -1932,7 +1932,7 @@ class ShiftControllerTest {
   class RestoreLatestShift {
 
     @Test
-    @DisplayName("保存済み従業員を復元して表示する")
+    @DisplayName("Given: 保存済みの従業員入力があるとき, When: 画面を表示すると, Then: 保存データが復元される")
     void restoresAndDisplaysSavedEmployees() throws Exception {
       List<Employee> savedEmployees =
           List.of(
@@ -1970,7 +1970,7 @@ class ShiftControllerTest {
     }
 
     @Test
-    @DisplayName("保存がなければ空の12行")
+    @DisplayName("Given: 保存済みデータがないとき, When: 画面を表示すると, Then: 空の12行が表示される")
     void showsEmptyRowsWhenNoSavedData() throws Exception {
       when(latestShiftRepository.findEmployees()).thenReturn(List.of());
 
@@ -1990,7 +1990,7 @@ class ShiftControllerTest {
   class SaveAfterShiftAssignment {
 
     @Test
-    @DisplayName("成功時に save が呼ばれ引数が入力順と結果と一致する")
+    @DisplayName("Given: シフト算出が成功したとき, When: POST /shift すると, Then: save が入力順と結果で呼ばれる")
     void callsSaveWithCorrectArgumentsOnSuccess() throws Exception {
       var result = createStandardResult();
       when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
@@ -2019,7 +2019,7 @@ class ShiftControllerTest {
     }
 
     @Test
-    @DisplayName("不成立時に Optional.empty() で呼ばれる")
+    @DisplayName("Given: シフト算出が不成立のとき, When: POST /shift すると, Then: save が Optional.empty() で呼ばれる")
     void callsSaveWithEmptyResultWhenUnassignable() throws Exception {
       when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
       when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.empty());
@@ -2043,7 +2043,7 @@ class ShiftControllerTest {
     }
 
     @Test
-    @DisplayName("入力エラー時に save が呼ばれない")
+    @DisplayName("Given: 入力エラーがあるとき, When: POST /shift すると, Then: save が呼ばれない")
     void doesNotCallSaveOnInputError() throws Exception {
       mockMvc
           .perform(
@@ -2065,7 +2065,7 @@ class ShiftControllerTest {
     private static final String ERROR_MESSAGE = "保存に失敗しました。もう一度シフトを作成して保存し直してください。";
 
     @Test
-    @DisplayName("保存失敗時にエラーメッセージと結果を表示")
+    @DisplayName("Given: 保存処理で例外が発生したとき, When: POST /shift すると, Then: エラーメッセージと結果が表示される")
     void displaysErrorMessageOnSaveFailure() throws Exception {
       var result = createStandardResult();
       when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
@@ -2093,7 +2093,7 @@ class ShiftControllerTest {
     }
 
     @Test
-    @DisplayName("保存成功時に saveError は null")
+    @DisplayName("Given: 保存処理に成功したとき, When: POST /shift すると, Then: エラーメッセージが表示されない")
     void doesNotDisplayErrorMessageOnSaveSuccess() throws Exception {
       var result = createStandardResult();
       when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
@@ -2118,7 +2118,7 @@ class ShiftControllerTest {
     }
 
     @Test
-    @DisplayName("保存失敗時にエラーログがスタックトレース付きで出力される")
+    @DisplayName("Given: 保存処理で例外が発生したとき, When: POST /shift すると, Then: エラーログがスタックトレース付きで出力される")
     void logsErrorWithStacktraceOnSaveFailure() throws Exception {
       var result = createStandardResult();
       when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());

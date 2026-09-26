@@ -20,7 +20,7 @@
   - 完了条件：
     - テストを先に書き、500（または例外）で RED になることを確認した
     - 既存の同一オリジン許可・別オリジン拒否のテストが成功する（`./mvnw test -Dtest=ShiftControllerTest`）
-- [ ] **T2. `ShiftControllerTest` の #32 追加分の `@DisplayName` を Given-When-Then にする**
+- [x] **T2. `ShiftControllerTest` の #32 追加分の `@DisplayName` を Given-When-Then にする**
   - 依頼事項：`ShiftControllerTest.java` の #32 で追加した 8 テストメソッド（保存・復元・保存失敗・氏名の最大長・ログなど。`git diff main -- src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java` で追加分を確認する）の `@DisplayName` を `Given: ...、When: ...、Then: ...` の形にする。T1 で追加するテストも同じ形にする。振る舞いは変えない
   - 対象ファイル：`ShiftControllerTest.java`（必要なら `SameOriginInterceptorTest.java`）
   - 完了条件：
