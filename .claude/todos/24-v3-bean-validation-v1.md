@@ -33,7 +33,7 @@
 
 ## Todo
 
-- [ ] **T1. 時刻の選択肢を `TimeOptions` クラスへ切り出す（振る舞いは変えない）**
+- [x] **T1. 時刻の選択肢を `TimeOptions` クラスへ切り出す（振る舞いは変えない）**
   - 依頼事項：`ShiftController` の `TIME_OPTIONS`・`createTimeOptions()` と、それが使う定数（`FIRST_TIME_OPTION`・`LAST_TIME_OPTION`・`TIME_OPTION_STEP_MINUTES`・`TIME_FORMATTER` のうち選択肢の生成に必要なもの）を、新クラス `TimeOptions`（`public final class`、`public static final List<String> VALUES`）へ移す。`ShiftController` は `TimeOptions.VALUES` を参照する。`@ModelAttribute("timeOptions")` の戻り値と、`parseTimeOrNull` が使う `TIME_FORMATTER` はコントローラーの動作を変えないように残す。これは既存テストで守られたリファクタリングなので、新しいテストは追加しない
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/TimeOptions.java`（新規）、`src/main/java/com/example/shiftmatch/controller/ShiftController.java`
   - 完了条件：
@@ -42,7 +42,7 @@
     - `TimeOptions.VALUES` が 07:30〜18:30 の 30 分刻み、23 件である（`ShiftControllerTest` の `timeOptions` の 23 件を確認するテストが成功することで確認する）
     - `TimeOptions` に Javadoc がある（`.agents/rules/javadoc.md` に従う）
     - コミットした（Conventional Commits、日本語。例：`refactor: 時刻の選択肢を TimeOptions クラスへ切り出す`）
-- [ ] **T2. `@ValidTimeRange` と `ValidTimeRangeValidator` を TDD で作る**
+- [x] **T2. `@ValidTimeRange` と `ValidTimeRangeValidator` を TDD で作る**
   - 依頼事項：`ValidTimeRangeValidatorTest`（`src/test/java/com/example/shiftmatch/controller/`）を **先に** 書く。`jakarta.validation.Validation.buildDefaultValidatorFactory().getValidator()` で `EmployeeForm` を直接検証する単体テストにする。1 サイクルにつき 1 つの振る舞いを Red → Green → Refactor で進め、次の順に作る：(1) 開始が未選択（`null`・空文字）、(2) 終了が未選択、(3) 開始が選択肢にない（例：`07:00`、`09:15`、`abc`）、(4) 終了が選択肢にない、(5) 開始 = 終了、(6) 開始 > 終了（例：`10:00` と `09:00`）、(7) 氏名が空（`null`・空白のみ）の行は違反なし（V-1）、(8) 休み（`off = true`）の行は違反なし、(9) 正常な開始・終了（例：`09:00`〜`17:00`）は違反なし。各テストは違反の **メッセージと、違反が付いたプロパティ（`start` / `end`）** を検証する。テスト名に `[V-3]`（V-1 の除外は `[V-1]`）を含める。実装は、前提の「設計方針」の 2・3 のとおり `@ValidTimeRange`（`@Constraint(validatedBy = ValidTimeRangeValidator.class)`、`@Target(TYPE)`、`@Retention(RUNTIME)`、`String message() default ""`、`Class<?>[] groups()`、`Class<? extends Payload>[] payload()`）と `ValidTimeRangeValidator` を作る。この Todo では `EmployeeForm` に `@ValidTimeRange` を付けるところまで行う（コントローラーはまだ変更しない。コントローラー側は手書き検証が残っているので、`@Valid` を付けていない間は二重にはならない）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ValidTimeRange.java`（新規）、`src/main/java/com/example/shiftmatch/controller/ValidTimeRangeValidator.java`（新規）、`src/main/java/com/example/shiftmatch/controller/EmployeeForm.java`、`src/test/java/com/example/shiftmatch/controller/ValidTimeRangeValidatorTest.java`（新規）
   - 完了条件：
@@ -53,7 +53,7 @@
     - `@DisplayName` の先頭に `[V-3]`（または `[V-1]`）が付き、Given-When-Then で書かれている（`.agents/rules/test.md` に従う）
     - 新しいクラスに Javadoc がある
     - TDD の 1 サイクルごと（または意味のある単位）でコミットした
-- [ ] **T3. コントローラーを Bean Validation に切り替え、手書きの検証を削除する**
+- [x] **T3. コントローラーを Bean Validation に切り替え、手書きの検証を削除する**
   - 依頼事項：`ShiftForm#employees` に `@Valid` を付ける。`ShiftController#createShift` の引数を `@Valid @ModelAttribute("shiftForm") ShiftForm shiftForm, BindingResult bindingResult, Model model` に変え、`bindingResult.getFieldErrors()` のうち `employees[N].start` / `employees[N].end` のものを `InvalidTimeRangeError(N, defaultMessage)` へ変換するプライベートメソッド（例：`toTimeRangeErrors(BindingResult)`）を作る。並び順は「行番号の昇順、同じ行では start → end」。`validateTimeRanges` と `validateTimeOption` を削除する。既存の `[V-3][V-1]` テストは書き換えない。加えて、次の 2 つを検証するテストを `ShiftControllerTest` の `[V-3][V-1]` のグループへ **先に** 追加して RED を確認してから実装する：(a) 複数行にエラーがあるとき、`timeRangeErrors` が行番号の昇順で並ぶ、(b) 同じ行の開始・終了がともに選択肢外のとき、開始のエラー → 終了のエラーの順に並ぶ。ただし現行の手書きロジックでもこれらは通るはずなので、追加テストが最初から GREEN になる場合は「振る舞い維持を固定する特性テスト」として扱い、RED の確認は既存テストを一時的に壊さずに、`@Valid` を付けて `toTimeRangeErrors` を空実装にした状態でこのテストと既存 V-3 テストが失敗（RED）することを確認する形にしてよい
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/main/java/com/example/shiftmatch/controller/ShiftForm.java`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
@@ -65,7 +65,7 @@
     - 追加テストの `@DisplayName` の先頭に `[V-3]` が付き、Given-When-Then で書かれている
     - Javadoc が更新されている（削除したメソッドの記述が残っていない）
     - コミットした
-- [ ] **T4. 全テストと静的解析を確認する**
+- [x] **T4. 全テストと静的解析を確認する**
   - 依頼事項：`./mvnw spotless:apply` で整形してから `./mvnw test` を実行し、Spotless・Checkstyle を含めて通ることを確認する。違反があれば直して再実行する。実行結果（テスト件数、Checkstyle 違反件数）を実行ログに記録する。未使用の import やコメントアウトされたコードが残っていないことも確認する
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/` 配下、`src/test/java/com/example/shiftmatch/controller/` 配下
   - 完了条件：
@@ -77,3 +77,6 @@
 ## 実行ログ
 
 <!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
+
+- メインエージェントによる確認（2026-09-26）：3 コミットの内容、`./mvnw test` 147 件成功（Checkstyle 違反 0）、既存テストの削除・変更行 0 を確認したうえで、implementer が付け忘れたチェックを付けた。T2・T3 の RED 確認の記録は implementer から残っていない
+- T3 の完了条件の `grep` は `ShiftController` を指す意図。`ValidTimeRangeValidator` の private メソッド `validateTimeOption`（同名）は移設先のため正しい
