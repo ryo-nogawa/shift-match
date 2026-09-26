@@ -57,7 +57,7 @@
     - 本 Issue で追加した Java ファイルの Javadoc にバッククォートが残っていない
     - `./mvnw test` が成功する
 
-- [ ] **R6. 追加したテストを test.md の規約に合わせる（MUST）**
+- [x] **R6. 追加したテストを test.md の規約に合わせる（MUST）**
   - 依頼事項：`.agents/rules/test.md` を読み、本 Issue で追加・変更したテストクラス（`git diff main --name-only -- src/test` で列挙）を、正常系・異常系などの `@Nested` クラスに整理し、全テストメソッドの `@DisplayName` を「仕様 ID ＋ `Given: …、When: …、Then: …`」の日本語形式に直す（仕様 ID がある場合は先頭に `[V-3]` などを付ける）。テストの中身（期待値）は変えない。既存の本 Issue 外のテストは変更しない
   - 対象ファイル：`git diff main --name-only -- src/test` に出る本 Issue で追加したテストファイルすべて
   - 完了条件：
