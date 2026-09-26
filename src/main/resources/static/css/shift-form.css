@@ -143,3 +143,25 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 .unassigned-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px }
 .reason { font-size: 13px; color: var(--sub) }
 .duration { margin-left: 6px; font-size: 12px; color: var(--sub) }
+
+/* カレンダーと個別変更パネル */
+.calendar-week { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px }
+.calendar-empty { height: 60px }
+.calendar-day { height: 60px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); cursor: pointer; font-size: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px }
+.calendar-day:hover:not(:disabled) { background: var(--accent); color: #fff; border-color: var(--accent) }
+.calendar-day.selected { background: var(--accent); color: #fff; border-color: var(--accent) }
+.calendar-day.has-change { background: #ffe8d6; border-color: var(--accent) }
+.calendar-day:disabled { opacity: 0.5; cursor: not-allowed; background: #f5f5f5 }
+.calendar-day .date { font-weight: 600 }
+.calendar-day .holiday-name { font-size: 10px; color: var(--sub) }
+.calendar-day .change-count { font-size: 10px; color: var(--accent); font-weight: 600 }
+.day-panel-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 6px }
+.day-panel-row strong { min-width: 80px }
+.day-panel-row label { display: flex; align-items: center; gap: 4px }
+.day-panel-row select { flex: 1; min-width: 100px }
+.day-panel-row button { padding: 6px 12px; font-size: 12px; white-space: nowrap }
+.reset-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; cursor: pointer }
+.reset-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent) }
+.reset-btn:disabled { opacity: 0.3; cursor: not-allowed }
+.reset-all-btn { margin-top: 12px; padding: 10px 16px; background: transparent; border: 1px dashed var(--sub); border-radius: 6px; cursor: pointer; width: 100% }
+.reset-all-btn:hover { border-color: var(--accent); color: var(--accent) }
