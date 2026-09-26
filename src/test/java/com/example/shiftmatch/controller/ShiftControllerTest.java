@@ -757,6 +757,35 @@ class ShiftControllerTest {
       assertFalse(response.contains("入力エラー"), "Blank name row should not produce an error");
       verify(shiftAssignmentService).assign(any());
     }
+
+    @Test
+    @DisplayName("[V-3] Given: 複数行にエラーがあるとき, When: POSTすると," + " Then: timeRangeErrorsが行番号の昇順で並ぶ")
+    void timeRangeErrorsSortedByRowIndex() throws Exception {
+      String response = postRows("A,,08:10,17:00", "B,,09:00,19:00");
+
+      assertTrue(response.contains("1行目 開始は選択肢にありません"), "Should show 1st row error");
+      assertTrue(response.contains("2行目 終了は選択肢にありません"), "Should show 2nd row error");
+
+      int pos1 = response.indexOf("1行目 開始は選択肢にありません");
+      int pos2 = response.indexOf("2行目 終了は選択肢にありません");
+      assertTrue(pos1 >= 0 && pos2 >= 0 && pos1 < pos2, "Errors should appear in row index order");
+    }
+
+    @Test
+    @DisplayName(
+        "[V-3] Given: 同じ行の開始・終了がともに選択肢外のとき, When: POSTすると," + " Then: 開始のエラー → 終了のエラーの順に並ぶ")
+    void errorsWithinSameRowOrderedByStartThenEnd() throws Exception {
+      String response = postRows("A,,08:10,19:00");
+
+      assertTrue(response.contains("1行目 開始は選択肢にありません"), "Should show start error");
+      assertTrue(response.contains("1行目 終了は選択肢にありません"), "Should show end error");
+
+      int posStart = response.indexOf("1行目 開始は選択肢にありません");
+      int posEnd = response.indexOf("1行目 終了は選択肢にありません");
+      assertTrue(
+          posStart >= 0 && posEnd >= 0 && posStart < posEnd,
+          "Start error should come before end error in the same row");
+    }
   }
 
   @Nested
