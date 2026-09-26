@@ -16,7 +16,7 @@
 
 ## Todo
 
-- [ ] **S1. `isSupported` のテストの `@DisplayName` を `[V-8]` にする（MUST、test.md）**
+- [x] **S1. `isSupported` のテストの `@DisplayName` を `[V-8]` にする（MUST、test.md）**
   - 依頼事項：`HolidayServiceImplTest.java` の、外側が `[V-8]` の `@Nested` クラス（`IsSupported`）にある 3 つのテストメソッド（111、123、137 行目付近）の `@DisplayName` の先頭を `[F-10]` から `[V-8]` に直す（取得・保存の検証も意図しているなら `[F-10][V-8]`）。`Given/When/Then` の文言とアサーションは変えない。ほかのテストメソッドも、対応する仕様と `@DisplayName` の先頭の ID が食い違っていないか、あわせて確かめる（`isSupported`・営業日の判定に関するテストは `[V-8]`）
   - 対象ファイル：`src/test/java/com/example/shiftmatch/service/HolidayServiceImplTest.java`
   - 完了条件：

@@ -108,7 +108,7 @@ class HolidayServiceImplTest {
   class IsSupported {
 
     @Test
-    @DisplayName("[F-10] Given: 保存済みの年のとき, When: isSupported を呼ぶと, Then: true を返し、取得を呼ばない")
+    @DisplayName("[V-8] Given: 保存済みの年のとき, When: isSupported を呼ぶと, Then: true を返し、取得を呼ばない")
     void returnsTrueWhenYearExists() {
       when(repository.existsInYear(2026)).thenReturn(true);
 
@@ -120,7 +120,7 @@ class HolidayServiceImplTest {
 
     @Test
     @DisplayName(
-        "[F-10] Given: 保存されていない年のとき, When: isSupported を呼ぶと, Then: 取得して、あれば true、なければ false")
+        "[V-8] Given: 保存されていない年のとき, When: isSupported を呼ぶと, Then: 取得して、あれば true、なければ false")
     void fetchesAndReturnsTrueWhenYearNotSavedButFetchSucceeds() {
       when(repository.existsInYear(2026)).thenReturn(false, true);
       String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/1/1,元日\n";
@@ -134,7 +134,7 @@ class HolidayServiceImplTest {
     }
 
     @Test
-    @DisplayName("[F-10] Given: 保存されておらず、取得にも失敗するとき, When: isSupported を呼ぶと, Then: false を返す")
+    @DisplayName("[V-8] Given: 保存されておらず、取得にも失敗するとき, When: isSupported を呼ぶと, Then: false を返す")
     void returnsFalseWhenYearNotSavedAndFetchFails() {
       when(repository.existsInYear(2026)).thenReturn(false);
       when(fetcher.fetch()).thenThrow(new HolidayFetchException("ネットワークエラー"));
@@ -151,7 +151,7 @@ class HolidayServiceImplTest {
 
     @Test
     @DisplayName(
-        "[F-10] Given: 2026年10月の祝日データがあるとき, When: businessDays を呼ぶと, Then: 営業日（月〜金かつ祝日でない日）が返される")
+        "[V-8] Given: 2026年10月の祝日データがあるとき, When: businessDays を呼ぶと, Then: 営業日（月〜金かつ祝日でない日）が返される")
     void businessDaysReturnsWeekdaysExceptHolidays() {
       when(repository.existsInYear(2026)).thenReturn(true);
       when(repository.findByYear(2026))
