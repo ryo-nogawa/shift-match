@@ -31,10 +31,10 @@ public class HttpHolidayCsvFetcher implements HolidayCsvFetcher {
       @Value("${holiday.csv.url:https://www8.cao.go.jp/chosei/shukujitsu/syukujitsu.csv}")
           String url,
       @Value("${holiday.csv.timeout-seconds:10}") int timeoutSeconds) {
-    try {
-      this.uri = URI.create(url).toURL().toURI();
-    } catch (Exception e) {
-      throw new IllegalArgumentException("URL の形式が不正です: " + url, e);
+    this.uri = URI.create(url);
+    String scheme = this.uri.getScheme();
+    if (scheme == null || (!scheme.equals("http") && !scheme.equals("https"))) {
+      throw new IllegalArgumentException("URL の形式が不正です: " + url);
     }
     this.timeoutSeconds = timeoutSeconds;
   }
@@ -50,25 +50,23 @@ public class HttpHolidayCsvFetcher implements HolidayCsvFetcher {
    */
   @Override
   public byte[] fetch() {
+    HttpResponse<byte[]> response;
     try {
       HttpClient client = HttpClient.newHttpClient();
       HttpRequest request =
           HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(timeoutSeconds)).GET().build();
-
-      HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
-
-      if (response.statusCode() != 200) {
-        throw new HolidayFetchException("HTTP " + response.statusCode() + " が返されました");
-      }
-
-      return response.body();
+      response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new HolidayFetchException("CSV 取得がインタラプトされました", e);
     } catch (IOException e) {
       throw new HolidayFetchException("CSV 取得に失敗しました: " + e.getMessage(), e);
-    } catch (HolidayFetchException e) {
-      throw e;
     }
+
+    if (response.statusCode() != 200) {
+      throw new HolidayFetchException("HTTP " + response.statusCode() + " が返されました");
+    }
+
+    return response.body();
   }
 }

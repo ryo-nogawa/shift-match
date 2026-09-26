@@ -37,6 +37,15 @@ class HttpHolidayCsvFetcherTest {
 
     @Test
     @DisplayName(
+        "[F-10] Given: 形式が不正な URL が与えられたとき, When: コンストラクタを実行すると, Then: IllegalArgumentException"
+            + " を投げる")
+    void throwsIllegalArgumentExceptionWhenUrlIsInvalid() {
+      assertThrows(
+          IllegalArgumentException.class, () -> new HttpHolidayCsvFetcher("http://[invalid", 10));
+    }
+
+    @Test
+    @DisplayName(
         "[F-10] Given: サーバーが 200 OK で Shift_JIS の CSV を返すとき, When: fetch すると, Then: バイト列がそのまま返される")
     void fetchesSuccessfullyWithStatus200() throws IOException {
       String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/1/1,元日\n";
