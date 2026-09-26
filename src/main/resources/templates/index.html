@@ -51,6 +51,19 @@
       </ul>
     </section>
 
+    <section
+      class="alert"
+      role="alert"
+      th:if="${employmentTypeErrors != null && !employmentTypeErrors.isEmpty()}"
+    >
+      <h2>入力エラー</h2>
+      <ul>
+        <li th:each="error : ${employmentTypeErrors}">
+          <span th:text="|${error.rowIndex() + 1}行目 ${error.message()}|"></span>
+        </li>
+      </ul>
+    </section>
+
     <form
       method="post"
       th:action="@{/shift}"

@@ -4,6 +4,7 @@ import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.InvalidEmploymentTypeError;
 import com.example.shiftmatch.domain.InvalidNameError;
 import com.example.shiftmatch.domain.InvalidTimeRangeError;
 import com.example.shiftmatch.domain.ShiftAssignment;
@@ -151,6 +152,8 @@ public class ShiftController {
 
     List<InvalidNameError> nameErrors = toNameErrors(bindingResult);
 
+    List<InvalidEmploymentTypeError> employmentTypeErrors = toEmploymentTypeErrors(shiftForm);
+
     boolean limitExceeded = validEmployees.size() > MAX_EMPLOYEE_COUNT;
     if (limitExceeded) {
       model.addAttribute(
@@ -160,10 +163,12 @@ public class ShiftController {
     if (!duplicateErrors.isEmpty()
         || !timeRangeErrors.isEmpty()
         || !nameErrors.isEmpty()
+        || !employmentTypeErrors.isEmpty()
         || limitExceeded) {
       model.addAttribute("duplicateErrors", duplicateErrors);
       model.addAttribute("timeRangeErrors", timeRangeErrors);
       model.addAttribute("nameErrors", nameErrors);
+      model.addAttribute("employmentTypeErrors", employmentTypeErrors);
       model.addAttribute("shiftForm", shiftForm);
       return "index";
     }
@@ -308,6 +313,33 @@ public class ShiftController {
     return fieldErrors.stream()
         .map(fieldError -> new InvalidNameError(fieldError.rowIndex(), fieldError.message()))
         .toList();
+  }
+
+  /**
+   * 雇用区分の入力エラーを検証します（V-7）。
+   *
+   * <p>従業員名が入力された行で、雇用区分が FULL_TIME, PART_TIME, MANAGER 以外の場合はエラーです。
+   * 従業員名が空の行の不正な区分はエラーにしません。
+   *
+   * @param shiftForm フォームデータ
+   * @return 雇用区分エラーのリスト
+   */
+  private List<InvalidEmploymentTypeError> toEmploymentTypeErrors(ShiftForm shiftForm) {
+    List<InvalidEmploymentTypeError> errors = new ArrayList<>();
+
+    for (int i = 0; i < shiftForm.getEmployees().size(); i++) {
+      EmployeeForm form = shiftForm.getEmployees().get(i);
+      // 従業員名が空の行は検査しない（V-1で除外）
+      if (form.getName() == null || form.getName().isBlank()) {
+        continue;
+      }
+      // 雇用区分が 3 択以外の場合はエラー
+      if (EmploymentType.parse(form.getEmploymentType()).isEmpty()) {
+        errors.add(new InvalidEmploymentTypeError(i, "雇用区分は「常勤」「パート」「管理職」から選択してください。"));
+      }
+    }
+
+    return errors;
   }
 
   /**

@@ -19,6 +19,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.InvalidEmploymentTypeError;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.persistence.LatestShiftRepository;
@@ -860,6 +861,63 @@ class ShiftControllerTest {
       assertTrue(
           posStart >= 0 && posEnd >= 0 && posStart < posEnd,
           "Start error should come before end error in the same row");
+    }
+  }
+
+  @Nested
+  @DisplayName("[V-7] 雇用区分の入力チェック")
+  class EmploymentTypeValidation {
+
+    @SuppressWarnings("unchecked")
+    private List<InvalidEmploymentTypeError> captureEmploymentTypeErrors() {
+      ArgumentCaptor<List<InvalidEmploymentTypeError>> captor = ArgumentCaptor.forClass(List.class);
+      // Note: checking by capturing the model attribute if needed
+      return List.of(); // placeholder
+    }
+
+    @Test
+    @DisplayName(
+        "[V-7] Given: 1行目の氏名が「A」で区分が不正のとき, When: POSTすると, Then: エラーが表示され" + " assignが呼ばれない")
+    void showsErrorWhenEmploymentTypeIsInvalid() throws Exception {
+      MvcResult result =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].employmentType", "INVALID_TYPE")
+                      .param("employees[0].start", "07:30")
+                      .param("employees[0].end", "18:30"))
+              .andExpect(status().isOk())
+              .andReturn();
+
+      String html = result.getResponse().getContentAsString();
+      assertTrue(html.contains("雇用区分は"), "Should show employment type error message");
+      assertTrue(html.contains("1行目"), "Should show row number");
+
+      verify(shiftAssignmentService, never()).assign(any());
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("[V-7] Given: 氏名が空の行で区分が不正のとき, When: POSTすると, Then: エラーにならず" + " assignが呼ばれる")
+    void ignoresEmploymentTypeErrorWhenNameIsBlank() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "")
+                  .param("employees[0].employmentType", "INVALID_TYPE")
+                  .param("employees[0].start", "")
+                  .param("employees[0].end", "")
+                  .param("employees[1].name", "B")
+                  .param("employees[1].start", "07:30")
+                  .param("employees[1].end", "18:30"))
+          .andExpect(status().isOk());
+
+      ArgumentCaptor<List<Employee>> captor = ArgumentCaptor.forClass(List.class);
+      verify(shiftAssignmentService).assign(captor.capture());
+      List<Employee> employees = captor.getValue();
+      assertEquals(1, employees.size());
+      assertEquals("B", employees.get(0).name());
     }
   }
 

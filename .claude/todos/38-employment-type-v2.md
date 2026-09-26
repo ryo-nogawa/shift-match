@@ -40,7 +40,7 @@
     - `GET /` で、保存がないとき 12 行すべての区分が `FULL_TIME` になるテストと、保存済みの区分（管理職・パート）が復元されるテストがある（`[F-7]`）
     - `POST /shift` に有効な入力と区分 `MANAGER` を送ると、`LatestShiftRepository#save` に渡る `Employee` の区分が `MANAGER` になるテストがある
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
-- [ ] **T6. 入力チェック V-7（区分が 3 択以外ならエラー）を追加する**
+- [x] **T6. 入力チェック V-7（区分が 3 択以外ならエラー）を追加する**
   - 依頼事項：従業員名が入力された行で区分が 3 択以外（未指定・空・`EXECUTIVE` など）のとき、`POST /shift` は算出も保存もせず、`index` を返して該当行番号つきのエラーを表示する。エラー表示は既存の `nameErrors`・`timeRangeErrors` と同じ方式（新しいレコードとモデル属性を追加し、`index.html` にセクションを追加）とする。従業員名が空の行は区分を検査しない。エラーメッセージ例：「N 行目 雇用区分は「常勤」「パート」「管理職」から選択してください。」
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/ShiftController.java`、`src/main/java/com/example/shiftmatch/domain/InvalidEmploymentTypeError.java`（新規）、`src/main/resources/templates/index.html`、`ShiftControllerTest.java`
   - 完了条件：
