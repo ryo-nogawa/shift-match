@@ -100,7 +100,7 @@
     - `shift-form.css` に `overflow: hidden`（`html, body`）と、`.scroll { ... overflow: auto }` に相当する記述がある
     - `./mvnw test` が成功する（Todo T1〜T5 のテストが壊れていない）
 
-- [ ] **T7. 従業員一覧と基本シフトパネル（F-2、F-6、F-8、8.1 節、8.5 節）**
+- [x] **T7. 従業員一覧と基本シフトパネル（F-2、F-6、F-8、8.1 節、8.5 節）**
   - 依頼事項：`static/js/employee-list.js` を作る。純粋なロジックは先頭の関数に分ける（`renumber`・`summarize` など。`node` で単体確認できる形）。
     - **行の追加**：`#employee-rows` の末尾に空行を追加する（区分は常勤、基本シフトは休みなし・07:30〜18:30）。行と対の `.base-panel`（`#base-panels`）も同時に作り、`data-row-id` を新しい識別子（連番のカウンターで一意にする）にする。時刻の選択肢は `<form>` の `data-time-options`（`|` 区切り）から作る。12 行のときは「行を追加」ボタンを無効にする
     - **行の削除**：行と、対の `.base-panel` を消す。1 行だけのときは削除ボタンを無効にする（最低 1 行を残す）
@@ -139,4 +139,6 @@
 
 ## 実行ログ
 
-<!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
+- T5 試行 1/1：成功 — テンプレート構造（3画面・error alert・adjustment inputs）完成、T5テスト 7/7 合格
+- T6 試行 1/1：成功 — step-nav.js と CSS 更新完成、月切り替え機能と calendar-loaded イベント実装
+- T7 試行 1/1：成功 — employee-list.js 完成、renumber と summarize 関数動作確認、employees-changed イベント実装
