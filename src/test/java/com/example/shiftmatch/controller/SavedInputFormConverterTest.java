@@ -51,7 +51,6 @@ class SavedInputFormConverterTest {
     assertEquals("FULL_TIME", row.getEmploymentType());
     assertEquals(5, row.getDays().size());
     for (DayForm day : row.getDays()) {
-      assertFalse(day.isOff());
       assertEquals("07:30", day.getStart());
       assertEquals("18:30", day.getEnd());
     }
@@ -86,6 +85,60 @@ class SavedInputFormConverterTest {
 
     @Test
     @DisplayName(
+        "[F-7][8.1節] Given: 休みの曜日が混じった基本シフトが保存済み, When: フォームに変換すると,"
+            + " Then: 休みの曜日は 07:30〜18:30 で復元され、他の曜日は保存された時間帯のまま")
+    void restoresOffDayAsDefaultTimeRange() {
+      Map<DayOfWeek, DailyWish> shifts = new EnumMap<>(DayOfWeek.class);
+      shifts.put(DayOfWeek.MONDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      shifts.put(DayOfWeek.TUESDAY, new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(16, 0)));
+      shifts.put(
+          DayOfWeek.WEDNESDAY, new DailyWish(true, LocalTime.of(10, 0), LocalTime.of(15, 0)));
+      shifts.put(DayOfWeek.THURSDAY, new DailyWish(true, null, null));
+      shifts.put(DayOfWeek.FRIDAY, new DailyWish(false, LocalTime.of(7, 30), LocalTime.of(14, 30)));
+      SavedInput saved =
+          savedOf(
+              List.of(new EmployeeProfile("佐藤", EmploymentType.FULL_TIME, shifts)),
+              List.of(),
+              Optional.empty());
+
+      List<DayForm> days = converter.toForm(saved, DEFAULT_MONTH).getEmployees().get(0).getDays();
+
+      assertEquals("08:00", days.get(0).getStart());
+      assertEquals("17:00", days.get(0).getEnd());
+      assertEquals("09:00", days.get(1).getStart());
+      assertEquals("16:00", days.get(1).getEnd());
+      assertEquals("07:30", days.get(2).getStart());
+      assertEquals("18:30", days.get(2).getEnd());
+      assertEquals("07:30", days.get(3).getStart());
+      assertEquals("18:30", days.get(3).getEnd());
+      assertEquals("07:30", days.get(4).getStart());
+      assertEquals("14:30", days.get(4).getEnd());
+    }
+
+    @Test
+    @DisplayName("[F-7][8.1節] Given: 全曜日が休みの従業員が保存済み, When: フォームに変換すると, Then: 全曜日が 07:30〜18:30 になる")
+    void restoresAllOffDaysAsDefaultTimeRange() {
+      Map<DayOfWeek, DailyWish> shifts = new EnumMap<>(DayOfWeek.class);
+      for (DayOfWeek day : DayOfWeek.values()) {
+        shifts.put(day, new DailyWish(true, null, null));
+      }
+      SavedInput saved =
+          savedOf(
+              List.of(new EmployeeProfile("佐藤", EmploymentType.FULL_TIME, shifts)),
+              List.of(),
+              Optional.empty());
+
+      List<DayForm> days = converter.toForm(saved, DEFAULT_MONTH).getEmployees().get(0).getDays();
+
+      assertEquals(5, days.size());
+      for (DayForm day : days) {
+        assertEquals("07:30", day.getStart());
+        assertEquals("18:30", day.getEnd());
+      }
+    }
+
+    @Test
+    @DisplayName(
         "[F-7][8.1節] Given: 曜日ごとの休みと時間帯が保存済み, When: フォームに変換すると, Then: 曜日 0〜4 の休み・開始・終了が HH:mm"
             + " で復元される")
     void restoresDaysWithTimeFormat() {
@@ -95,8 +148,8 @@ class SavedInputFormConverterTest {
       List<DayForm> days = converter.toForm(saved, DEFAULT_MONTH).getEmployees().get(0).getDays();
 
       assertEquals(5, days.size());
-      assertTrue(days.get(0).isOff());
-      assertFalse(days.get(1).isOff());
+      assertEquals("07:30", days.get(0).getStart());
+      assertEquals("18:30", days.get(0).getEnd());
       assertEquals("08:00", days.get(1).getStart());
       assertEquals("17:30", days.get(1).getEnd());
       assertEquals("09:00", days.get(2).getStart());

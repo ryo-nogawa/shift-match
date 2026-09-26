@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.shiftmatch.controller.DayForm;
 import com.example.shiftmatch.controller.ShiftForm;
 import com.example.shiftmatch.domain.Holiday;
 import com.example.shiftmatch.persistence.HolidayRepository;
@@ -119,6 +120,39 @@ class PersistenceHttpTest {
       assertTrue(form.getAdjustments().get(0).isOff());
       String html = result.getResponse().getContentAsString();
       assertTrue(html.contains(SAVED_MESSAGE));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.1節] Given: 休みの基本シフトが保存されている, When: GET / を開くと,"
+            + " Then: 休みだった曜日は 07:30〜18:30 で描画される")
+    void restoresSavedOffBaseShiftAsDefaultTimeRange() throws Exception {
+      jdbcClient
+          .sql(
+              "INSERT INTO saved_input_employee (row_index, name, employment_type) VALUES (0, '佐藤',"
+                  + " 'FULL_TIME')")
+          .update();
+      for (int day = 0; day < 5; day++) {
+        boolean off = day == 2;
+        jdbcClient
+            .sql(
+                "INSERT INTO saved_input_base_shift (row_index, day_index, off, start_time,"
+                    + " end_time) VALUES (0, :day, :off, :start, :end)")
+            .param("day", day)
+            .param("off", off)
+            .param("start", off ? null : java.sql.Time.valueOf("09:00:00"))
+            .param("end", off ? null : java.sql.Time.valueOf("17:00:00"))
+            .update();
+      }
+
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+
+      ShiftForm form = (ShiftForm) result.getModelAndView().getModel().get("shiftForm");
+      List<DayForm> days = form.getEmployees().get(0).getDays();
+      assertEquals("09:00", days.get(1).getStart());
+      assertEquals("17:00", days.get(1).getEnd());
+      assertEquals("07:30", days.get(2).getStart());
+      assertEquals("18:30", days.get(2).getEnd());
     }
 
     @Test

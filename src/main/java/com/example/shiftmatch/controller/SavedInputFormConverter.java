@@ -79,11 +79,10 @@ public class SavedInputFormConverter {
   }
 
   private DayForm toDayForm(DailyWish wish) {
-    if (wish == null) {
+    if (wish == null || wish.off()) {
       return emptyDayForm();
     }
     DayForm day = new DayForm();
-    day.setOff(wish.off());
     day.setStart(formatOrDefault(wish.start(), DEFAULT_START_TIME));
     day.setEnd(formatOrDefault(wish.end(), DEFAULT_END_TIME));
     return day;
@@ -116,7 +115,6 @@ public class SavedInputFormConverter {
 
   private DayForm emptyDayForm() {
     DayForm day = new DayForm();
-    day.setOff(false);
     day.setStart(DEFAULT_START_TIME);
     day.setEnd(DEFAULT_END_TIME);
     return day;

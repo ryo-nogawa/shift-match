@@ -127,7 +127,8 @@ class ShiftControllerTest {
         .param("employees[0].employmentType", "PART_TIME")
         .param("employees[0].days[0].start", "08:00")
         .param("employees[0].days[0].end", "17:00")
-        .param("employees[0].days[1].off", "true")
+        .param("employees[0].days[1].start", "09:00")
+        .param("employees[0].days[1].end", "16:00")
         .param("adjustments[0].date", "2026-10-20")
         .param("adjustments[0].employeeName", "A")
         .param("adjustments[0].off", "true");
@@ -175,7 +176,6 @@ class ShiftControllerTest {
         assertEquals("FULL_TIME", employee.getEmploymentType());
         assertEquals(5, employee.getDays().size());
         for (DayForm day : employee.getDays()) {
-          assertFalse(day.isOff());
           assertEquals("07:30", day.getStart());
           assertEquals("18:30", day.getEnd());
         }
@@ -206,7 +206,7 @@ class ShiftControllerTest {
       assertTrue(html.contains("name=\"employees[0].name\""));
       assertTrue(html.contains("name=\"employees[11].name\""));
       assertTrue(html.contains("name=\"employees[11].employmentType\""));
-      assertTrue(html.contains("name=\"employees[0].days[0].off\""));
+      assertFalse(html.contains("name=\"employees[0].days[0].off\""));
       assertTrue(html.contains("name=\"employees[0].days[0].start\""));
       assertTrue(html.contains("name=\"employees[11].days[4].end\""));
       assertFalse(html.contains("name=\"employees[12].name\""));
@@ -272,10 +272,29 @@ class ShiftControllerTest {
           LocalTime.of(8, 0), input.employees().get(0).baseShifts().get(DayOfWeek.MONDAY).start());
       assertEquals(
           LocalTime.of(17, 0), input.employees().get(0).baseShifts().get(DayOfWeek.MONDAY).end());
-      assertTrue(input.employees().get(0).baseShifts().get(DayOfWeek.TUESDAY).off());
+      assertEquals(
+          LocalTime.of(9, 0), input.employees().get(0).baseShifts().get(DayOfWeek.TUESDAY).start());
       assertEquals(LocalDate.of(2026, 10, 20), input.adjustments().get(0).date());
       assertEquals("A", input.adjustments().get(0).employeeName());
       assertTrue(input.adjustments().get(0).wish().off());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1][4.1節] Given: 基本シフトに off=true が送られたとき, When: POST /shift を呼ぶと,"
+            + " Then: 基本シフトの off は無視され、その曜日は開始・終了のまま算出に渡る")
+    void ignoresBaseShiftOff() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of()));
+
+      perform(validRequest().param("employees[0].days[0].off", "true"));
+
+      ArgumentCaptor<MonthlyShiftInput> captor = ArgumentCaptor.forClass(MonthlyShiftInput.class);
+      verify(monthlyShiftService).create(captor.capture());
+      DailyWish monday = captor.getValue().employees().get(0).baseShifts().get(DayOfWeek.MONDAY);
+      assertFalse(monday.off());
+      assertEquals(LocalTime.of(8, 0), monday.start());
+      assertEquals(LocalTime.of(17, 0), monday.end());
     }
 
     @Test
@@ -704,7 +723,7 @@ class ShiftControllerTest {
       assertEquals("佐藤", form.getEmployees().get(0).getName());
       assertEquals("鈴木", form.getEmployees().get(1).getName());
       assertEquals("PART_TIME", form.getEmployees().get(1).getEmploymentType());
-      assertTrue(form.getEmployees().get(0).getDays().get(0).isOff());
+      assertEquals("07:30", form.getEmployees().get(0).getDays().get(0).getStart());
       assertEquals("", form.getEmployees().get(2).getName());
       assertEquals(1, form.getAdjustments().size());
       assertEquals("2026-11-02", form.getAdjustments().get(0).getDate());

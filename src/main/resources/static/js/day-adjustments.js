@@ -262,7 +262,7 @@
         }
         const days = Array.from(panel.querySelectorAll(".day-row")).map(function (dayRow) {
           return {
-            off: dayRow.querySelector(".off-input").checked,
+            off: false,
             start: dayRow.querySelector(".start-select").value,
             end: dayRow.querySelector(".end-select").value,
           };
