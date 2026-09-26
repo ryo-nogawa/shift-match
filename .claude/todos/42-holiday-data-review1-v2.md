@@ -83,7 +83,7 @@
     - 各テストメソッドに、停止の手動の呼び出しがなく、`@AfterEach` のメソッドが存在する
     - `./mvnw test -Dtest=HttpHolidayCsvFetcherTest` が成功する
 
-- [ ] **R9. 「何をしているか」だけのコメントを削除する（WANT、comment.md）**
+- [x] **R9. 「何をしているか」だけのコメントを削除する（WANT、comment.md）**
   - 依頼事項：`HolidayCsvParser.java`、`HolidayServiceImpl.java`、および今回の変更で追加した他のクラスから、コードを読めば分かるだけのコメント（例：`// 空行をスキップ`、`// カンマで分割`、`// 既に保存されている場合`）を削除する。「なぜ」を書く価値のある箇所（例：保存済みのデータを優先する理由、`\r\n` を許容する理由、見出しを厳密に確かめる理由）は、理由を 1 行で残す。Javadoc は変えない
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HolidayCsvParser.java`、`src/main/java/com/example/shiftmatch/service/HolidayServiceImpl.java`
   - 完了条件：
@@ -104,5 +104,6 @@
 - R6 試行 1/1：成功 — テストを先に書き、RED を確認した。`[F-10]` を先頭に付けたテストで、形式が不正な URL（例：`"http://[invalid"`）でコンストラクタが `IllegalArgumentException` を投げることを確認。現状の実装では既に通る。`HttpHolidayCsvFetcher.java` に `catch (Exception` がない（grep -n で 0 件）。`./mvnw test -Dtest=HttpHolidayCsvFetcherTest` が成功する。
 - R7 試行 1/1：成功 — テストを先に書き、RED を確認した。`.withUserConfiguration(HolidayStartupRunner.class)` を追加し、`holiday.refresh-on-startup=false` と `true` の両方でテスト。`@ConditionalOnProperty` を外すと `false` のテストが失敗することを確認した（RED の確認）。その後戻す。`./mvnw test -Dtest=HolidayStartupRunnerTest` が成功する。
 - R8 試行 1/1：成功 — `@AfterEach` を `stopServer()` に付けた。テストメソッドの末尾での手動呼び出しを削除（fetchesSuccessfullyWithStatus200、throwsWhenStatus500）。throwsWhenConnectionFails() 内の stopServer() は意図的であり保持。`./mvnw test -Dtest=HttpHolidayCsvFetcherTest` が成功する。
+- R9 試行 1/1：成功 — `HolidayServiceImpl.java` の 3 つの「何をしているか」だけのコメント（「既に保存されている場合」「保存されていない場合は取得を試みる」「取得後、もう一度確認」）を削除。`HolidayCsvParser.java` には該当コメントなし。grep で確認：行コメント 0 件。`./mvnw test -Dtest='Holiday*Test'` が成功する（40 件）。
 
 <!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->

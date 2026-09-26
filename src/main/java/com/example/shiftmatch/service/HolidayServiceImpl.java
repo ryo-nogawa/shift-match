@@ -76,15 +76,12 @@ public class HolidayServiceImpl implements HolidayService {
   public boolean isSupported(YearMonth month) {
     int year = month.getYear();
 
-    // 既に保存されている場合
     if (repository.existsInYear(year)) {
       return true;
     }
 
-    // 保存されていない場合は取得を試みる
     refresh();
 
-    // 取得後、もう一度確認
     return repository.existsInYear(year);
   }
 
