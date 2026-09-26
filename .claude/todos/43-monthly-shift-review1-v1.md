@@ -42,7 +42,7 @@
     - V-2 のメッセージに、重複した全ての行の番号（例：空行を挟んで 2 行目と 4 行目）が含まれるテストがある
     - `./mvnw test -Dtest=MonthlyInputValidatorTest` が成功する
 
-- [ ] **R4. `MonthlyInputValidator` を注入し、V-4 と検証エラーのテストを強化する（SHOULD）**
+- [x] **R4. `MonthlyInputValidator` を注入し、V-4 と検証エラーのテストを強化する（SHOULD）**
   - 依頼事項：`MonthlyShiftServiceImpl` のコンストラクタで `MonthlyInputValidator` を引数として受け取り（`new` しない）、`MonthlyShiftServiceImplTest` などのコンストラクタ呼び出しを直す。`WishResolver` は状態を持たない値オブジェクト相当なので現状のままとし、クラスの Javadoc にその旨を 1 行で書く。テストの強化：`[V-4]` のテストは、Mockito の未スタブで `assignment` が null にならないよう `ShiftAssignmentService` を適切にスタブし（成立する日は結果あり、7 名の日は `Optional.empty()`）、`Optional.empty()` を厳密に検証し、他の日の算出が続くことも検証する。検証エラーのテストは、`assign` を一度も呼ばないことを `verifyNoInteractions(assignmentService)`（または `never().assign(anyList())`）で検証する
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/MonthlyShiftServiceImpl.java`、`src/test/java/com/example/shiftmatch/service/MonthlyShiftServiceImplTest.java`
   - 完了条件：

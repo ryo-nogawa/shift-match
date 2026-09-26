@@ -2,17 +2,19 @@ package com.example.shiftmatch.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
@@ -44,9 +46,10 @@ class MonthlyShiftServiceImplTest {
     when(holidayService.businessDays(month)).thenReturn(List.of(day1, day2));
     when(holidayService.isSupported(month)).thenReturn(true);
 
+    MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
     SelectionRationaleLogger logger = mock(SelectionRationaleLogger.class);
     MonthlyShiftServiceImpl service =
-        new MonthlyShiftServiceImpl(holidayService, assignmentService, logger);
+        new MonthlyShiftServiceImpl(holidayService, assignmentService, inputValidator, logger);
 
     Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
     LocalTime start = LocalTime.of(9, 0);
@@ -81,9 +84,10 @@ class MonthlyShiftServiceImplTest {
     when(holidayService.businessDays(month)).thenReturn(List.of(day1));
     when(holidayService.isSupported(month)).thenReturn(true);
 
+    MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
     SelectionRationaleLogger logger = mock(SelectionRationaleLogger.class);
     MonthlyShiftServiceImpl service =
-        new MonthlyShiftServiceImpl(holidayService, assignmentService, logger);
+        new MonthlyShiftServiceImpl(holidayService, assignmentService, inputValidator, logger);
 
     Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
     LocalTime start = LocalTime.of(9, 0);
@@ -115,18 +119,13 @@ class MonthlyShiftServiceImplTest {
   @DisplayName("[V-4] 勤務できる人が 8 名未満で不成立")
   void testUnsuccessfulWhenFewerThan8Available() {
     HolidayService holidayService = mock(HolidayService.class);
-    ShiftAssignmentService assignmentService = mock(ShiftAssignmentService.class);
 
-    LocalDate day1 = LocalDate.of(2024, 9, 2);
-    LocalDate day2 = LocalDate.of(2024, 9, 3);
+    LocalDate day1 = LocalDate.of(2024, 9, 2); // 8 名可能
+    LocalDate day2 = LocalDate.of(2024, 9, 3); // 7 名可能
     YearMonth month = YearMonth.of(2024, 9);
 
     when(holidayService.businessDays(month)).thenReturn(List.of(day1, day2));
     when(holidayService.isSupported(month)).thenReturn(true);
-
-    SelectionRationaleLogger logger = mock(SelectionRationaleLogger.class);
-    MonthlyShiftServiceImpl service =
-        new MonthlyShiftServiceImpl(holidayService, assignmentService, logger);
 
     Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
     LocalTime start = LocalTime.of(9, 0);
@@ -138,14 +137,24 @@ class MonthlyShiftServiceImplTest {
     baseShifts.put(DayOfWeek.THURSDAY, wish);
     baseShifts.put(DayOfWeek.FRIDAY, wish);
 
-    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+    // 8 人の従業員
+    List<EmployeeProfile> employees = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      employees.add(new EmployeeProfile("Employee" + i, EmploymentType.FULL_TIME, baseShifts));
+    }
 
-    // 火曜日（day2）だけ休みに変更
+    // 火曜日（day2）だけ従業員 0 が休み（7 名だけ勤務可能）
     LocalDate tuesdayDate = LocalDate.of(2024, 9, 3);
     DailyWish offWish = new DailyWish(true, null, null);
-    ShiftAdjustment adjustment = new ShiftAdjustment(tuesdayDate, "Taro", offWish);
+    ShiftAdjustment adjustment = new ShiftAdjustment(tuesdayDate, "Employee0", offWish);
 
-    MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of(adjustment));
+    MonthlyShiftInput input = new MonthlyShiftInput(month, employees, List.of(adjustment));
+
+    ShiftAssignmentService assignmentService = mock(ShiftAssignmentService.class);
+    MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
+    SelectionRationaleLogger logger = mock(SelectionRationaleLogger.class);
+    MonthlyShiftServiceImpl service =
+        new MonthlyShiftServiceImpl(holidayService, assignmentService, inputValidator, logger);
 
     MonthlyShiftResult result = service.create(input);
 
@@ -153,11 +162,12 @@ class MonthlyShiftServiceImplTest {
     DailyShiftResult day1Result = result.days().get(0);
     DailyShiftResult day2Result = result.days().get(1);
 
-    // 月曜日は1人が勤務可能
-    assertEquals(1, day1Result.availableCount());
+    // 月曜日は 8 人が勤務可能
+    assertEquals(8, day1Result.availableCount());
 
-    // 火曜日は0人が勤務可能
-    assertEquals(0, day2Result.availableCount());
+    // 火曜日は 7 人が勤務可能
+    assertEquals(7, day2Result.availableCount());
+    assertTrue(day2Result.assignment().isEmpty(), "day2 should not have an assignment");
   }
 
   @Test
@@ -184,13 +194,18 @@ class MonthlyShiftServiceImplTest {
     MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), new ArrayList<>());
 
     ShiftAssignmentService assignmentService = mock(ShiftAssignmentService.class);
+    MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
+    // V-3 エラーを返すようにスタブを設定
+    InputError error = new InputError("V-3", "基本シフト：金曜日が未選択です（Taro、1 行目）");
+    when(inputValidator.validate(input)).thenReturn(List.of(error));
+
     SelectionRationaleLogger logger = mock(SelectionRationaleLogger.class);
     MonthlyShiftServiceImpl service =
-        new MonthlyShiftServiceImpl(holidayService, assignmentService, logger);
+        new MonthlyShiftServiceImpl(holidayService, assignmentService, inputValidator, logger);
     assertThrows(InvalidMonthlyInputException.class, () -> service.create(input));
 
     // verify assign was never called
-    verify(assignmentService, never()).assign(java.util.List.of());
+    verifyNoInteractions(assignmentService);
   }
 
   @Test
@@ -225,14 +240,19 @@ class MonthlyShiftServiceImplTest {
     MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of(adjustment));
 
     ShiftAssignmentService assignmentService = mock(ShiftAssignmentService.class);
+    MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
+    // V-9 エラーを返すようにスタブを設定
+    InputError error = new InputError("V-9", "個別変更の日付が対象月の営業日ではありません（2024-09-07）");
+    when(inputValidator.validate(input)).thenReturn(List.of(error));
+
     SelectionRationaleLogger logger = mock(SelectionRationaleLogger.class);
     MonthlyShiftServiceImpl service =
-        new MonthlyShiftServiceImpl(holidayService, assignmentService, logger);
+        new MonthlyShiftServiceImpl(holidayService, assignmentService, inputValidator, logger);
 
     assertThrows(InvalidMonthlyInputException.class, () -> service.create(input));
 
     // verify assign was never called
-    verify(assignmentService, never()).assign(java.util.List.of());
+    verifyNoInteractions(assignmentService);
   }
 
   @Test
@@ -247,7 +267,10 @@ class MonthlyShiftServiceImplTest {
     when(holidayService.isSupported(month)).thenReturn(true);
 
     ShiftAssignmentService assignmentService = mock(ShiftAssignmentService.class);
-    when(assignmentService.assign(java.util.List.of())).thenReturn(java.util.Optional.empty());
+    when(assignmentService.assign(any())).thenReturn(java.util.Optional.empty());
+
+    MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
+    when(inputValidator.validate(any())).thenReturn(new ArrayList<>());
 
     SelectionRationaleLogger rationaleLogger = mock(SelectionRationaleLogger.class);
 
@@ -265,7 +288,8 @@ class MonthlyShiftServiceImplTest {
     MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of());
 
     MonthlyShiftServiceImpl service =
-        new MonthlyShiftServiceImpl(holidayService, assignmentService, rationaleLogger);
+        new MonthlyShiftServiceImpl(
+            holidayService, assignmentService, inputValidator, rationaleLogger);
     service.create(input);
 
     // verify logger.log was called for each business day

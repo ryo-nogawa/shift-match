@@ -32,16 +32,18 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
    *
    * @param holidayService 祝日サービス
    * @param assignmentService 割り当てサービス
+   * @param inputValidator 入力検証サービス
    * @param rationaleLogger 選定根拠ログサービス
    */
   public MonthlyShiftServiceImpl(
       HolidayService holidayService,
       ShiftAssignmentService assignmentService,
+      MonthlyInputValidator inputValidator,
       SelectionRationaleLogger rationaleLogger) {
     this.holidayService = holidayService;
     this.assignmentService = assignmentService;
     this.wishResolver = new WishResolver();
-    this.inputValidator = new MonthlyInputValidator(holidayService);
+    this.inputValidator = inputValidator;
     this.rationaleLogger = rationaleLogger;
   }
 
@@ -69,7 +71,7 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
     // 従業員のうち、名前が空でないものだけを対象
     List<Employee> employees = new ArrayList<>();
     for (EmployeeProfile profile : input.employees()) {
-      if (!profile.name().isBlank()) {
+      if (profile.name() != null && !profile.name().isBlank()) {
         DailyWish wish = wishResolver.resolve(profile, date, input.adjustments());
         employees.add(convertToEmployee(profile, wish));
       }
