@@ -1942,24 +1942,31 @@ class ShiftControllerTest {
 
       MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
 
-      String html = result.getResponse().getContentAsString();
+      // モデルから ShiftForm を取出し、全12行の値を検証
+      ShiftForm form = (ShiftForm) result.getModelAndView().getModel().get("shiftForm");
+      assertNotNull(form);
+      assertEquals(12, form.getEmployees().size());
 
-      // 12行あることを確認
-      assertTrue(html.contains("id=\"row-count\""));
+      // 1行目: 名前「Alice」、休み false、開始「09:00」、終了「17:00」
+      EmployeeForm row0 = form.getEmployees().get(0);
+      assertEquals("Alice", row0.getName());
+      assertFalse(row0.isOff());
+      assertEquals("09:00", row0.getStart());
+      assertEquals("17:00", row0.getEnd());
 
-      // 1行目: 名前「Alice」、休み off、開始「09:00」、終了「17:00」
-      assertTrue(html.contains("value=\"Alice\""));
-      Matcher row0 = Pattern.compile("employees\\[0\\]\\.name[^>]*value=\"Alice\"").matcher(html);
-      assertTrue(row0.find());
+      // 2行目: 名前「Bob」、休み true、開始・終了は空文字
+      EmployeeForm row1 = form.getEmployees().get(1);
+      assertEquals("Bob", row1.getName());
+      assertTrue(row1.isOff());
+      assertEquals("", row1.getStart());
+      assertEquals("", row1.getEnd());
 
-      // 2行目: 名前「Bob」、休み on、開始・終了は空
-      assertTrue(html.contains("value=\"Bob\""));
-      Matcher row1 = Pattern.compile("employees\\[1\\]\\.name[^>]*value=\"Bob\"").matcher(html);
-      assertTrue(row1.find());
-
-      // 開始・終了は09:00と17:00（HH:mm形式）で表示
-      assertTrue(html.contains("value=\"09:00\""));
-      assertTrue(html.contains("value=\"17:00\""));
+      // 3行目以降は空
+      for (int i = 2; i < 12; i++) {
+        EmployeeForm row = form.getEmployees().get(i);
+        assertNull(row.getName());
+        assertFalse(row.isOff());
+      }
     }
 
     @Test

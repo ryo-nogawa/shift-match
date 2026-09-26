@@ -189,6 +189,47 @@ class LatestShiftRepositoryTest {
           jdbcClient.sql("SELECT COUNT(*) FROM saved_assignment").query(Integer.class).single();
       assertEquals(8, assignmentCount);
 
+      // 割り当て内容の詳細検証：assignment_index 順に読み、各行の値を確認
+      for (int i = 0; i < ShiftSlot.totalEmployees(); i++) {
+        ShiftAssignment expected = assignments.get(i);
+
+        String employeeName =
+            jdbcClient
+                .sql("SELECT employee_name FROM saved_assignment WHERE assignment_index = ?")
+                .param(i)
+                .query(String.class)
+                .single();
+        assertEquals(expected.employee().name(), employeeName);
+
+        String slotName =
+            jdbcClient
+                .sql("SELECT slot FROM saved_assignment WHERE assignment_index = ?")
+                .param(i)
+                .query(String.class)
+                .single();
+        assertEquals(expected.slot().name(), slotName);
+
+        java.sql.Time breakStart =
+            jdbcClient
+                .sql("SELECT break_start FROM saved_assignment WHERE assignment_index = ?")
+                .param(i)
+                .query(java.sql.Time.class)
+                .single();
+        assertEquals(
+            "12:00",
+            breakStart.toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
+
+        java.sql.Time breakEnd =
+            jdbcClient
+                .sql("SELECT break_end FROM saved_assignment WHERE assignment_index = ?")
+                .param(i)
+                .query(java.sql.Time.class)
+                .single();
+        assertEquals(
+            "12:45",
+            breakEnd.toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
+      }
+
       // 1 件のスコアを確認
       Integer scoreCount =
           jdbcClient.sql("SELECT COUNT(*) FROM saved_score").query(Integer.class).single();
