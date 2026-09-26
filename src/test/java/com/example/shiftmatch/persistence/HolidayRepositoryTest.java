@@ -2,18 +2,23 @@ package com.example.shiftmatch.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.domain.Holiday;
 import java.time.LocalDate;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(properties = "holiday.refresh-on-startup=false")
 @DisplayName("HolidayRepository")
@@ -25,6 +30,11 @@ class HolidayRepositoryTest {
 
   @BeforeEach
   void clearHolidayTable() {
+    jdbcClient.sql("DELETE FROM holiday").update();
+  }
+
+  @AfterEach
+  void cleanupHolidayTable() {
     jdbcClient.sql("DELETE FROM holiday").update();
   }
 
@@ -107,6 +117,35 @@ class HolidayRepositoryTest {
       List<Holiday> found2025 = repository.findByYear(2025);
       assertEquals(1, found2025.size());
       assertEquals(LocalDate.of(2025, 1, 1), found2025.get(0).date());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 既存データがあり、replaceAll で重複日付を含むリストを渡すとき, When: replaceAll を実行すると, Then:"
+            + " 既存データが全て残る")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void preservesExistingDataWhenReplaceFails() {
+      List<Holiday> initialHolidays =
+          List.of(
+              new Holiday(LocalDate.of(2026, 1, 1), "元日"),
+              new Holiday(LocalDate.of(2026, 10, 12), "スポーツの日"));
+      repository.replaceAll(initialHolidays);
+
+      // 同じ日付を含むリストで replaceAll を呼ぶ
+      List<Holiday> duplicateHolidays =
+          List.of(
+              new Holiday(LocalDate.of(2025, 1, 1), "元日"),
+              new Holiday(LocalDate.of(2025, 1, 1), "元日（重複）"));
+
+      assertThrows(DuplicateKeyException.class, () -> repository.replaceAll(duplicateHolidays));
+
+      // 既存データが全て残っている
+      List<Holiday> found2026 = repository.findByYear(2026);
+      assertEquals(2, found2026.size());
+      assertEquals(LocalDate.of(2026, 1, 1), found2026.get(0).date());
+      assertEquals("元日", found2026.get(0).name());
+      assertEquals(LocalDate.of(2026, 10, 12), found2026.get(1).date());
+      assertEquals("スポーツの日", found2026.get(1).name());
     }
   }
 

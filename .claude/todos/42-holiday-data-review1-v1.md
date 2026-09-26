@@ -33,7 +33,7 @@
     - 既存のテストの期待値を変えていない（既存のテストの CSV に見出しがない場合は、テスト用の CSV の入力側に見出しを足すこと。期待値は変えない）
     - `./mvnw test -Dtest=HolidayCsvParserTest` が成功する
 
-- [ ] **R3. `refresh()` が保存時の DB 例外でも落ちないようにする（SHOULD）**
+- [x] **R3. `refresh()` が保存時の DB 例外でも落ちないようにする（SHOULD）**
   - 依頼事項：`HolidayServiceImpl.refresh()` が、`HolidayFetchException`・`IllegalArgumentException` に加えて、保存時の `org.springframework.dao.DataAccessException` も捕捉し、例外オブジェクト付きのエラーログを出して、保存済みのデータを残す（起動時の更新でアプリの起動を止めないため）。`replaceAll` はトランザクションで全件を置き換えるため、失敗すれば元のデータが残る
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HolidayServiceImpl.java`、`src/test/java/com/example/shiftmatch/service/HolidayServiceImplTest.java`
   - 完了条件：
