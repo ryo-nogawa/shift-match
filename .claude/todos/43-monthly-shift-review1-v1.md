@@ -50,7 +50,7 @@
     - V-4 のテストが `Optional.empty()` と `availableCount`（7）を検証し、検証エラーのテストが `assign` の全呼び出しを禁止している
     - `./mvnw test -Dtest=MonthlyShiftServiceImplTest` が成功する
 
-- [ ] **R5. Javadoc のコード表記を `{@code}` に直す（MUST）**
+- [x] **R5. Javadoc のコード表記を `{@code}` に直す（MUST）**
   - 依頼事項：`domain/DailyShiftResult.java` の Javadoc にある Markdown のバッククォート表記を `{@code ...}` に直す。ほかの本 Issue で追加した `domain/`・`service/` の Javadoc にも同じ違反がないか `grep -n '`' src/main/java/com/example/shiftmatch/{domain,service}/*.java` で確認し、あれば直す（本 Issue で追加したファイルのみ。既存ファイルは直さない）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/DailyShiftResult.java`（ほか、本 Issue で追加したファイル）
   - 完了条件：
