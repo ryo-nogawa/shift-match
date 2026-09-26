@@ -9,6 +9,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,6 +29,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 public class ShiftController {
 
   private static final int MAX_EMPLOYEE_COUNT = 12;
+
+  private static final String START_PROPERTY = "start";
+
+  private static final Pattern TIME_RANGE_FIELD_PATTERN =
+      Pattern.compile("employees\\[(\\d+)\\]\\.(start|end)");
 
   private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -135,47 +141,26 @@ public class ShiftController {
    * @return 開始・終了のエラーリスト（行順、プロパティ順）
    */
   private List<InvalidTimeRangeError> toTimeRangeErrors(BindingResult bindingResult) {
-    List<InvalidTimeRangeError> errors = new ArrayList<>();
+    List<TimeRangeFieldError> fieldErrors = new ArrayList<>();
 
-    // employees[N].start / employees[N].end のフィールドエラーを集める
+    // employees[N].start / employees[N].end のフィールドエラーだけを集める
     for (FieldError error : bindingResult.getFieldErrors()) {
-      String field = error.getField();
-      if (!field.startsWith("employees[")) {
-        continue;
-      }
-
-      // employees[N].start または employees[N].end を解析
-      Matcher matcher = Pattern.compile("employees\\[(\\d+)\\]\\.(start|end)").matcher(field);
+      Matcher matcher = TIME_RANGE_FIELD_PATTERN.matcher(error.getField());
       if (matcher.matches()) {
-        int rowIndex = Integer.parseInt(matcher.group(1));
-        String propertyName = matcher.group(2);
-        String message = error.getDefaultMessage();
-
-        errors.add(new InvalidTimeRangeError(rowIndex, message));
+        fieldErrors.add(
+            new TimeRangeFieldError(
+                Integer.parseInt(matcher.group(1)), matcher.group(2), error.getDefaultMessage()));
       }
     }
 
-    // 行番号の昇順、同じ行では start → end の順にソート
-    errors.sort(
-        (e1, e2) -> {
-          if (e1.rowIndex() != e2.rowIndex()) {
-            return Integer.compare(e1.rowIndex(), e2.rowIndex());
-          }
-          // 同じ行の場合、start < end
-          String msg1 = e1.message();
-          String msg2 = e2.message();
-          boolean is1Start = msg1.startsWith("開始");
-          boolean is2Start = msg2.startsWith("開始");
-          if (is1Start && !is2Start) {
-            return -1;
-          }
-          if (!is1Start && is2Start) {
-            return 1;
-          }
-          return 0;
-        });
+    // 違反の集合には順序の保証がないため、行番号の昇順、同じ行では start → end の順に並べる
+    fieldErrors.sort(
+        Comparator.comparingInt((TimeRangeFieldError fieldError) -> fieldError.rowIndex())
+            .thenComparing(fieldError -> !START_PROPERTY.equals(fieldError.property())));
 
-    return errors;
+    return fieldErrors.stream()
+        .map(fieldError -> new InvalidTimeRangeError(fieldError.rowIndex(), fieldError.message()))
+        .toList();
   }
 
   /**
@@ -213,4 +198,13 @@ public class ShiftController {
       return null;
     }
   }
+
+  /**
+   * 開始・終了のフィールドエラーを、並べ替えのために行番号・項目名とあわせて保持するレコードです。
+   *
+   * @param rowIndex 行番号（0 始まり）
+   * @param property 項目名（{@code start} または {@code end}）
+   * @param message エラーメッセージ
+   */
+  private record TimeRangeFieldError(int rowIndex, String property, String message) {}
 }
