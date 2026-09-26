@@ -45,7 +45,7 @@
     - `MonthlyFormConverterTest` に次を検証する `[F-1]`・`[F-11]`・`[V-3]`・`[V-7]`・`[V-8]` 付きのテストがある：正常な入力が `MonthlyShiftInput` に変換される（曜日の対応：`days[0]`＝月曜〜`days[4]`＝金曜、休みの曜日は `off=true` かつ `start`・`end` が `null`）／`targetMonth` が空・不正形式なら `month` が `null`／区分が 3 択以外なら `employmentType` が `null`／時刻が空・不正形式なら `null`／`days` が 5 件未満のとき不足する曜日が `DailyWish(false, null, null)`／個別変更が `ShiftAdjustment(date, employeeName, wish)` に変換され、日付が解析できないものは `LocalDate.MIN`／従業員名が空の行が除外されずに渡される
     - `./mvnw test -Dtest=MonthlyFormConverterTest` が成功し、`./mvnw test-compile` が成功する
 
-- [ ] **T2. 対象月の営業日数と祝日を返す JSON を作る（F-9）**
+- [x] **T2. 対象月の営業日数と祝日を返す JSON を作る（F-9）**
   - 依頼事項：画面 1 の月の切り替えで、フォームを送信せずに営業日数・祝日を得るための `GET /calendar?month=YYYY-MM` を `controller/CalendarController`（`@RestController`）に作る。`HolidayService` を使う。応答（JSON、Spring Boot 標準の Jackson で `record` を返す。新しい依存は不要）：`{"month":"2026-10","businessDayCount":22,"holidayCount":1,"businessDays":["2026-10-01",...],"holidays":[{"date":"2026-10-12","name":"スポーツの日"}]}`。`holidayCount` は、祝日のうち **月〜金にあたるものの数** ではなく、`holidaysOf` が返した件数そのまま（土日の祝日も含む）。`month` が `YYYY-MM` として解析できない、または `HolidayService.isSupported` が false のときは HTTP 400 と `{"message":"対象月を判定できません。祝日データにない月です。"}` を返す（V-8 と同じ趣旨）。応答用の `record`（例：`CalendarResponse`、`HolidayEntry`）は `controller/` に置く
   - 対象ファイル：`src/main/java/com/example/shiftmatch/controller/CalendarController.java`（と応答 `record`）、`src/test/java/com/example/shiftmatch/controller/CalendarControllerTest.java`
   - 完了条件：
