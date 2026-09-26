@@ -123,6 +123,17 @@ public class MonthlyInputValidator {
       errors.addAll(profileErrors);
     }
 
+    // 有効な従業員名の集合を作成
+    Set<String> validNames = new HashSet<>();
+    for (EmployeeProfile profile : validEmployees) {
+      validNames.add(profile.name());
+    }
+
+    // 個別変更の時間帯検証
+    List<InputError> adjustmentErrors =
+        validateAdjustmentTimeRanges(validNames, input.adjustments());
+    errors.addAll(adjustmentErrors);
+
     return errors;
   }
 
@@ -244,6 +255,48 @@ public class MonthlyInputValidator {
       String message = String.format("対象月 %s の祝日データが利用できません", month);
       errors.add(new InputError("V-8", message));
     }
+    return errors;
+  }
+
+  private List<InputError> validateAdjustmentTimeRanges(
+      Set<String> validNames, List<ShiftAdjustment> adjustments) {
+    List<InputError> errors = new ArrayList<>();
+
+    for (ShiftAdjustment adjustment : adjustments) {
+      // 従業員名が有効な従業員に一致する場合のみ検証
+      if (validNames.contains(adjustment.employeeName())) {
+        DailyWish wish = adjustment.wish();
+
+        if (!wish.off()) {
+          // 「休み」以外は時間帯を検証
+          List<InputError> timeErrors = validateAdjustmentTimeRange(wish, adjustment);
+          errors.addAll(timeErrors);
+        }
+      }
+    }
+
+    return errors;
+  }
+
+  private List<InputError> validateAdjustmentTimeRange(DailyWish wish, ShiftAdjustment adjustment) {
+    List<InputError> errors = new ArrayList<>();
+
+    if (wish.start() == null || wish.end() == null) {
+      String message =
+          String.format("個別変更の時間帯が未選択です（%s、%s）", adjustment.employeeName(), adjustment.date());
+      errors.add(new InputError("V-3", message));
+    } else if (!isValidTime(wish.start()) || !isValidTime(wish.end())) {
+      String message =
+          String.format(
+              "個別変更の時間帯が 7:30〜18:30 の 30 分単位ではありません（%s、%s）",
+              adjustment.employeeName(), adjustment.date());
+      errors.add(new InputError("V-3", message));
+    } else if (!wish.start().isBefore(wish.end())) {
+      String message =
+          String.format("個別変更の開始時刻が終了時刻以上です（%s、%s）", adjustment.employeeName(), adjustment.date());
+      errors.add(new InputError("V-3", message));
+    }
+
     return errors;
   }
 

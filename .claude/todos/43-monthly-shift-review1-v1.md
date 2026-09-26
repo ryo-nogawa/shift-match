@@ -16,7 +16,7 @@
 
 ## Todo
 
-- [ ] **R1. 個別変更の時間帯も V-3 で検証する（MUST・V-3）**
+- [x] **R1. 個別変更の時間帯も V-3 で検証する（MUST・V-3）**
   - 依頼事項：`MonthlyInputValidator.validateTimeRanges` で、有効な従業員の氏名に一致する `input.adjustments()` も走査する。「休み」の個別変更は時刻を無視し、それ以外は基本シフトと同じ規則（開始・終了が未選択＝null、7:30〜18:30 の 30 分単位以外、開始 ≧ 終了）で検証し、氏名と日付を `message` に含む `code = "V-3"` のエラーを返す。氏名が有効な従業員と一致しない個別変更は無視する（エラーにしない）。エラーの並びは、基本シフトのエラー（行順・曜日順）の後に個別変更のエラー（リストの順）とする
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/MonthlyInputValidator.java`、`src/test/java/com/example/shiftmatch/service/MonthlyInputValidatorTest.java`
   - 完了条件：

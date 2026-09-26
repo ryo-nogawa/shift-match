@@ -575,4 +575,249 @@ class MonthlyInputValidatorTest {
       assertFalse(error.code().equals("V-9"));
     }
   }
+
+  @Test
+  @DisplayName("[V-3] 個別変更の開始が null のときエラー")
+  void testAdjustmentMissingStart() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    YearMonth month = YearMonth.of(2024, 9);
+    LocalDate businessDay = LocalDate.of(2024, 9, 2); // Monday
+
+    when(holidayService.businessDays(month)).thenReturn(List.of(businessDay));
+
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+
+    ShiftAdjustment adjustment =
+        new ShiftAdjustment(businessDay, "Taro", new DailyWish(false, null, end));
+
+    MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of(adjustment));
+
+    List<InputError> errors = validator.validate(input);
+
+    assertEquals(1, errors.size());
+    assertEquals("V-3", errors.get(0).code());
+    assertTrue(errors.get(0).message().contains("Taro"));
+    assertTrue(errors.get(0).message().contains("2024-09-02"));
+  }
+
+  @Test
+  @DisplayName("[V-3] 個別変更の終了が null のときエラー")
+  void testAdjustmentMissingEnd() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    YearMonth month = YearMonth.of(2024, 9);
+    LocalDate businessDay = LocalDate.of(2024, 9, 2); // Monday
+
+    when(holidayService.businessDays(month)).thenReturn(List.of(businessDay));
+
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+
+    ShiftAdjustment adjustment =
+        new ShiftAdjustment(businessDay, "Taro", new DailyWish(false, start, null));
+
+    MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of(adjustment));
+
+    List<InputError> errors = validator.validate(input);
+
+    assertEquals(1, errors.size());
+    assertEquals("V-3", errors.get(0).code());
+    assertTrue(errors.get(0).message().contains("Taro"));
+    assertTrue(errors.get(0).message().contains("2024-09-02"));
+  }
+
+  @Test
+  @DisplayName("[V-3] 個別変更の開始が 30 分単位でないときエラー")
+  void testAdjustmentInvalidStartMinutes() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    YearMonth month = YearMonth.of(2024, 9);
+    LocalDate businessDay = LocalDate.of(2024, 9, 2); // Monday
+
+    when(holidayService.businessDays(month)).thenReturn(List.of(businessDay));
+
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+
+    ShiftAdjustment adjustment =
+        new ShiftAdjustment(businessDay, "Taro", new DailyWish(false, LocalTime.of(9, 15), end));
+
+    MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of(adjustment));
+
+    List<InputError> errors = validator.validate(input);
+
+    assertEquals(1, errors.size());
+    assertEquals("V-3", errors.get(0).code());
+    assertTrue(errors.get(0).message().contains("Taro"));
+  }
+
+  @Test
+  @DisplayName("[V-3] 個別変更の開始 >= 終了のときエラー")
+  void testAdjustmentInvalidRange() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    YearMonth month = YearMonth.of(2024, 9);
+    LocalDate businessDay = LocalDate.of(2024, 9, 2); // Monday
+
+    when(holidayService.businessDays(month)).thenReturn(List.of(businessDay));
+
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+
+    ShiftAdjustment adjustment =
+        new ShiftAdjustment(businessDay, "Taro", new DailyWish(false, end, start)); // end >= start
+
+    MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of(adjustment));
+
+    List<InputError> errors = validator.validate(input);
+
+    assertEquals(1, errors.size());
+    assertEquals("V-3", errors.get(0).code());
+    assertTrue(errors.get(0).message().contains("Taro"));
+  }
+
+  @Test
+  @DisplayName("[V-3] 休みの個別変更は時刻が null でもエラーにならない")
+  void testAdjustmentOffIgnoresTime() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    YearMonth month = YearMonth.of(2024, 9);
+    LocalDate businessDay = LocalDate.of(2024, 9, 2); // Monday
+
+    when(holidayService.businessDays(month)).thenReturn(List.of(businessDay));
+
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+
+    ShiftAdjustment adjustment =
+        new ShiftAdjustment(businessDay, "Taro", new DailyWish(true, null, null));
+
+    MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of(adjustment));
+
+    List<InputError> errors = validator.validate(input);
+
+    assertTrue(errors.isEmpty());
+  }
+
+  @Test
+  @DisplayName("[V-3] 従業員名が一致しない個別変更の時間帯は検証されない")
+  void testAdjustmentNameMismatchNotValidated() {
+    HolidayService holidayService = mock(HolidayService.class);
+    when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
+    YearMonth month = YearMonth.of(2024, 9);
+    LocalDate businessDay = LocalDate.of(2024, 9, 2); // Monday
+
+    when(holidayService.businessDays(month)).thenReturn(List.of(businessDay));
+
+    MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
+
+    Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+    LocalTime start = LocalTime.of(9, 0);
+    LocalTime end = LocalTime.of(18, 0);
+    DailyWish wish = new DailyWish(false, start, end);
+    for (DayOfWeek day :
+        new DayOfWeek[] {
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY
+        }) {
+      baseShifts.put(day, wish);
+    }
+
+    EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+
+    // 従業員名が一致しない個別変更で無効な時間帯
+    ShiftAdjustment adjustment =
+        new ShiftAdjustment(businessDay, "Other", new DailyWish(false, null, null));
+
+    MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of(adjustment));
+
+    List<InputError> errors = validator.validate(input);
+
+    assertTrue(errors.isEmpty());
+  }
 }
