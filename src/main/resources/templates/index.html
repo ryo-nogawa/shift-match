@@ -173,12 +173,13 @@
           <tr th:each="assignment : ${assignmentResult.assignments()}">
             <td th:text="${assignment.employee().name()}"></td>
             <td>
-              <span class="pill"
+              <span class="pill" data-duration="work"
                 th:text="|${#temporals.format(assignment.slot().startTime(), 'HH:mm')}〜${#temporals.format(assignment.slot().endTime(), 'HH:mm')}|"
               ></span>
             </td>
             <td>
               <span
+                data-duration="break"
                 th:text="|${#temporals.format(assignment.breakStart(), 'HH:mm')}〜${#temporals.format(assignment.breakEnd(), 'HH:mm')}|"
               ></span>
             </td>

@@ -1873,6 +1873,39 @@ class ShiftControllerTest {
     }
 
     @Test
+    @DisplayName(
+        "[F-4] Given: 割当結果が表示されるとき, When: 結果表の各行を確認すると,"
+            + " Then: 勤務時間と休憩時間に data-duration 属性があり、合計時間はサーバーでは算出されない")
+    void marksWorkAndBreakRangesForClientSideDuration() throws Exception {
+      String html = postWith(createStandardResult());
+
+      Matcher work = Pattern.compile("data-duration=\"work\"[^>]*>07:30〜14:30<").matcher(html);
+      Matcher breaks = Pattern.compile("data-duration=\"break\"[^>]*>12:00〜12:45<").matcher(html);
+      assertTrue(work.find(), "Work range should have data-duration=work");
+      assertTrue(breaks.find(), "Break range should have data-duration=break");
+      assertEquals(8, html.split("data-duration=\"work\"", -1).length - 1);
+      assertEquals(8, html.split("data-duration=\"break\"", -1).length - 1);
+      assertFalse(html.contains("(07:00)"), "Total work time should not be calculated on server");
+      assertFalse(html.contains("(00:45)"), "Total break time should not be calculated on server");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: data-duration の範囲から合計時間を hh:mm 形式で算出して表示する処理がある")
+    void shiftFormJsCalculatesDurationOnClient() throws Exception {
+      String js =
+          new String(
+              java.nio.file.Files.readAllBytes(
+                  java.nio.file.Paths.get("src/main/resources/static/js/shift-form.js")),
+              java.nio.charset.StandardCharsets.UTF_8);
+
+      assertTrue(js.contains("data-duration"), "Should select data-duration elements");
+      assertTrue(js.contains("formatDuration"), "Should format the duration");
+      assertTrue(js.contains("padStart(2, \"0\")"), "Should format as hh:mm with zero padding");
+    }
+
+    @Test
     @DisplayName("[F-4] Given: 割当結果が表示されるとき, When: 選定根拠を確認すると, Then: ずれの合計の計算式は表示されない")
     void doesNotShowScoreFormula() throws Exception {
       String html = postWith(createStandardResult());

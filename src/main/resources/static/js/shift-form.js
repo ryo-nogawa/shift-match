@@ -1,5 +1,5 @@
 /**
- * シフト入力フォームの行を動的に追加・削除する機能を提供します。
+ * シフト入力フォームの行を動的に追加・削除する機能と、割当結果の合計時間の表示を提供します。
  */
 document.addEventListener("DOMContentLoaded", function () {
   const addRowBtn = document.getElementById("add-row-btn");
@@ -220,4 +220,32 @@ document.addEventListener("DOMContentLoaded", function () {
   updateAddButtonState();
   updateRowCount();
   updateMoveButtonState();
+
+  // 「HH:mm〜HH:mm」の長さを「hh:mm」形式にする。合計時間はサーバーで算出せず、画面側で算出する
+  function toMinutes(time) {
+    const parts = time.split(":");
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  }
+
+  function formatDuration(range) {
+    const times = range.split("〜");
+    if (times.length !== 2) {
+      return "";
+    }
+    const minutes = toMinutes(times[1]) - toMinutes(times[0]);
+    const hh = String(Math.floor(minutes / 60)).padStart(2, "0");
+    const mm = String(minutes % 60).padStart(2, "0");
+    return "(" + hh + ":" + mm + ")";
+  }
+
+  document.querySelectorAll("[data-duration]").forEach((element) => {
+    const duration = formatDuration(element.textContent.trim());
+    if (duration === "") {
+      return;
+    }
+    const label = document.createElement("span");
+    label.className = "duration";
+    label.textContent = duration;
+    element.after(label);
+  });
 });

@@ -127,3 +127,4 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 
 .unassigned-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px }
 .reason { font-size: 13px; color: var(--sub) }
+.duration { margin-left: 6px; font-size: 12px; color: var(--sub) }
