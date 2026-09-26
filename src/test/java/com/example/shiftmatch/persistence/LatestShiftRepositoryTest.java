@@ -68,5 +68,30 @@ class LatestShiftRepositoryTest {
       List<Employee> found = repository.findEmployees();
       assertTrue(found.isEmpty());
     }
+
+    @Test
+    @DisplayName("2 回目の保存は最新データで上書きされる")
+    void secondSaveOverwritesPreviousData() {
+      // 1 回目: 3 名を保存
+      List<Employee> employees1 =
+          List.of(
+              Employee.working("Alice", LocalTime.of(9, 0), LocalTime.of(17, 0)),
+              Employee.onLeave("Bob"),
+              Employee.working("Charlie", LocalTime.of(8, 30), LocalTime.of(16, 30)));
+      repository.save(employees1, Optional.empty());
+
+      // 2 回目: 2 名を保存
+      List<Employee> employees2 =
+          List.of(
+              Employee.working("David", LocalTime.of(10, 0), LocalTime.of(18, 0)),
+              Employee.onLeave("Emma"));
+      repository.save(employees2, Optional.empty());
+
+      // 確認: 2 回目のデータだけが残っている
+      List<Employee> found = repository.findEmployees();
+      assertEquals(2, found.size());
+      assertEquals("David", found.get(0).name());
+      assertEquals("Emma", found.get(1).name());
+    }
   }
 }
