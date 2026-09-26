@@ -1,6 +1,7 @@
 package com.example.shiftmatch.domain;
 
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 
 /**
  * 割り当て枠を表す列挙型。
@@ -106,5 +107,14 @@ public enum ShiftSlot {
       total += slot.numberOfEmployees();
     }
     return total;
+  }
+
+  /**
+   * 枠の勤務時間（分）を返します。
+   *
+   * @return 開始時刻から終了時刻までの分数
+   */
+  public int workMinutes() {
+    return (int) ChronoUnit.MINUTES.between(startTime, endTime);
   }
 }
