@@ -30,7 +30,7 @@
 
 ## Todo
 
-- [ ] **T1. 祝日 CSV を解析するパーサーを作る（F-10）**
+- [x] **T1. 祝日 CSV を解析するパーサーを作る（F-10）**
   - 依頼事項：`domain/Holiday.java`（`record Holiday(LocalDate date, String name)`）と、`service/HolidayCsvParser.java`（`List<Holiday> parse(byte[] csv)`）を作る。`csv` は Shift_JIS のバイト列。1 行目の見出しは読み飛ばし、空行は無視し、日付は `yyyy/M/d`（例：`2026/1/1`、`2026/10/12`）として読む。形式が不正な行（日付が読めない、列が足りない）があれば `IllegalArgumentException` を投げる（一部だけ読み込んで保存しないため）。文字コードは `Charset.forName("Shift_JIS")`
   - 対象ファイル：`src/main/java/com/example/shiftmatch/domain/Holiday.java`、`src/main/java/com/example/shiftmatch/service/HolidayCsvParser.java`、`src/test/java/com/example/shiftmatch/service/HolidayCsvParserTest.java`
   - 完了条件：
