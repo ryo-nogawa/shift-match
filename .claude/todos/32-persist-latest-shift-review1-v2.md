@@ -45,26 +45,26 @@
   - 完了条件：
     - テストを先に書き、RED を確認した
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する（既存テストも全件）
-- [ ] **T4. 別オリジンからの `POST /shift` を拒否する**
+- [x] **T4. 別オリジンからの `POST /shift` を拒否する**
   - 依頼事項：前提の「CSRF」のとおり `SameOriginInterceptor` と `WebConfig` を実装する。テスト（`ShiftControllerTest` の `@Nested` として、または `SameOriginInterceptorTest` を別に作る）：(1) `Sec-Fetch-Site: cross-site` → 403 で `save` も `assign` も呼ばれない (2) `Sec-Fetch-Site: same-origin` → 200 (3) `Origin: http://evil.example` と `Host: localhost:8080` → 403 (4) `Origin: http://localhost:8080` と `Host: localhost:8080` → 200 (5) ヘッダなし → 200 (6) `GET /` は `Sec-Fetch-Site: cross-site` でも 200
   - 対象ファイル：`src/main/java/com/example/shiftmatch/config/SameOriginInterceptor.java`、`src/main/java/com/example/shiftmatch/config/WebConfig.java`、テストファイル
   - 完了条件：
     - テストを先に書き、RED を確認した（403 になるべき場面が 200 で失敗する）
     - `./mvnw test -Dtest=ShiftControllerTest` と、作成したテストクラスが成功する
-- [ ] **T5. 保存・復元テストの検証を強化する**
+- [x] **T5. 保存・復元テストの検証を強化する**
   - 依頼事項：(a) `ShiftControllerTest` の復元テストを、モデルの `ShiftForm` を取り出して、全 12 行・各行の名前／休み／開始／終了（休みの行は開始・終了が空文字）を検証する形にする (b) `LatestShiftRepositoryTest` の割り当て保存テストを、`saved_assignment` を `assignment_index` 順に読み、従業員名・枠（列挙子名）・休憩開始／終了・順序を期待値と比較する形にする（行数とスコアだけの検証をやめる）
   - 対象ファイル：`ShiftControllerTest.java`、`LatestShiftRepositoryTest.java`
   - 完了条件：
     - `./mvnw test -Dtest=LatestShiftRepositoryTest` と `./mvnw test -Dtest=ShiftControllerTest` が成功する
     - 保存の列（例：`slot`）を実装側でわざと入れ替えるとテストが失敗することを確認し、確認後に元へ戻した（実行ログに書く）
-- [ ] **T6. 新規テストを規約に合わせる**
+- [x] **T6. 新規テストを規約に合わせる**
   - 依頼事項：`SchemaTest`、`LatestShiftRepositoryTest`、`ShiftControllerTest` の #32 で追加した部分を、`@Nested`（正常系・異常系など）と日本語 `Given/When/Then` 形式の `@DisplayName` に直す。`SchemaTest` は、他のテストが残したデータに依存しないよう、`@BeforeEach` で 3 表を全削除してから検証する（または存在確認を「空であること」と分離する）。振る舞いは変えない
   - 対象ファイル：上記 3 つのテストクラス
   - 完了条件：
     - 3 つのテストクラスの #32 追加分の `@DisplayName` がすべて `Given: ...、When: ...、Then: ...` の形になっている（`grep -n "DisplayName" <ファイル>` で確認）
     - `SchemaTest` が `@BeforeEach` で初期化している
     - `./mvnw test` で全テストが成功する
-- [ ] **T7. 自明なコメントを削除し、README を整合させる**
+- [x] **T7. 自明なコメントを削除し、README を整合させる**
   - 依頼事項：(a) `LatestShiftRepository`・`ShiftController` の、コードから明らかな「何をしているか」だけのコメント（「全削除」「従業員入力を挿入」「入力エラーがなく算出まで完了したときに保存」など）を削除する。残すコメントは「なぜ」（例：最新 1 件を置換するため、入力エラー時に前回の保存を維持するため）だけにする (b) `README.md` の「データベースは使用しない」（17・23 行目付近）と、H2 に保存・復元する旨の記述（19 行目付近）の矛盾を解消する。保存するのは従業員入力とシフト結果の最新 1 件で、画面表示時に復元されるのは従業員入力のみ（結果は復元しない）と書く。`docs/`・`AGENTS.md` は変更しない
   - 対象ファイル：`LatestShiftRepository.java`、`ShiftController.java`、`README.md`
   - 完了条件：
