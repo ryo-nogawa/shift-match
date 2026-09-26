@@ -90,7 +90,7 @@
     - 「何をしているか」だけの行コメントがなくなっている（`grep -n "^\s*//" ` で残ったコメントが、すべて理由を述べている）
     - `./mvnw test -Dtest='Holiday*Test'` が成功する
 
-- [ ] **R10. 全テストと静的解析を通す**
+- [x] **R10. 全テストと静的解析を通す**
   - 依頼事項：`./mvnw spotless:apply` を実行して整形し、`./mvnw test` で全テスト・Spotless・Checkstyle を通す。`pom.xml` に変更がないことを確認する
   - 対象ファイル：変更した全ファイル
   - 完了条件：
@@ -105,5 +105,6 @@
 - R7 試行 1/1：成功 — テストを先に書き、RED を確認した。`.withUserConfiguration(HolidayStartupRunner.class)` を追加し、`holiday.refresh-on-startup=false` と `true` の両方でテスト。`@ConditionalOnProperty` を外すと `false` のテストが失敗することを確認した（RED の確認）。その後戻す。`./mvnw test -Dtest=HolidayStartupRunnerTest` が成功する。
 - R8 試行 1/1：成功 — `@AfterEach` を `stopServer()` に付けた。テストメソッドの末尾での手動呼び出しを削除（fetchesSuccessfullyWithStatus200、throwsWhenStatus500）。throwsWhenConnectionFails() 内の stopServer() は意図的であり保持。`./mvnw test -Dtest=HttpHolidayCsvFetcherTest` が成功する。
 - R9 試行 1/1：成功 — `HolidayServiceImpl.java` の 3 つの「何をしているか」だけのコメント（「既に保存されている場合」「保存されていない場合は取得を試みる」「取得後、もう一度確認」）を削除。`HolidayCsvParser.java` には該当コメントなし。grep で確認：行コメント 0 件。`./mvnw test -Dtest='Holiday*Test'` が成功する（40 件）。
+- R10 試行 1/1：成功 — `./mvnw spotless:apply` 実行（0 件変更）。`./mvnw test` 実行：全テスト成功（Tests run: 292, Failures: 0, Errors: 0, Skipped: 0）。`git diff main -- pom.xml` が空。`@Disabled` のテストなし。期待値の改竄なし。
 
 <!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->
