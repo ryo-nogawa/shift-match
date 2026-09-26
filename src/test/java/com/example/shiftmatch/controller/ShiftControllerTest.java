@@ -22,6 +22,7 @@ import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
+import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -46,7 +47,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 /** 変換は実物の {@link MonthlyFormConverter} を使い、算出（{@link MonthlyShiftService}）だけをモックにします。 */
 @WebMvcTest(ShiftController.class)
-@Import(MonthlyFormConverter.class)
+@Import({MonthlyFormConverter.class, MonthlyResultViewFactory.class})
 class ShiftControllerTest {
 
   /** 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（ソース検索で誤検出しないよう分割）。 */
@@ -55,6 +56,8 @@ class ShiftControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private MonthlyShiftService monthlyShiftService;
+
+  @MockitoBean private HolidayService holidayService;
 
   private MockHttpServletRequestBuilder validRequest() {
     return post("/shift")
@@ -231,6 +234,37 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[F-4] Given: 不成立 2 日の結果と名前が空の従業員行, When: POST /shift を呼ぶと,"
+            + " Then: resultView に営業日数・成立・不成立・祝日と、名前が空でない従業員だけの行が入力順に入る")
+    void putsResultViewOnSuccess() throws Exception {
+      DailyShiftResult failed =
+          new DailyShiftResult(LocalDate.of(2026, 10, 1), 5, Optional.empty());
+      DailyShiftResult failed2 =
+          new DailyShiftResult(LocalDate.of(2026, 10, 2), 6, Optional.empty());
+      when(monthlyShiftService.create(any()))
+          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of(failed, failed2)));
+      when(holidayService.holidaysOf(YearMonth.of(2026, 10)))
+          .thenReturn(Map.of(LocalDate.of(2026, 10, 12), "スポーツの日"));
+
+      MvcResult result =
+          perform(
+              validRequest()
+                  .param("employees[1].name", "  ")
+                  .param("employees[1].employmentType", "FULL_TIME")
+                  .param("employees[2].name", "B")
+                  .param("employees[2].employmentType", "FULL_TIME"));
+
+      MonthlyResultView view = (MonthlyResultView) modelOf(result).get("resultView");
+      assertNotNull(view);
+      assertEquals(2, view.businessDayCount());
+      assertEquals(0, view.successCount());
+      assertEquals(2, view.failureCount());
+      assertEquals(List.of("A", "B"), view.employeeRows().stream().map(row -> row.name()).toList());
+      assertEquals(1, view.holidayCells().size());
+    }
+
+    @Test
+    @DisplayName(
         "[F-5] Given: 成立の日と不成立の日がある結果のとき, When: POST /shift を呼ぶと,"
             + " Then: 画面 3 に日付・成立可否・勤務できる人数が出る")
     void rendersMonthlyResultOnScreen3() throws Exception {
@@ -287,6 +321,16 @@ class ShiftControllerTest {
       assertEquals(List.of(v2, v3, v9), modelOf(result).get("inputErrors"));
       assertEquals(1, modelOf(result).get("initialStep"));
       assertNull(modelOf(result).get("monthlyResult"));
+    }
+
+    @Test
+    @DisplayName("[V-3] Given: 入力エラーになるとき, When: POST /shift を呼ぶと, Then: resultView はモデルに入らない")
+    void doesNotPutResultViewOnError() throws Exception {
+      throwInputErrors(new InputError("V-3", "エラー"));
+
+      MvcResult result = perform(validRequest());
+
+      assertNull(modelOf(result).get("resultView"));
     }
 
     @Test

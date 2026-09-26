@@ -1,6 +1,7 @@
 package com.example.shiftmatch.controller;
 
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -31,17 +32,28 @@ public class ShiftController {
 
   private final MonthlyFormConverter monthlyFormConverter;
 
+  private final HolidayService holidayService;
+
+  private final MonthlyResultViewFactory monthlyResultViewFactory;
+
   /**
    * コンストラクタです。
    *
    * @param monthlyShiftService 月間シフト作成サービス
    * @param monthlyFormConverter フォーム変換サービス
+   * @param holidayService 祝日サービス
+   * @param monthlyResultViewFactory 結果画面の表示モデルの生成
    */
   @Autowired
   public ShiftController(
-      MonthlyShiftService monthlyShiftService, MonthlyFormConverter monthlyFormConverter) {
+      MonthlyShiftService monthlyShiftService,
+      MonthlyFormConverter monthlyFormConverter,
+      HolidayService holidayService,
+      MonthlyResultViewFactory monthlyResultViewFactory) {
     this.monthlyShiftService = monthlyShiftService;
     this.monthlyFormConverter = monthlyFormConverter;
+    this.holidayService = holidayService;
+    this.monthlyResultViewFactory = monthlyResultViewFactory;
   }
 
   /**
@@ -141,6 +153,10 @@ public class ShiftController {
       // シフト作成サービスを呼び出す
       var result = monthlyShiftService.create(input);
       model.addAttribute("monthlyResult", result);
+      model.addAttribute(
+          "resultView",
+          monthlyResultViewFactory.create(
+              result, validEmployeeNames(shiftForm), holidayService.holidaysOf(result.month())));
       model.addAttribute("initialStep", 3);
     } catch (com.example.shiftmatch.domain.InvalidMonthlyInputException e) {
       // エラーの場合
@@ -151,5 +167,16 @@ public class ShiftController {
     // フォームは常にモデルに含める
     model.addAttribute("shiftForm", shiftForm);
     return "index";
+  }
+
+  private static List<String> validEmployeeNames(ShiftForm shiftForm) {
+    List<String> names = new ArrayList<>();
+    for (EmployeeForm employee : shiftForm.getEmployees()) {
+      String name = employee.getName();
+      if (name != null && !name.isBlank()) {
+        names.add(name);
+      }
+    }
+    return names;
   }
 }
