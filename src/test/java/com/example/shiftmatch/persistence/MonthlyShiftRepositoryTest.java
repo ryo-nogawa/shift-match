@@ -12,6 +12,7 @@ import java.time.YearMonth;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -120,6 +121,34 @@ class MonthlyShiftRepositoryTest {
       void returnsEmptyWhenNothingSaved() {
         assertTrue(repository.findEmployees().isEmpty());
       }
+    }
+  }
+
+  @Nested
+  @DisplayName("最後の対象月")
+  class LastTargetMonth {
+
+    @Test
+    @DisplayName("[F-7][8.1節] Given: 何も保存していないとき, When: 最後の対象月を取得すると, Then: 空が返る")
+    void returnsEmptyWhenNothingSaved() {
+      assertTrue(repository.findLastTargetMonth().isEmpty());
+    }
+
+    @Test
+    @DisplayName("[F-7][8.1節] Given: 1 回保存したとき, When: 最後の対象月を取得すると, Then: その月が返る")
+    void returnsMonthAfterOneSave() {
+      repository.saveInput(List.of(), YearMonth.of(2026, 10));
+
+      assertEquals(Optional.of(YearMonth.of(2026, 10)), repository.findLastTargetMonth());
+    }
+
+    @Test
+    @DisplayName("[F-7][8.1節] Given: 2 回保存したとき, When: 最後の対象月を取得すると, Then: 2 回目の月が返る")
+    void returnsLatestMonthAfterTwoSaves() {
+      repository.saveInput(List.of(), YearMonth.of(2026, 10));
+      repository.saveInput(List.of(), YearMonth.of(2026, 11));
+
+      assertEquals(Optional.of(YearMonth.of(2026, 11)), repository.findLastTargetMonth());
     }
   }
 }

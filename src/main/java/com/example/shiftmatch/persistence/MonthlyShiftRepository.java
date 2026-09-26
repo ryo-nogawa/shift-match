@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -121,4 +122,17 @@ public class MonthlyShiftRepository {
   private record DayRow(DayOfWeek day, DailyWish wish) {}
 
   private record EmployeeRow(int rowIndex, String name, EmploymentType employmentType) {}
+
+  /**
+   * 保存済みの最後の対象月を返します。
+   *
+   * @return 最後の対象月（未保存なら空）
+   */
+  public Optional<YearMonth> findLastTargetMonth() {
+    return jdbcClient
+        .sql("SELECT last_target_month FROM saved_input_meta WHERE id = 1")
+        .query(String.class)
+        .optional()
+        .map(value -> YearMonth.parse(value));
+  }
 }
