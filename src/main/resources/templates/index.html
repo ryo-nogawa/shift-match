@@ -187,7 +187,7 @@
         <b>未出勤者</b>
         <div class="unassigned-item" th:each="employee : ${assignmentResult.unassignedEmployees()}">
           <span class="chip" th:text="${employee.name()}"></span>
-          <span class="reason" th:text="${employee.unassignedReason().label()}"></span>
+          <span class="reason" th:text="${assignmentResult.unassignedReasonLabel(employee)}"></span>
           <span class="slot-tag" th:each="slot : ${employee.workableSlots()}" th:text="|${#temporals.format(slot.startTime(), 'HH:mm')}〜${#temporals.format(slot.endTime(), 'HH:mm')}|"></span>
         </div>
       </div>

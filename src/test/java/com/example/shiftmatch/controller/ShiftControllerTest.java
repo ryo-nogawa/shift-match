@@ -1850,11 +1850,28 @@ class ShiftControllerTest {
       assertTrue(items.get(0).contains(">休み<"));
       assertTrue(slotTags(items.get(0)).isEmpty());
       assertTrue(items.get(1).contains(">I<"));
-      assertTrue(items.get(1).contains(">入れる枠はあったが、より小さいずれの案が選ばれた<"));
+      assertTrue(items.get(1).contains(">入れる枠はあったが、同じずれの案があり、入力順で優先度が高い A が選ばれた<"));
       assertEquals(ALL_SLOT_TIMES, slotTags(items.get(1)));
       assertTrue(items.get(2).contains(">J<"));
       assertTrue(items.get(2).contains(">どの枠にも入れない<"));
       assertTrue(slotTags(items.get(2)).isEmpty());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 入れる枠はあるが、どの割り当て済みの人と入れ替えてもずれが変わる未出勤者のとき,"
+            + " When: 未出勤者を確認すると, Then: より小さいずれの案が選ばれたと表示される")
+    void showsLowerGapReasonWhenNoSwapKeepsTotalGap() throws Exception {
+      List<Employee> unassigned =
+          List.of(Employee.working("S", LocalTime.of(7, 30), LocalTime.of(18, 0)));
+
+      String html =
+          postWith(new AssignmentResult(createStandardResult().assignments(), 8, unassigned));
+      List<String> items = unassignedItems(html);
+
+      assertEquals(1, items.size());
+      assertTrue(items.get(0).contains(">入れる枠はあったが、より小さいずれの案が選ばれた<"));
+      assertFalse(items.get(0).contains("優先度が高い"));
     }
 
     @Test
