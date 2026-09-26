@@ -1,162 +1,154 @@
 /**
- * ステップナビゲーション、対象月の切り替え、ページ非スクロール機能を提供します。
- * 画面間の移動、月の前後移動、営業日情報の取得と通知を実装しています。
+ * 3 画面のステップ操作と、対象月の切り替え（F-9、8 章冒頭・8.1 節）。
+ *
+ * 対象月の営業日・祝日は GET /calendar から取得し、画面 2 へ calendar-loaded イベントで渡す。
  */
+(function () {
+  "use strict";
 
-document.addEventListener("DOMContentLoaded", function () {
-  const app = document.querySelector(".app");
-  const initialStep = app.getAttribute("data-initial-step") || "1";
-  let currentStep = parseInt(initialStep);
+  const UNAVAILABLE_MESSAGE = "対象月を判定できません。祝日データにない月です。";
 
-  const prevBtn = document.getElementById("prev-btn");
-  const nextBtn = document.getElementById("next-btn");
-  const stepBtns = document.querySelectorAll(".step-btn");
-  const form = document.querySelector("form");
-
-  // 画面の表示・非表示を切り替える
-  function showScreen(step) {
-    const screens = document.querySelectorAll("section[data-screen]");
-    screens.forEach((screen) => {
-      const screenNum = parseInt(screen.getAttribute("data-screen"));
-      if (screenNum === step) {
-        screen.removeAttribute("hidden");
-      } else {
-        screen.setAttribute("hidden", "");
-      }
-    });
-
-    // ボタンの表示制御
-    if (step === 1) {
-      prevBtn.style.display = "none";
-      nextBtn.style.display = "block";
-      nextBtn.textContent = "次へ";
-    } else if (step === 2) {
-      prevBtn.style.display = "block";
-      nextBtn.style.display = "block";
-      nextBtn.textContent = "1 か月分のシフトを作成";
-      nextBtn.type = "submit";
-    } else {
-      prevBtn.style.display = "block";
-      nextBtn.style.display = "none";
-    }
-
-    // ステップボタンの選択状態を更新
-    stepBtns.forEach((btn) => {
-      const btnStep = parseInt(btn.getAttribute("data-step"));
-      if (btnStep === step) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
-
-    currentStep = step;
+  /** YYYY-MM に月数を足した YYYY-MM を返す。 */
+  function shiftMonth(yearMonth, delta) {
+    const parts = yearMonth.split("-");
+    const total = Number(parts[0]) * 12 + (Number(parts[1]) - 1) + delta;
+    const year = Math.floor(total / 12);
+    const month = (total % 12) + 1;
+    return String(year).padStart(4, "0") + "-" + String(month).padStart(2, "0");
   }
 
-  // ナビゲーションボタンのイベントリスナー
-  prevBtn.addEventListener("click", () => {
-    if (currentStep > 1) {
-      showScreen(currentStep - 1);
-    }
-  });
-
-  nextBtn.addEventListener("click", () => {
-    if (nextBtn.type === "submit") {
-      form.submit();
-    } else if (currentStep < 3) {
-      showScreen(currentStep + 1);
-    }
-  });
-
-  // ステップボタンのイベントリスナー
-  stepBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const step = parseInt(btn.getAttribute("data-step"));
-      showScreen(step);
-    });
-  });
-
-  // 対象月の切り替え機能
-  const prevMonthBtn = document.getElementById("prev-month-btn");
-  const nextMonthBtn = document.getElementById("next-month-btn");
-  const monthLabel = document.getElementById("month-label");
-  const targetMonthInput = document.querySelector("input[name='targetMonth']");
-  const monthSummary = document.getElementById("month-summary");
-
-  function parseYearMonth(yearMonthStr) {
-    const [year, month] = yearMonthStr.split("-");
-    return { year: parseInt(year), month: parseInt(month) };
+  /** YYYY-MM を「2026 年 10 月」の形式にする。 */
+  function monthLabel(yearMonth) {
+    const parts = yearMonth.split("-");
+    return Number(parts[0]) + " 年 " + Number(parts[1]) + " 月";
   }
 
-  function formatYearMonth(year, month) {
-    return `${year}-${String(month).padStart(2, "0")}`;
+  /** 画面ごとの「戻る」「次へ」の状態（8 章冒頭）。 */
+  function navState(step) {
+    return {
+      prevDisabled: step === 1,
+      nextHidden: step === 3,
+      nextType: step === 2 ? "submit" : "button",
+      nextLabel: step === 2 ? "1 か月分のシフトを作成" : "次へ",
+    };
   }
 
-  function getJapaneseMonthLabel(year, month) {
-    return `${year}年${month}月`;
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = { shiftMonth, monthLabel, navState };
   }
 
-  function loadCalendarInfo() {
-    const monthStr = targetMonthInput.value;
-    if (!monthStr) return;
+  if (typeof document === "undefined") {
+    return;
+  }
 
-    fetch(`/calendar?month=${monthStr}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Calendar data unavailable");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        const businessDayCount = data.businessDayCount;
-        const holidayCount = data.holidayCount;
-        monthSummary.textContent = `営業日 ${businessDayCount} 日・祝日 ${holidayCount} 日`;
+  document.addEventListener("DOMContentLoaded", function () {
+    const app = document.querySelector(".app");
+    const form = document.querySelector("form");
+    const prevButton = document.getElementById("prev-btn");
+    const nextButton = document.getElementById("next-btn");
+    const stepButtons = Array.from(document.querySelectorAll(".step-btn"));
+    const screens = Array.from(document.querySelectorAll("[data-screen]"));
+    const monthInput = form.querySelector("input[name='targetMonth']");
+    const monthLabelElement = document.getElementById("month-label");
+    const monthSummary = document.getElementById("month-summary");
+    let currentStep = 1;
 
-        // customEvent を発火して画面 2 に通知
-        const event = new CustomEvent("calendar-loaded", {
-          detail: data,
-        });
-        document.dispatchEvent(event);
-      })
-      .catch((error) => {
-        monthSummary.textContent = "対象月を判定できません。祝日データにない月です。";
-        monthSummary.style.color = "red";
+    function showStep(step) {
+      currentStep = step;
+      screens.forEach(function (screen) {
+        screen.hidden = Number(screen.getAttribute("data-screen")) !== step;
       });
-  }
-
-  prevMonthBtn.addEventListener("click", () => {
-    const current = parseYearMonth(targetMonthInput.value);
-    let { year, month } = current;
-    month--;
-    if (month < 1) {
-      month = 12;
-      year--;
+      stepButtons.forEach(function (button) {
+        const active = Number(button.getAttribute("data-step")) === step;
+        button.classList.toggle("active", active);
+        if (active) {
+          button.setAttribute("aria-current", "step");
+        } else {
+          button.removeAttribute("aria-current");
+        }
+      });
+      const state = navState(step);
+      prevButton.disabled = state.prevDisabled;
+      nextButton.hidden = state.nextHidden;
+      // 画面 1→2→1 と戻ったときに submit のまま残らないよう、画面ごとに毎回設定する
+      nextButton.type = state.nextType;
+      nextButton.textContent = state.nextLabel;
     }
-    targetMonthInput.value = formatYearMonth(year, month);
-    monthLabel.textContent = getJapaneseMonthLabel(year, month);
-    loadCalendarInfo();
-  });
 
-  nextMonthBtn.addEventListener("click", () => {
-    const current = parseYearMonth(targetMonthInput.value);
-    let { year, month } = current;
-    month++;
-    if (month > 12) {
-      month = 1;
-      year++;
+    prevButton.addEventListener("click", function () {
+      if (currentStep > 1) {
+        showStep(currentStep - 1);
+      }
+    });
+
+    nextButton.addEventListener("click", function (event) {
+      // 画面 1 の処理中に type を submit へ変えると、クリックの既定動作で送信されてしまうため、
+      // 既定動作は常に止めて、送信は画面 2 のときだけ明示的に行う
+      event.preventDefault();
+      if (currentStep === 2) {
+        // form.submit() は submit イベントを発火せず、個別変更の hidden 入力の組み直しが走らないため使わない
+        form.requestSubmit();
+      } else if (currentStep === 1) {
+        showStep(2);
+      }
+    });
+
+    stepButtons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        showStep(Number(button.getAttribute("data-step")));
+      });
+    });
+
+    function loadCalendar() {
+      const month = monthInput.value;
+      monthLabelElement.textContent = /^\d{4}-\d{2}$/.test(month) ? monthLabel(month) : month;
+      monthSummary.textContent = "読み込み中…";
+      monthSummary.classList.remove("error");
+      fetch("/calendar?month=" + encodeURIComponent(month))
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error("calendar " + response.status);
+          }
+          return response.json();
+        })
+        .then(function (data) {
+          // 月を素早く切り替えたとき、古い月の応答で表示を上書きしないようにする
+          if (monthInput.value !== month) {
+            return;
+          }
+          monthSummary.textContent =
+            "営業日 " + data.businessDayCount + " 日・祝日 " + data.holidayCount + " 日";
+          document.dispatchEvent(new CustomEvent("calendar-loaded", { detail: data }));
+        })
+        .catch(function () {
+          if (monthInput.value !== month) {
+            return;
+          }
+          monthSummary.textContent = UNAVAILABLE_MESSAGE;
+          monthSummary.classList.add("error");
+          document.dispatchEvent(
+            new CustomEvent("calendar-unavailable", { detail: { month: month } })
+          );
+        });
     }
-    targetMonthInput.value = formatYearMonth(year, month);
-    monthLabel.textContent = getJapaneseMonthLabel(year, month);
-    loadCalendarInfo();
+
+    function changeMonth(delta) {
+      if (!/^\d{4}-\d{2}$/.test(monthInput.value)) {
+        return;
+      }
+      monthInput.value = shiftMonth(monthInput.value, delta);
+      loadCalendar();
+    }
+
+    document.getElementById("prev-month-btn").addEventListener("click", function () {
+      changeMonth(-1);
+    });
+    document.getElementById("next-month-btn").addEventListener("click", function () {
+      changeMonth(1);
+    });
+
+    const initialStep = Number(app.getAttribute("data-initial-step"));
+    showStep(initialStep >= 1 && initialStep <= 3 ? initialStep : 1);
+    loadCalendar();
   });
-
-  // 初期化
-  const initialMonth = targetMonthInput.value;
-  if (initialMonth) {
-    const { year, month } = parseYearMonth(initialMonth);
-    monthLabel.textContent = getJapaneseMonthLabel(year, month);
-    loadCalendarInfo();
-  }
-
-  showScreen(currentStep);
-});
+})();
