@@ -234,6 +234,23 @@ describe("step-nav.js", () => {
   });
 });
 
+describe("step-nav.js の保存済みシフトの再取得判定", () => {
+  test("[F-7][8.3節] 今回作成した結果で対象月が同じなら再取得しない", () => {
+    assert.equal(stepNav.needsSavedRefetch("fresh", "2026-10", "2026-10"), false);
+  });
+
+  test("[F-7][8.3節] 今回作成した結果でも対象月が違えば再取得する", () => {
+    assert.equal(stepNav.needsSavedRefetch("fresh", "2026-10", "2026-11"), true);
+  });
+
+  test("[F-7][8.3節] 保存済み表示・未作成表示・取得失敗・不明なときは再取得する", () => {
+    assert.equal(stepNav.needsSavedRefetch("saved", "2026-10", "2026-10"), true);
+    assert.equal(stepNav.needsSavedRefetch("none", null, "2026-10"), true);
+    assert.equal(stepNav.needsSavedRefetch("error", null, "2026-10"), true);
+    assert.equal(stepNav.needsSavedRefetch(null, null, "2026-10"), true);
+  });
+});
+
 describe("result-tabs.js", () => {
   test("[8.3節] 日別詳細を開く対象は結果カレンダー配下の日付ボタンに限る", () => {
     // Given: 画面 2 の入力カレンダーと同じ calendar-day クラスを使う結果カレンダー

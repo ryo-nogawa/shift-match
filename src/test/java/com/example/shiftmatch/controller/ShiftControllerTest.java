@@ -7,6 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -16,26 +20,37 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
+import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.HolidayDataUnavailableError;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
+import com.example.shiftmatch.domain.ShiftAdjustment;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
+import com.example.shiftmatch.domain.ShiftStorageException;
+import com.example.shiftmatch.persistence.SavedMonthlyShift;
 import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
+import com.example.shiftmatch.service.SavedInput;
+import com.example.shiftmatch.service.ShiftStorageService;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Year;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,8 +65,11 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 /** 変換は実物の {@link MonthlyFormConverter} を使い、算出（{@link MonthlyShiftService}）だけをモックにします。 */
 @WebMvcTest(ShiftController.class)
-@Import({MonthlyFormConverter.class, MonthlyResultViewFactory.class})
+@Import({MonthlyFormConverter.class, MonthlyResultViewFactory.class, SavedInputFormConverter.class})
 class ShiftControllerTest {
+
+  /** Thymeleaf のフラグメント指定（区切りがメソッド参照の検査に誤検出されないよう分割）。 */
+  private static final String RESULT_FRAGMENT = "fragments/result :" + ": resultPanel";
 
   /** 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（ソース検索で誤検出しないよう分割）。 */
   private static final String LEGACY_TOKEN = "wi" + "sh";
@@ -61,6 +79,14 @@ class ShiftControllerTest {
   @MockitoBean private MonthlyShiftService monthlyShiftService;
 
   @MockitoBean private HolidayService holidayService;
+
+  @MockitoBean private ShiftStorageService shiftStorageService;
+
+  @BeforeEach
+  void stubEmptySavedInput() {
+    when(shiftStorageService.loadInput())
+        .thenReturn(new SavedInput(List.of(), List.of(), Optional.empty()));
+  }
 
   private static final List<ShiftSlot> SLOTS_IN_ORDER =
       List.of(
@@ -471,12 +497,13 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
-        "[F-4][8.3節] Given: 結果がない初期表示のとき, When: GET / の HTML を見ると,"
-            + " Then: 「結果はまだありません」が出て、タブや集計は出ない")
-    void rendersEmptyMessageWithoutResult() throws Exception {
+        "[F-4][8.3節] Given: 保存済みのシフトがない初期表示のとき, When: GET / の HTML を見ると,"
+            + " Then: 「この月のシフトはまだ作成されていません」が出て、タブや集計は出ない")
+    void rendersNotCreatedMessageWithoutResult() throws Exception {
       String html = bodyOf(perform(get("/")));
 
-      assertTrue(html.contains("結果はまだありません"));
+      assertTrue(html.contains("この月のシフトはまだ作成されていません"));
+      assertFalse(html.contains("結果はまだありません"));
       assertFalse(html.contains("id=\"result-summary\""));
       assertFalse(html.contains("data-tab="));
     }
@@ -580,6 +607,313 @@ class ShiftControllerTest {
 
       assertFalse(html.contains("<img"));
       assertTrue(html.contains("&lt;img src=x onerror=alert(1)&gt;"));
+    }
+  }
+
+  @Nested
+  class 保存 {
+
+    private static final String SAVE_ERROR_MESSAGE = "保存に失敗しました。もう一度シフトを作成して保存し直してください";
+
+    @Test
+    @DisplayName(
+        "[F-7][8.4節] Given: 算出が成功するとき, When: POST /shift を呼ぶと, Then: 入力と結果が 1 回保存され resultSource は"
+            + " fresh になる")
+    void savesInputAndResultOnce() throws Exception {
+      MonthlyShiftResult monthly = new MonthlyShiftResult(YearMonth.of(2026, 10), List.of());
+      when(monthlyShiftService.create(any())).thenReturn(monthly);
+
+      MvcResult result = perform(validRequest());
+
+      verify(shiftStorageService, times(1)).save(any(MonthlyShiftInput.class), same(monthly));
+      assertEquals("fresh", modelOf(result).get("resultSource"));
+      assertNull(modelOf(result).get("saveError"));
+    }
+
+    @Test
+    @DisplayName("[F-7][8.4節] Given: 入力エラーになるとき, When: POST /shift を呼ぶと, Then: 保存は呼ばれない")
+    void doesNotSaveOnInputError() throws Exception {
+      throwInputErrors(new InputError("V-3", "エラー"));
+
+      perform(validRequest());
+
+      verify(shiftStorageService, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.4節] Given: 保存に失敗するとき, When: POST /shift を呼ぶと,"
+            + " Then: 結果は通常どおり表示され、リトライを促す文言が alert で出る")
+    void showsResultAndRetryMessageWhenSaveFails() throws Exception {
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(
+              YearMonth.of(2026, 10), List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
+      when(monthlyShiftService.create(any())).thenReturn(monthly);
+      doThrow(new ShiftStorageException("失敗", new RuntimeException()))
+          .when(shiftStorageService)
+          .save(any(), any());
+
+      MvcResult result = perform(validRequest());
+
+      assertSame(monthly, modelOf(result).get("monthlyResult"));
+      assertNotNull(modelOf(result).get("resultView"));
+      assertEquals(3, modelOf(result).get("initialStep"));
+      assertEquals(SAVE_ERROR_MESSAGE, modelOf(result).get("saveError"));
+      String html = bodyOf(result);
+      assertTrue(html.contains(SAVE_ERROR_MESSAGE));
+      assertTrue(html.contains("id=\"result-summary\""));
+      int screen3 = html.indexOf("id=\"screen-3\"");
+      int alert = html.indexOf("role=\"alert\"", screen3);
+      assertTrue(alert > screen3);
+    }
+  }
+
+  @Nested
+  class 復元 {
+
+    private EmployeeProfile savedProfile(String name) {
+      Map<DayOfWeek, DailyWish> shifts = new EnumMap<>(DayOfWeek.class);
+      shifts.put(DayOfWeek.MONDAY, new DailyWish(true, null, null));
+      shifts.put(DayOfWeek.TUESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      shifts.put(
+          DayOfWeek.WEDNESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      shifts.put(DayOfWeek.THURSDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      shifts.put(DayOfWeek.FRIDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
+      return new EmployeeProfile(name, EmploymentType.PART_TIME, shifts);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.1節] Given: 従業員・個別変更・最後の対象月が保存済み, When: GET / を呼ぶと,"
+            + " Then: 先頭に復元され残りは空で計 12 行、個別変更と最後の対象月が入る")
+    void restoresSavedInputOnGet() throws Exception {
+      when(shiftStorageService.loadInput())
+          .thenReturn(
+              new SavedInput(
+                  List.of(savedProfile("佐藤"), savedProfile("鈴木")),
+                  List.of(
+                      new ShiftAdjustment(
+                          LocalDate.of(2026, 11, 2), "佐藤", new DailyWish(true, null, null))),
+                  Optional.of(YearMonth.of(2026, 11))));
+
+      MvcResult result = perform(get("/"));
+
+      ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
+      assertEquals("2026-11", form.getTargetMonth());
+      assertEquals(12, form.getEmployees().size());
+      assertEquals("佐藤", form.getEmployees().get(0).getName());
+      assertEquals("鈴木", form.getEmployees().get(1).getName());
+      assertEquals("PART_TIME", form.getEmployees().get(1).getEmploymentType());
+      assertTrue(form.getEmployees().get(0).getDays().get(0).isOff());
+      assertEquals("", form.getEmployees().get(2).getName());
+      assertEquals(1, form.getAdjustments().size());
+      assertEquals("2026-11-02", form.getAdjustments().get(0).getDate());
+      assertTrue(bodyOf(result).contains("value=\"佐藤\""));
+    }
+
+    @Test
+    @DisplayName("[F-7][8.1節] Given: 何も保存していない, When: GET / を呼ぶと, Then: 空の 12 行と今月になる")
+    void returnsEmptyRowsAndCurrentMonthWhenNothingSaved() throws Exception {
+      MvcResult result = perform(get("/"));
+
+      ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
+      assertEquals(
+          YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM")), form.getTargetMonth());
+      assertEquals(12, form.getEmployees().size());
+      assertEquals("", form.getEmployees().get(0).getName());
+      assertTrue(form.getAdjustments().isEmpty());
+    }
+  }
+
+  @Nested
+  class 結果の表示元 {
+
+    private static final YearMonth MONTH = YearMonth.of(2026, 10);
+
+    private void stubSavedShift() {
+      when(shiftStorageService.loadInput())
+          .thenReturn(new SavedInput(List.of(), List.of(), Optional.of(MONTH)));
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(Optional.of(new SavedMonthlyShift(monthly, List.of("A"))));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 対象月の保存済みシフトがある, When: GET / を呼ぶと,"
+            + " Then: 結果が resultSource=saved で入り、initialStep は 1 のまま「保存済みのシフトを表示しています」が出る")
+    void showsSavedShift() throws Exception {
+      stubSavedShift();
+
+      MvcResult result = perform(get("/"));
+
+      assertEquals("saved", modelOf(result).get("resultSource"));
+      assertNotNull(modelOf(result).get("monthlyResult"));
+      assertNotNull(modelOf(result).get("resultView"));
+      assertEquals(1, modelOf(result).get("initialStep"));
+      String html = bodyOf(result);
+      assertTrue(html.contains("保存済みのシフトを表示しています"));
+      assertTrue(html.contains("id=\"result-summary\""));
+      assertFalse(html.contains("この月のシフトはまだ作成されていません"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 保存済みシフトがあるが祝日データが取得できない, When: GET / を呼ぶと," + " Then: 例外にならず祝日なしで表示される")
+    void showsSavedShiftWhenHolidayDataUnavailable() throws Exception {
+      stubSavedShift();
+      when(holidayService.holidaysOf(MONTH)).thenThrow(new HolidayDataUnavailableError(MONTH));
+
+      MvcResult result = perform(get("/"));
+
+      assertEquals("saved", modelOf(result).get("resultSource"));
+      assertTrue(bodyOf(result).contains("id=\"result-summary\""));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 対象月の保存済みシフトがない, When: GET / を呼ぶと,"
+            + " Then: resultSource=none で「この月のシフトはまだ作成されていません」が出て、結果は出ない")
+    void showsNotCreatedMessage() throws Exception {
+      MvcResult result = perform(get("/"));
+
+      assertEquals("none", modelOf(result).get("resultSource"));
+      assertNull(modelOf(result).get("resultView"));
+      String html = bodyOf(result);
+      assertTrue(html.contains("この月のシフトはまだ作成されていません"));
+      assertFalse(html.contains("保存済みのシフトを表示しています"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 今回作成した結果, When: POST /shift の HTML を見ると,"
+            + " Then: 保存済み・未作成のどちらの文言も付かず結果が出る")
+    void showsFreshResultWithoutSourceMessage() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A"))));
+
+      String html = bodyOf(perform(validRequest()));
+
+      assertTrue(html.contains("id=\"result-summary\""));
+      assertFalse(html.contains("保存済みのシフトを表示しています"));
+      assertFalse(html.contains("この月のシフトはまだ作成されていません"));
+    }
+  }
+
+  @Nested
+  class 保存済みシフトの取得 {
+
+    private static final YearMonth MONTH = YearMonth.of(2026, 10);
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 指定した月の保存済みシフトがある, When: GET /shift/saved を呼ぶと,"
+            + " Then: 結果のフラグメントだけが「保存済みのシフトを表示しています」つきで返る")
+    void returnsSavedFragment() throws Exception {
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(Optional.of(new SavedMonthlyShift(monthly, List.of("A"))));
+
+      MvcResult result =
+          mockMvc
+              .perform(get("/shift/saved").param("month", "2026-10"))
+              .andExpect(status().isOk())
+              .andExpect(view().name(RESULT_FRAGMENT))
+              .andReturn();
+
+      String html = bodyOf(result);
+      assertTrue(html.contains("保存済みのシフトを表示しています"));
+      assertTrue(html.contains("id=\"result-summary\""));
+      assertFalse(html.contains("id=\"screen-3\""));
+      assertFalse(html.contains("<form"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 指定した月の保存済みシフトがない, When: GET /shift/saved を呼ぶと,"
+            + " Then: 「この月のシフトはまだ作成されていません」だけが返る")
+    void returnsNotCreatedFragment() throws Exception {
+      String html =
+          bodyOf(
+              mockMvc
+                  .perform(get("/shift/saved").param("month", "2026-10"))
+                  .andExpect(status().isOk())
+                  .andReturn());
+
+      assertTrue(html.contains("この月のシフトはまだ作成されていません"));
+      assertFalse(html.contains("id=\"result-summary\""));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 形式が不正な month, When: GET /shift/saved を呼ぶと, Then: 400 で保存は参照しない")
+    void returnsBadRequestWhenMonthIsInvalid() throws Exception {
+      mockMvc
+          .perform(get("/shift/saved").param("month", "2026-13"))
+          .andExpect(status().isBadRequest());
+
+      verify(shiftStorageService, never()).load(any());
+    }
+
+    @Test
+    @DisplayName("[F-7][8.3節] Given: month がない, When: GET /shift/saved を呼ぶと, Then: 400 になる")
+    void returnsBadRequestWhenMonthIsMissing() throws Exception {
+      mockMvc.perform(get("/shift/saved")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 祝日データの収録範囲外の年, When: GET /shift/saved を呼ぶと, Then: 400 で保存は参照しない")
+    void returnsBadRequestWhenYearIsOutOfRange() throws Exception {
+      mockMvc
+          .perform(get("/shift/saved").param("month", "1954-12"))
+          .andExpect(status().isBadRequest());
+      mockMvc
+          .perform(get("/shift/saved").param("month", (Year.now().getValue() + 2) + "-01"))
+          .andExpect(status().isBadRequest());
+
+      verify(shiftStorageService, never()).load(any());
+    }
+  }
+
+  @Nested
+  class 結果パネルの属性 {
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 今回作成した結果, When: POST /shift の HTML を見ると,"
+            + " Then: 結果パネルに data-result-source=fresh と data-result-month が付く")
+    void freshPanelHasSourceAndMonth() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10), List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A"))));
+
+      String html = bodyOf(perform(validRequest()));
+
+      assertTrue(html.contains("id=\"result-panel\""));
+      assertTrue(html.contains("data-result-source=\"fresh\""));
+      assertTrue(html.contains("data-result-month=\"2026-10\""));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 保存済みシフトがない, When: GET /shift/saved の HTML を見ると,"
+            + " Then: 結果パネルに data-result-source=none が付き、data-result-month はない")
+    void nonePanelHasSourceOnly() throws Exception {
+      String html =
+          bodyOf(
+              mockMvc
+                  .perform(get("/shift/saved").param("month", "2026-10"))
+                  .andExpect(status().isOk())
+                  .andReturn());
+
+      assertTrue(html.contains("id=\"result-panel\""));
+      assertTrue(html.contains("data-result-source=\"none\""));
+      assertFalse(html.contains("data-result-month"));
     }
   }
 }

@@ -72,7 +72,11 @@
 
   window.openDetail = openDetail;
 
-  document.addEventListener("DOMContentLoaded", function () {
+  /**
+   * 結果画面のタブ・日別詳細の初期化。結果の中身が差し替わるたびに呼ぶ。
+   * 差し替えで古い要素ごとイベントも消えるため、二重には登録されない。
+   */
+  function initResult() {
     const buttons = Array.from(document.querySelectorAll("[data-tab]"));
     const panels = Array.from(document.querySelectorAll(".tab-panel"));
     buttons.forEach(function (button) {
@@ -93,12 +97,21 @@
       });
       showDay(detailDate.value, daySections);
     }
-    // カレンダーの日付ボタンを押すと、その日の日別詳細を開く（8.3 節）
+  }
+
+  window.initResult = initResult;
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initResult();
+    // カレンダーの日付ボタンを押すと、その日の日別詳細を開く（8.3 節）。
+    // 結果の差し替えに対応するため、文書全体での委譲を 1 回だけ登録する
     document.addEventListener("click", function (event) {
       const dayButton = event.target.closest(RESULT_CALENDAR_DAY_SELECTOR);
       if (dayButton) {
         openDetail(dayButton.getAttribute("data-date"));
       }
     });
+    // 保存済みシフトの取得で結果の中身が差し替わったとき
+    document.addEventListener("result-replaced", initResult);
   });
 })();
