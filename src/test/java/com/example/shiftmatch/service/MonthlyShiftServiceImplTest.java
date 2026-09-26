@@ -15,7 +15,6 @@ import static org.mockito.Mockito.when;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.DailyWish;
-import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InputError;
@@ -167,8 +166,6 @@ class MonthlyShiftServiceImplTest {
       MonthlyShiftInput input = new MonthlyShiftInput(month, employees, List.of(adjustment));
 
       ShiftAssignmentService assignmentService = mock(ShiftAssignmentService.class);
-      // 1 日目は成立する結果を返す
-      // (2日目は8名中7名しか勤務不可のため、ハード制約を満たさず不成立→Optional.empty())
       when(assignmentService.assign(anyList()))
           .thenReturn(createDummyAssignmentResult())
           .thenReturn(Optional.empty());
@@ -192,7 +189,6 @@ class MonthlyShiftServiceImplTest {
       assertEquals(7, day2Result.availableCount());
       assertTrue(day2Result.assignment().isEmpty(), "day2 should not have an assignment");
 
-      // 両日分 assign が呼ばれたことを確認
       verify(assignmentService, times(2)).assign(anyList());
     }
   }
@@ -339,7 +335,6 @@ class MonthlyShiftServiceImplTest {
   private Optional<AssignmentResult> createDummyAssignmentResult() {
     List<ShiftAssignment> assignments = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
-      Employee employee = mock(Employee.class);
       ShiftAssignment assignment = mock(ShiftAssignment.class);
       assignments.add(assignment);
     }
