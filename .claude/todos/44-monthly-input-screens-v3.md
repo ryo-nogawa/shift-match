@@ -129,7 +129,7 @@
     - ファイルに、`calendar-loaded`・`employees-changed`・`has-change`・`変更`・`この日を基本に戻す`・`adjustments[` の記述がある（`grep` で確認）
     - `./mvnw test` が成功する
 
-- [ ] **T9. 全テストと静的解析を通し、画面を実際に動かして確認する**
+- [x] **T9. 全テストと静的解析を通し、画面を実際に動かして確認する**
   - 依頼事項：`./mvnw spotless:apply` で整形し、`./mvnw test` を実行して、全テスト・Spotless・Checkstyle が成功することを確認する。失敗があれば原因を直す（仕様と異なる期待値へのテスト書き換え、`@Disabled` での回避はしない）。使われなくなったクラス・テスト（1 日分の画面専用のもの）が残っていないことを確認する（`ShiftController` が `ShiftAssignmentService`・`LatestShiftRepository` を使っていないこと）。`pom.xml`・`persistence/` に変更がないこと、`node --check src/main/resources/static/js/*.js` がすべて成功することを確認する
   - 対象ファイル：本 Issue で変更した全ファイル
   - 完了条件：
@@ -143,3 +143,4 @@
 - T6 試行 1/1：成功 — step-nav.js と CSS 更新完成、月切り替え機能と calendar-loaded イベント実装
 - T7 試行 1/1：成功 — employee-list.js 完成、renumber と summarize 関数動作確認、employees-changed イベント実装
 - T8 試行 1/1：成功 — day-adjustments.js 完成、isAdjustmentSame と buildAdjustmentList 関数で個別変更判定、node --check ✓、./mvnw test 成功（全263テスト）
+- T9 試行 1/1：成功 — spotless:apply で整形、全テスト成功（Tests run: 263, Failures: 0, Errors: 0, Checkstyle: 0）、pom.xml・persistence・docs・AGENTS 未変更、node --check 全ファイル成功
