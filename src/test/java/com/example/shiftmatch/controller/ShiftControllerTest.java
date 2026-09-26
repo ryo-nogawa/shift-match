@@ -7,6 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -24,8 +28,10 @@ import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
+import com.example.shiftmatch.domain.ShiftStorageException;
 import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
+import com.example.shiftmatch.service.ShiftStorageService;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -61,6 +67,8 @@ class ShiftControllerTest {
   @MockitoBean private MonthlyShiftService monthlyShiftService;
 
   @MockitoBean private HolidayService holidayService;
+
+  @MockitoBean private ShiftStorageService shiftStorageService;
 
   private static final List<ShiftSlot> SLOTS_IN_ORDER =
       List.of(
@@ -580,6 +588,64 @@ class ShiftControllerTest {
 
       assertFalse(html.contains("<img"));
       assertTrue(html.contains("&lt;img src=x onerror=alert(1)&gt;"));
+    }
+  }
+
+  @Nested
+  class 保存 {
+
+    private static final String SAVE_ERROR_MESSAGE = "保存に失敗しました。もう一度シフトを作成して保存し直してください";
+
+    @Test
+    @DisplayName(
+        "[F-7][8.4節] Given: 算出が成功するとき, When: POST /shift を呼ぶと, Then: 入力と結果が 1 回保存され resultSource は"
+            + " fresh になる")
+    void savesInputAndResultOnce() throws Exception {
+      MonthlyShiftResult monthly = new MonthlyShiftResult(YearMonth.of(2026, 10), List.of());
+      when(monthlyShiftService.create(any())).thenReturn(monthly);
+
+      MvcResult result = perform(validRequest());
+
+      verify(shiftStorageService, times(1)).save(any(MonthlyShiftInput.class), same(monthly));
+      assertEquals("fresh", modelOf(result).get("resultSource"));
+      assertNull(modelOf(result).get("saveError"));
+    }
+
+    @Test
+    @DisplayName("[F-7][8.4節] Given: 入力エラーになるとき, When: POST /shift を呼ぶと, Then: 保存は呼ばれない")
+    void doesNotSaveOnInputError() throws Exception {
+      throwInputErrors(new InputError("V-3", "エラー"));
+
+      perform(validRequest());
+
+      verify(shiftStorageService, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.4節] Given: 保存に失敗するとき, When: POST /shift を呼ぶと,"
+            + " Then: 結果は通常どおり表示され、リトライを促す文言が alert で出る")
+    void showsResultAndRetryMessageWhenSaveFails() throws Exception {
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(
+              YearMonth.of(2026, 10), List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
+      when(monthlyShiftService.create(any())).thenReturn(monthly);
+      doThrow(new ShiftStorageException("失敗", new RuntimeException()))
+          .when(shiftStorageService)
+          .save(any(), any());
+
+      MvcResult result = perform(validRequest());
+
+      assertSame(monthly, modelOf(result).get("monthlyResult"));
+      assertNotNull(modelOf(result).get("resultView"));
+      assertEquals(3, modelOf(result).get("initialStep"));
+      assertEquals(SAVE_ERROR_MESSAGE, modelOf(result).get("saveError"));
+      String html = bodyOf(result);
+      assertTrue(html.contains(SAVE_ERROR_MESSAGE));
+      assertTrue(html.contains("id=\"result-summary\""));
+      int screen3 = html.indexOf("id=\"screen-3\"");
+      int alert = html.indexOf("role=\"alert\"", screen3);
+      assertTrue(alert > screen3);
     }
   }
 }

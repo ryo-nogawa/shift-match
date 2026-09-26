@@ -134,6 +134,7 @@
 
           <!-- 画面 3: 結果 -->
           <section id="screen-3" data-screen="3" hidden>
+            <p th:if="${saveError}" class="alert" role="alert" th:text="${saveError}"></p>
             <div th:if="${resultView}" class="result">
               <p id="result-summary" class="result-summary" th:text="'営業日数 ' + ${resultView.businessDayCount()} + '・成立 ' + ${resultView.successCount()} + '・不成立 ' + ${resultView.failureCount()}"></p>
               <div class="tab-buttons" role="tablist">

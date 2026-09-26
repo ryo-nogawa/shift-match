@@ -1,12 +1,18 @@
 package com.example.shiftmatch.controller;
 
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.MonthlyShiftInput;
+import com.example.shiftmatch.domain.MonthlyShiftResult;
+import com.example.shiftmatch.domain.ShiftStorageException;
 import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
+import com.example.shiftmatch.service.ShiftStorageService;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,6 +25,10 @@ import org.springframework.web.bind.annotation.PostMapping;
  */
 @Controller
 public class ShiftController {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ShiftController.class);
+
+  private static final String SAVE_ERROR_MESSAGE = "保存に失敗しました。もう一度シフトを作成して保存し直してください";
 
   private static final int DEFAULT_EMPLOYEE_COUNT = 12;
 
@@ -36,6 +46,8 @@ public class ShiftController {
 
   private final MonthlyResultViewFactory monthlyResultViewFactory;
 
+  private final ShiftStorageService shiftStorageService;
+
   /**
    * コンストラクタです。
    *
@@ -43,17 +55,20 @@ public class ShiftController {
    * @param monthlyFormConverter フォーム変換サービス
    * @param holidayService 祝日サービス
    * @param monthlyResultViewFactory 結果画面の表示モデルの生成
+   * @param shiftStorageService シフトの保存・復元サービス
    */
   @Autowired
   public ShiftController(
       MonthlyShiftService monthlyShiftService,
       MonthlyFormConverter monthlyFormConverter,
       HolidayService holidayService,
-      MonthlyResultViewFactory monthlyResultViewFactory) {
+      MonthlyResultViewFactory monthlyResultViewFactory,
+      ShiftStorageService shiftStorageService) {
     this.monthlyShiftService = monthlyShiftService;
     this.monthlyFormConverter = monthlyFormConverter;
     this.holidayService = holidayService;
     this.monthlyResultViewFactory = monthlyResultViewFactory;
+    this.shiftStorageService = shiftStorageService;
   }
 
   /**
@@ -147,7 +162,7 @@ public class ShiftController {
     }
 
     // フォームをドメインモデルに変換
-    com.example.shiftmatch.domain.MonthlyShiftInput input = monthlyFormConverter.toInput(shiftForm);
+    MonthlyShiftInput input = monthlyFormConverter.toInput(shiftForm);
 
     try {
       // シフト作成サービスを呼び出す
@@ -158,6 +173,8 @@ public class ShiftController {
           monthlyResultViewFactory.create(
               result, validEmployeeNames(shiftForm), holidayService.holidaysOf(result.month())));
       model.addAttribute("initialStep", 3);
+      model.addAttribute("resultSource", "fresh");
+      saveOrReportFailure(input, result, model);
     } catch (com.example.shiftmatch.domain.InvalidMonthlyInputException e) {
       // エラーの場合
       model.addAttribute("inputErrors", e.errors());
@@ -167,6 +184,16 @@ public class ShiftController {
     // フォームは常にモデルに含める
     model.addAttribute("shiftForm", shiftForm);
     return "index";
+  }
+
+  private void saveOrReportFailure(
+      MonthlyShiftInput input, MonthlyShiftResult result, Model model) {
+    try {
+      shiftStorageService.save(input, result);
+    } catch (ShiftStorageException e) {
+      LOGGER.error("シフトの保存に失敗しました", e);
+      model.addAttribute("saveError", SAVE_ERROR_MESSAGE);
+    }
   }
 
   private static List<String> validEmployeeNames(ShiftForm shiftForm) {
