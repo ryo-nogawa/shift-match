@@ -149,6 +149,10 @@ public class ShiftController {
     }
 
     var result = shiftAssignmentService.assign(validEmployees);
+
+    // 入力エラーがなく算出まで完了したときに保存
+    latestShiftRepository.save(validEmployees, result);
+
     if (result.isPresent()) {
       model.addAttribute("assignmentResult", result.get());
     } else {

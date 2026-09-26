@@ -1973,4 +1973,77 @@ class ShiftControllerTest {
       assertFalse(html.contains("name=\"employees[12].name\""));
     }
   }
+
+  @Nested
+  @DisplayName("シフト算出後に従業員入力と結果を保存する")
+  class SaveAfterShiftAssignment {
+
+    @Test
+    @DisplayName("成功時に save が呼ばれ引数が入力順と結果と一致する")
+    void callsSaveWithCorrectArgumentsOnSuccess() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      var request = post("/shift");
+      List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      ArgumentCaptor<java.util.List<Employee>> captor =
+          ArgumentCaptor.forClass(java.util.List.class);
+      verify(latestShiftRepository).save(captor.capture(), any());
+
+      List<Employee> capturedEmployees = captor.getValue();
+      assertEquals(8, capturedEmployees.size());
+      for (int i = 0; i < 8; i++) {
+        assertEquals(names.get(i), capturedEmployees.get(i).name());
+      }
+    }
+
+    @Test
+    @DisplayName("不成立時に Optional.empty() で呼ばれる")
+    void callsSaveWithEmptyResultWhenUnassignable() throws Exception {
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.empty());
+
+      var request = post("/shift");
+      List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      ArgumentCaptor<java.util.Optional<AssignmentResult>> captor =
+          ArgumentCaptor.forClass(java.util.Optional.class);
+      verify(latestShiftRepository).save(any(), captor.capture());
+
+      assertTrue(captor.getValue().isEmpty());
+    }
+
+    @Test
+    @DisplayName("入力エラー時に save が呼ばれない")
+    void doesNotCallSaveOnInputError() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].off", "false")
+                  .param("employees[0].start", "invalid")
+                  .param("employees[0].end", "18:30"))
+          .andExpect(status().isOk());
+
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+  }
 }
