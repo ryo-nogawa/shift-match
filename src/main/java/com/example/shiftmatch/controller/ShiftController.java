@@ -1,15 +1,20 @@
 package com.example.shiftmatch.controller;
 
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.HolidayDataUnavailableError;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftStorageException;
+import com.example.shiftmatch.persistence.SavedMonthlyShift;
 import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
 import com.example.shiftmatch.service.ShiftStorageService;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -107,8 +112,35 @@ public class ShiftController {
         savedInputFormConverter.toForm(shiftStorageService.loadInput(), YearMonth.now());
     model.addAttribute("shiftForm", shiftForm);
     model.addAttribute("initialStep", 1);
+    addSavedResult(shiftForm, model);
 
     return "index";
+  }
+
+  private void addSavedResult(ShiftForm shiftForm, Model model) {
+    Optional<SavedMonthlyShift> saved =
+        InputParsers.parseYearMonth(shiftForm.getTargetMonth())
+            .flatMap(month -> shiftStorageService.load(month));
+    if (saved.isEmpty()) {
+      model.addAttribute("resultSource", "none");
+      return;
+    }
+    MonthlyShiftResult result = saved.get().result();
+    model.addAttribute("monthlyResult", result);
+    model.addAttribute(
+        "resultView",
+        monthlyResultViewFactory.create(
+            result, saved.get().employeeNames(), holidaysOrEmpty(result.month())));
+    model.addAttribute("resultSource", "saved");
+  }
+
+  private Map<LocalDate, String> holidaysOrEmpty(YearMonth month) {
+    try {
+      return holidayService.holidaysOf(month);
+    } catch (HolidayDataUnavailableError e) {
+      LOGGER.warn("祝日データが取得できないため、祝日なしで表示します", e);
+      return Map.of();
+    }
   }
 
   /**
@@ -154,6 +186,7 @@ public class ShiftController {
       // エラーの場合
       model.addAttribute("inputErrors", e.errors());
       model.addAttribute("initialStep", 1);
+      model.addAttribute("resultSource", "none");
     }
 
     // フォームは常にモデルに含める

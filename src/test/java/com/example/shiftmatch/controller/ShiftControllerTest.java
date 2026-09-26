@@ -24,6 +24,7 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.HolidayDataUnavailableError;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
@@ -32,6 +33,7 @@ import com.example.shiftmatch.domain.ShiftAdjustment;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.domain.ShiftStorageException;
+import com.example.shiftmatch.persistence.SavedMonthlyShift;
 import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.MonthlyShiftService;
 import com.example.shiftmatch.service.SavedInput;
@@ -491,12 +493,13 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
-        "[F-4][8.3節] Given: 結果がない初期表示のとき, When: GET / の HTML を見ると,"
-            + " Then: 「結果はまだありません」が出て、タブや集計は出ない")
-    void rendersEmptyMessageWithoutResult() throws Exception {
+        "[F-4][8.3節] Given: 保存済みのシフトがない初期表示のとき, When: GET / の HTML を見ると,"
+            + " Then: 「この月のシフトはまだ作成されていません」が出て、タブや集計は出ない")
+    void rendersNotCreatedMessageWithoutResult() throws Exception {
       String html = bodyOf(perform(get("/")));
 
-      assertTrue(html.contains("結果はまだありません"));
+      assertTrue(html.contains("この月のシフトはまだ作成されていません"));
+      assertFalse(html.contains("結果はまだありません"));
       assertFalse(html.contains("id=\"result-summary\""));
       assertFalse(html.contains("data-tab="));
     }
@@ -715,6 +718,83 @@ class ShiftControllerTest {
       assertEquals(12, form.getEmployees().size());
       assertEquals("", form.getEmployees().get(0).getName());
       assertTrue(form.getAdjustments().isEmpty());
+    }
+  }
+
+  @Nested
+  class 結果の表示元 {
+
+    private static final YearMonth MONTH = YearMonth.of(2026, 10);
+
+    private void stubSavedShift() {
+      when(shiftStorageService.loadInput())
+          .thenReturn(new SavedInput(List.of(), List.of(), Optional.of(MONTH)));
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(Optional.of(new SavedMonthlyShift(monthly, List.of("A"))));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 対象月の保存済みシフトがある, When: GET / を呼ぶと,"
+            + " Then: 結果が resultSource=saved で入り、initialStep は 1 のまま「保存済みのシフトを表示しています」が出る")
+    void showsSavedShift() throws Exception {
+      stubSavedShift();
+
+      MvcResult result = perform(get("/"));
+
+      assertEquals("saved", modelOf(result).get("resultSource"));
+      assertNotNull(modelOf(result).get("monthlyResult"));
+      assertNotNull(modelOf(result).get("resultView"));
+      assertEquals(1, modelOf(result).get("initialStep"));
+      String html = bodyOf(result);
+      assertTrue(html.contains("保存済みのシフトを表示しています"));
+      assertTrue(html.contains("id=\"result-summary\""));
+      assertFalse(html.contains("この月のシフトはまだ作成されていません"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 保存済みシフトがあるが祝日データが取得できない, When: GET / を呼ぶと," + " Then: 例外にならず祝日なしで表示される")
+    void showsSavedShiftWhenHolidayDataUnavailable() throws Exception {
+      stubSavedShift();
+      when(holidayService.holidaysOf(MONTH)).thenThrow(new HolidayDataUnavailableError(MONTH));
+
+      MvcResult result = perform(get("/"));
+
+      assertEquals("saved", modelOf(result).get("resultSource"));
+      assertTrue(bodyOf(result).contains("id=\"result-summary\""));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 対象月の保存済みシフトがない, When: GET / を呼ぶと,"
+            + " Then: resultSource=none で「この月のシフトはまだ作成されていません」が出て、結果は出ない")
+    void showsNotCreatedMessage() throws Exception {
+      MvcResult result = perform(get("/"));
+
+      assertEquals("none", modelOf(result).get("resultSource"));
+      assertNull(modelOf(result).get("resultView"));
+      String html = bodyOf(result);
+      assertTrue(html.contains("この月のシフトはまだ作成されていません"));
+      assertFalse(html.contains("保存済みのシフトを表示しています"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 今回作成した結果, When: POST /shift の HTML を見ると,"
+            + " Then: 保存済み・未作成のどちらの文言も付かず結果が出る")
+    void showsFreshResultWithoutSourceMessage() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A"))));
+
+      String html = bodyOf(perform(validRequest()));
+
+      assertTrue(html.contains("id=\"result-summary\""));
+      assertFalse(html.contains("保存済みのシフトを表示しています"));
+      assertFalse(html.contains("この月のシフトはまだ作成されていません"));
     }
   }
 }
