@@ -67,6 +67,7 @@
       >
         <thead>
           <tr>
+            <th></th>
             <th>氏名</th>
             <th>休み</th>
             <th>開始</th>
@@ -76,6 +77,10 @@
         </thead>
         <tbody id="employee-rows">
           <tr th:each="employee, stat : ${shiftForm.employees}">
+            <td class="move-cell">
+              <button type="button" class="move-up-btn" aria-label="上へ">▲</button>
+              <button type="button" class="move-down-btn" aria-label="下へ">▼</button>
+            </td>
             <td data-label="氏名">
               <input
                 type="text"
@@ -133,12 +138,6 @@
       <div class="card-head">
         <h2>割当結果</h2>
       </div>
-      <div class="score">
-        <span class="score-num"
-          ><span th:text="${assignmentResult.score()}">0</span><small> 分</small></span
-        >
-        <span class="score-label">ずれの合計（入力時間帯と割り当てた枠の差。0 が最良）</span>
-      </div>
       <div class="timeline">
         <div class="tl-axis">
           <span th:each="h : ${#numbers.sequence(8, 18)}" th:style="|left:${#numbers.formatDecimal((h * 60 - 450) * 100.0 / 660, 1, 2, 'POINT')}%|" th:text="${h}"></span>
@@ -168,41 +167,33 @@
             <th>勤務時間</th>
             <th>休憩時間</th>
             <th>希望時間帯</th>
-            <th>差（分）</th>
-            <th>入れる枠</th>
           </tr>
         </thead>
         <tbody>
           <tr th:each="assignment : ${assignmentResult.assignments()}">
             <td th:text="${assignment.employee().name()}"></td>
             <td>
-              <span class="pill"
+              <span class="pill" data-duration="work"
                 th:text="|${#temporals.format(assignment.slot().startTime(), 'HH:mm')}〜${#temporals.format(assignment.slot().endTime(), 'HH:mm')}|"
               ></span>
             </td>
             <td>
               <span
+                data-duration="break"
                 th:text="|${#temporals.format(assignment.breakStart(), 'HH:mm')}〜${#temporals.format(assignment.breakEnd(), 'HH:mm')}|"
               ></span>
             </td>
             <td>
               <span th:text="|${#temporals.format(assignment.employee().start(), 'HH:mm')}〜${#temporals.format(assignment.employee().end(), 'HH:mm')}|"></span>
             </td>
-            <td th:text="${assignment.gapMinutes()}"></td>
-            <td>
-              <span class="slot-tag" th:classappend="${slot == assignment.slot()} ? 'slot-chosen' : ''" th:each="slot : ${assignment.employee().workableSlots()}" th:text="|${#temporals.format(slot.startTime(), 'HH:mm')}〜${#temporals.format(slot.endTime(), 'HH:mm')}|"></span>
-            </td>
           </tr>
         </tbody>
       </table>
-      <h3>選定根拠</h3>
-      <p class="score-formula" th:text="|合計 = ${#strings.listJoin(assignmentResult.gapMinutesList(), ' + ')} = ${assignmentResult.score()} 分|"></p>
       <div class="unassigned" th:if="${assignmentResult.unassignedEmployees().size() > 0}">
         <b>未出勤者</b>
         <div class="unassigned-item" th:each="employee : ${assignmentResult.unassignedEmployees()}">
           <span class="chip" th:text="${employee.name()}"></span>
           <span class="reason" th:text="${assignmentResult.unassignedReasonLabel(employee)}"></span>
-          <span class="slot-tag" th:each="slot : ${employee.workableSlots()}" th:text="|${#temporals.format(slot.startTime(), 'HH:mm')}〜${#temporals.format(slot.endTime(), 'HH:mm')}|"></span>
         </div>
       </div>
     </section>

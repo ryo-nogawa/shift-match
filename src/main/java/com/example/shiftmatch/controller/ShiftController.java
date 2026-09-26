@@ -1,9 +1,12 @@
 package com.example.shiftmatch.controller;
 
+import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.InvalidNameError;
 import com.example.shiftmatch.domain.InvalidTimeRangeError;
+import com.example.shiftmatch.domain.ShiftAssignment;
+import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.persistence.LatestShiftRepository;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import jakarta.validation.Valid;
@@ -15,6 +18,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -173,6 +177,7 @@ public class ShiftController {
     }
 
     if (result.isPresent()) {
+      logRationale(result.get());
       model.addAttribute("assignmentResult", result.get());
     } else {
       model.addAttribute("unassignable", true);
@@ -180,6 +185,71 @@ public class ShiftController {
 
     model.addAttribute("shiftForm", shiftForm);
     return "index";
+  }
+
+  /**
+   * 割り当ての判断根拠（各人のずれ・入れる枠・未出勤者の理由・ずれの合計）を INFO ログに出力します。
+   *
+   * <p>画面には表示しないため、後から根拠を追えるようにログへ残します。
+   *
+   * @param result 割当結果
+   */
+  private void logRationale(AssignmentResult result) {
+    for (ShiftAssignment assignment : result.assignments()) {
+      Employee employee = assignment.employee();
+      LOGGER.info(
+          "割当 {} 希望={}〜{} 割当={} 差={}分 入れる枠={}",
+          escapeControlCharacters(employee.name()),
+          employee.start().format(TIME_FORMATTER),
+          employee.end().format(TIME_FORMATTER),
+          formatSlot(assignment.slot()),
+          assignment.gapMinutes(),
+          formatSlots(employee.workableSlots()));
+    }
+    for (Employee employee : result.unassignedEmployees()) {
+      LOGGER.info(
+          "未出勤 {} 理由={} 入れる枠={}",
+          escapeControlCharacters(employee.name()),
+          escapeControlCharacters(result.unassignedReasonLabel(employee)),
+          formatSlots(employee.workableSlots()));
+    }
+    LOGGER.info("合計 = {} = {} 分", join(result.gapMinutesList()), result.score());
+  }
+
+  /**
+   * ログ出力用に、改行などの制御文字を可視文字列へ変換します。
+   *
+   * <p>氏名は利用者が入力した任意の文字列のため、そのまま出力すると偽のログ行を挿入できてしまいます。 画面や保存する値は変えず、ログへ渡す直前にだけ変換します。
+   *
+   * @param value 変換前の文字列
+   * @return 制御文字を 改行は {@code \r}・{@code \n}、その他は 16 進数 4 桁のエスケープ表記に変換した文字列
+   */
+  private String escapeControlCharacters(String value) {
+    StringBuilder escaped = new StringBuilder();
+    for (char c : value.toCharArray()) {
+      if (c == '\r') {
+        escaped.append("\\r");
+      } else if (c == '\n') {
+        escaped.append("\\n");
+      } else if (Character.isISOControl(c)) {
+        escaped.append(String.format("\\u%04x", (int) c));
+      } else {
+        escaped.append(c);
+      }
+    }
+    return escaped.toString();
+  }
+
+  private String join(List<Integer> values) {
+    return values.stream().map(value -> String.valueOf(value)).collect(Collectors.joining(" + "));
+  }
+
+  private String formatSlots(List<ShiftSlot> slots) {
+    return slots.stream().map(slot -> formatSlot(slot)).collect(Collectors.joining(", ", "[", "]"));
+  }
+
+  private String formatSlot(ShiftSlot slot) {
+    return slot.startTime().format(TIME_FORMATTER) + "〜" + slot.endTime().format(TIME_FORMATTER);
   }
 
   /**
