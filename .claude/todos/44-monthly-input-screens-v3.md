@@ -71,7 +71,7 @@
     - `MonthlyShiftService` を `@MockitoBean` にした MockMvc テストに、次を検証する `[F-3]`・`[V-2]`・`[V-3]`・`[V-9]` 付きのものがある：正常な送信で `create` が呼ばれ、渡された `MonthlyShiftInput` の `month`・従業員（名前・区分・曜日ごとの基本シフト）・個別変更がフォームの内容どおりである（`ArgumentCaptor`）／成功時にモデルへ `monthlyResult` と `initialStep=3`／`InvalidMonthlyInputException`（`V-2`・`V-3`・`V-9` を含む 3 件）を投げさせると、モデルの `inputErrors` にその 3 件が同じ順で入り `initialStep=1` になり `monthlyResult` がない／エラー時も `shiftForm` の入力値が保持される／`employees` を 1 件も送らないと空行が 1 行補われる
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
 
-- [ ] **T5. テンプレート（3 画面の骨格・入力行・エラー表示）を作る（8 章、8.1 節、8.5 節）**
+- [x] **T5. テンプレート（3 画面の骨格・入力行・エラー表示）を作る（8 章、8.1 節、8.5 節）**
   - 依頼事項：`templates/index.html` を月間用に書き直す（`th:object="${shiftForm}"`、`th:field` を使う。`static/css/shift-form.css`・`static/js/` から読み込む）。構成は次のとおり。
     - 上部：ステップ表示（「1 対象月と従業員」「2 日ごとの希望」「3 結果」。ボタンで、`data-step="1"〜"3"`）。`<body>` または `.app` に `data-initial-step="${initialStep}"`（未設定は 1）
     - 画面 1 の上部に、`inputErrors` を 1 つの `<section class="alert" role="alert">` に集約して表示する（`<li>` に `error.code()` と `error.message()`）。エラーがなければ出さない

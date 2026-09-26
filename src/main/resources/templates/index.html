@@ -1,88 +1,164 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" th:href="@{/css/shift-form.css}" />
-  <title>シフト作成</title>
-</head>
-<body>
-  <main class="app">
-    <header class="hero">
-      <p class="eyebrow">Shift Match</p>
-      <h1>シフト作成</h1>
-      <p class="lead">従業員の勤務できる時間帯を入力すると、6 つの勤務枠（8 名）の最適な割り当て案を提案します。</p>
-    </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>月間シフト作成</title>
+    <link rel="stylesheet" th:href="@{/css/shift-form.css}" />
+  </head>
+  <body>
+    <div class="app" th:attr="data-initial-step=${initialStep ?: 1}">
+      <!-- ステップ表示 -->
+      <nav class="step-nav">
+        <div class="step-buttons">
+          <button type="button" class="step-btn" data-step="1">1 対象月と従業員</button>
+          <button type="button" class="step-btn" data-step="2">2 日ごとの希望</button>
+          <button type="button" class="step-btn" data-step="3">3 結果</button>
+        </div>
+      </nav>
 
-    <form
-      method="post"
-      th:action="@{/shift}"
-      th:object="${shiftForm}"
-      class="card"
-    >
-      <!-- 対象月の入力 -->
-      <input type="hidden" th:field="*{targetMonth}" />
+      <!-- メインコンテンツエリア -->
+      <main class="main-content">
+        <form method="post" th:action="@{/shift}" th:object="${shiftForm}" th:attr="data-time-options=${#strings.listJoin(timeOptions, '|')}">
+          <!-- エラーアラート -->
+          <div th:if="${inputErrors}" role="alert" class="alert">
+            <ul>
+              <li th:each="error : ${inputErrors}">
+                <strong th:text="${error.code()}"></strong>: <span th:text="${error.message()}"></span>
+              </li>
+            </ul>
+          </div>
 
-      <!-- 従業員情報（月間フォーム対応） -->
-      <div class="card-head">
-        <h2>従業員の勤務できる時間帯</h2>
-        <span class="count"><b id="row-count" th:text="${shiftForm.employees.size()}">0</b> 名</span>
-      </div>
-      <table
-        class="input-table"
-        th:attr="data-time-options=${#strings.listJoin(timeOptions, '|')}"
-      >
-        <thead>
-          <tr>
-            <th></th>
-            <th>氏名</th>
-            <th>区分</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="employee-rows">
-          <tr th:each="employee, stat : ${shiftForm.employees}">
-            <td class="move-cell">
-              <button type="button" class="move-up-btn" aria-label="上へ">▲</button>
-              <button type="button" class="move-down-btn" aria-label="下へ">▼</button>
-            </td>
-            <td data-label="氏名">
-              <input
-                type="text"
-                th:field="*{employees[__${stat.index}__].name}"
-                placeholder="氏名を入力"
-              />
-            </td>
-            <td data-label="区分">
-              <select th:field="*{employees[__${stat.index}__].employmentType}">
-                <option value="FULL_TIME">常勤</option>
-                <option value="PART_TIME">パート</option>
-                <option value="MANAGER">管理職</option>
-              </select>
-            </td>
-            <td>
-              <button type="button" class="delete-row-btn">削除</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+          <!-- 画面 1: 対象月と従業員 -->
+          <section id="screen-1" data-screen="1">
+            <!-- 対象月の切り替え -->
+            <div class="month-selector">
+              <button type="button" id="prev-month-btn" class="month-nav-btn">◀</button>
+              <span id="month-label">2026年10月</span>
+              <button type="button" id="next-month-btn" class="month-nav-btn">▶</button>
+              <input type="hidden" name="targetMonth" th:value="${shiftForm.targetMonth}" />
+              <div id="month-summary"></div>
+            </div>
 
-      <!-- T5 で本格実装予定：曜日ごとの基本シフト、個別変更 -->
+            <!-- 従業員一覧 -->
+            <div class="employees-section">
+              <table class="employee-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>氏名</th>
+                    <th>区分</th>
+                    <th>基本シフト</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="employee-rows">
+                  <tr th:each="employee,iter : ${shiftForm.employees}" class="employee-row" th:attr="data-row-id=${iter.index}">
+                    <td class="button-cell">
+                      <button type="button" class="move-up-btn">▲</button>
+                      <button type="button" class="move-down-btn">▼</button>
+                    </td>
+                    <td>
+                      <input type="text" th:field="*{employees[__${iter.index}__].name}" />
+                    </td>
+                    <td>
+                      <select th:field="*{employees[__${iter.index}__].employmentType}">
+                        <option value="FULL_TIME">常勤</option>
+                        <option value="PART_TIME">パート</option>
+                        <option value="MANAGER">管理職</option>
+                      </select>
+                    </td>
+                    <td class="summary"></td>
+                    <td>
+                      <button type="button" class="delete-btn">削除</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <button type="button" id="add-employee-btn">行を追加</button>
+            </div>
 
-      <div class="actions">
-        <button type="button" id="add-row-btn" class="btn ghost" data-max-rows="12">
-          ＋ 行を追加
-        </button>
-        <button type="submit" class="btn primary">シフトを作成</button>
-      </div>
-    </form>
+            <!-- 基本シフトパネル -->
+            <div id="base-panels">
+              <div th:each="employee,iter : ${shiftForm.employees}" class="base-panel" th:attr="data-row-id=${iter.index}" hidden>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>曜日</th>
+                      <th>休み</th>
+                      <th>開始</th>
+                      <th>終了</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr th:each="day,dayIter : ${employee.days}">
+                      <td th:text="${dayIter.index == 0 ? '月' : dayIter.index == 1 ? '火' : dayIter.index == 2 ? '水' : dayIter.index == 3 ? '木' : '金'}"></td>
+                      <td>
+                        <input type="checkbox" th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].off}" />
+                      </td>
+                      <td>
+                        <select th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].start}">
+                          <option value="">-- 未選択 --</option>
+                          <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}"></option>
+                        </select>
+                      </td>
+                      <td>
+                        <select th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].end}">
+                          <option value="">-- 未選択 --</option>
+                          <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}"></option>
+                        </select>
+                      </td>
+                      <td>
+                        <button type="button" class="copy-to-all-btn">全曜日へ</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
 
-    <section class="card result" th:if="${monthlyResult != null}">
-      <div class="card-head">
-        <h2>割当結果</h2>
-      </div>
-      <p th:text="'月間シフトが作成されました'"></p>
-    </section>
-  </main>
-</body>
+          <!-- 画面 2: 日ごとの希望 -->
+          <section id="screen-2" data-screen="2" hidden>
+            <div id="calendar" class="scroll"></div>
+            <div id="day-panel" class="scroll"></div>
+            <div id="adjustment-inputs">
+              <input th:each="adjustment,iter : ${shiftForm.adjustments}" type="hidden" th:name="'adjustments[' + ${iter.index} + '].date'" th:value="${adjustment.date}" />
+              <input th:each="adjustment,iter : ${shiftForm.adjustments}" type="hidden" th:name="'adjustments[' + ${iter.index} + '].employeeName'" th:value="${adjustment.employeeName}" />
+              <input th:each="adjustment,iter : ${shiftForm.adjustments}" th:if="${adjustment.off}" type="hidden" th:name="'adjustments[' + ${iter.index} + '].off'" value="true" />
+              <input th:each="adjustment,iter : ${shiftForm.adjustments}" th:if="${adjustment.start}" type="hidden" th:name="'adjustments[' + ${iter.index} + '].start'" th:value="${adjustment.start}" />
+              <input th:each="adjustment,iter : ${shiftForm.adjustments}" th:if="${adjustment.end}" type="hidden" th:name="'adjustments[' + ${iter.index} + '].end'" th:value="${adjustment.end}" />
+            </div>
+          </section>
+
+          <!-- 画面 3: 結果 -->
+          <section id="screen-3" data-screen="3" hidden>
+            <div th:if="${monthlyResult}">
+              <h2>シフト作成結果</h2>
+              <div th:each="dayResult : ${monthlyResult.days()}">
+                <div th:text="${dayResult.date()}"></div>
+                <div th:if="${dayResult.feasible()}" th:text="'成立'"></div>
+                <div th:if="!${dayResult.feasible()}" th:text="'不成立'"></div>
+                <div th:text="'勤務できる人数: ' + ${dayResult.availableCount()}"></div>
+              </div>
+            </div>
+            <div th:unless="${monthlyResult}">
+              <p>結果はまだありません</p>
+            </div>
+          </section>
+
+          <!-- ボタンパネル -->
+          <nav class="button-panel">
+            <button type="button" id="prev-btn">戻る</button>
+            <button type="button" id="next-btn">次へ</button>
+          </nav>
+        </form>
+      </main>
+    </div>
+
+    <script defer th:src="@{/js/step-nav.js}"></script>
+    <script defer th:src="@{/js/employee-list.js}"></script>
+    <script defer th:src="@{/js/day-adjustments.js}"></script>
+  </body>
 </html>

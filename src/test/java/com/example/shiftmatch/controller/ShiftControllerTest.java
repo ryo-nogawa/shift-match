@@ -19,9 +19,13 @@ import ch.qos.logback.core.read.ListAppender;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.InputError;
+import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
+import com.example.shiftmatch.persistence.LatestShiftRepository;
 import com.example.shiftmatch.service.MonthlyShiftService;
+import com.example.shiftmatch.service.ShiftAssignmentService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -54,6 +58,10 @@ class ShiftControllerTest {
   @MockitoBean private MonthlyShiftService monthlyShiftService;
 
   @MockitoBean private MonthlyFormConverter monthlyFormConverter;
+
+  @MockitoBean private ShiftAssignmentService shiftAssignmentService;
+
+  @MockitoBean private LatestShiftRepository latestShiftRepository;
 
   /**
    * 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（小文字）。
@@ -765,6 +773,150 @@ class ShiftControllerTest {
         assertEquals(
             List.of("FULL_TIME"), selectedEmploymentTypes(html, i), "Row " + i + " selection");
       }
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-1][F-2][F-6][F-8][F-9] 月間フォームのテンプレート構造")
+  class MonthlyFormTemplate {
+
+    @Test
+    @DisplayName("[F-1][F-2] Given: GETリクエスト, When: /にアクセス, Then: targetMonthと12行のemployees入力がある")
+    void containsTargetMonthAndEmployeeInputFields() throws Exception {
+      String html =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(html.contains("name=\"targetMonth\""), "Should contain targetMonth input");
+      assertTrue(html.contains("name=\"employees[0].name\""), "Should contain employees[0].name");
+      assertTrue(html.contains("name=\"employees[11].name\""), "Should contain employees[11].name");
+      assertTrue(
+          html.contains("name=\"employees[11].employmentType\""),
+          "Should contain employees[11].employmentType");
+      assertFalse(html.contains("name=\"employees[12].name\""), "Should not contain employees[12]");
+    }
+
+    @Test
+    @DisplayName("[F-1][F-2] Given: GETリクエスト, When: /にアクセス, Then: 5日分の基本シフト入力がある")
+    void containsDayFormInputs() throws Exception {
+      String html =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(html.contains("name=\"employees[0].days[0].off\""), "Should contain days[0].off");
+      assertTrue(
+          html.contains("name=\"employees[0].days[0].start\""), "Should contain days[0].start");
+      assertTrue(html.contains("name=\"employees[0].days[0].end\""), "Should contain days[0].end");
+      assertTrue(html.contains("name=\"employees[11].days[4].end\""), "Should contain days[4].end");
+    }
+
+    @Test
+    @DisplayName("[F-6][F-8] Given: GETリクエスト, When: /にアクセス, Then: 従業員行に操作ボタンがある")
+    void containsEmployeeRowButtons() throws Exception {
+      String html =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          html.contains("class=\"move-up-btn\""), "Should contain move-up button for employees");
+      assertTrue(
+          html.contains("class=\"move-down-btn\""),
+          "Should contain move-down button for employees");
+      assertTrue(
+          html.contains("class=\"delete-btn\""), "Should contain delete button for employees");
+    }
+
+    @Test
+    @DisplayName("[F-1][F-2][F-9] Given: GETリクエスト, When: /にアクセス, Then: 3画面のスクリーンIDがある")
+    void containsScreenIds() throws Exception {
+      String html =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(html.contains("id=\"screen-1\""), "Should contain screen-1");
+      assertTrue(html.contains("id=\"screen-2\""), "Should contain screen-2");
+      assertTrue(html.contains("id=\"screen-3\""), "Should contain screen-3");
+      assertTrue(html.contains("id=\"prev-btn\""), "Should contain prev-btn");
+      assertTrue(html.contains("id=\"next-btn\""), "Should contain next-btn");
+    }
+
+    @Test
+    @DisplayName("[V-3] Given: V-3エラーを返す, When: POST /shift, Then: HTMLのrole=\"alert\"にエラーが表示される")
+    void displaysErrorAlertOnValidationError() throws Exception {
+      var error = new InputError("V-3", "開始が未選択です");
+      when(monthlyShiftService.create(any()))
+          .thenThrow(new InvalidMonthlyInputException(List.of(error)));
+
+      String html =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].employmentType", "FULL_TIME")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].start", "")
+                      .param("employees[0].end", "18:30"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(html.contains("role=\"alert\""), "Should contain alert element with role=alert");
+      assertTrue(html.contains("開始が未選択です"), "Should display V-3 error message");
+    }
+
+    @Test
+    @DisplayName("[V-3] Given: エラーがない, When: GET /, Then: role=\"alert\"がない")
+    void noErrorAlertWhenNoError() throws Exception {
+      String html =
+          mockMvc
+              .perform(get("/"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertFalse(html.contains("role=\"alert\""), "Should not contain alert when no error");
+    }
+
+    @Test
+    @DisplayName("[F-2] Given: 個別変更を含めてPOST, When: /shift, Then: adjustments[k]が復元される")
+    void restoresAdjustmentInputs() throws Exception {
+      String html =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("targetMonth", "2026-10")
+                      .param("employees[0].employmentType", "FULL_TIME")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].start", "07:30")
+                      .param("employees[0].end", "18:30")
+                      .param("adjustments[0].date", "2026-10-01")
+                      .param("adjustments[0].employeeName", "A")
+                      .param("adjustments[0].off", "true"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      assertTrue(
+          html.contains("name=\"adjustments[0].date\""),
+          "Should restore adjustments[0].date input");
     }
   }
 
