@@ -17,28 +17,28 @@
 
 ## Todo
 
-- [ ] **T1. 入力行の HTML に ▲（上へ）▼（下へ）ボタンを追加する**
+- [x] **T1. 入力行の HTML に ▲（上へ）▼（下へ）ボタンを追加する**
   - 依頼事項：`index.html` の各入力行（`th:each` の行、最後の `<td>`）の「削除」ボタンの前に、`<button type="button" class="move-up-btn" aria-label="上へ">▲</button>` と `<button type="button" class="move-down-btn" aria-label="下へ">▼</button>` を追加する。先にテストを書く（Red）。仕様 ID：F-8
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/test/java/com/example/shiftmatch/controller/ShiftControllerTest.java`
   - 完了条件：
     - `@DisplayName` が `[F-8]` で始まり Given-When-Then で書かれたテストが存在し、GET / の HTML に `move-up-btn` と `move-down-btn` が入力行の数だけ含まれることを確認している
     - テストを先に書き、アサーションで失敗（RED）することを確認した
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
-- [ ] **T2. JS で行を上下に移動し、インデックスを振り直す**
+- [x] **T2. JS で行を上下に移動し、インデックスを振り直す**
   - 依頼事項：`shift-form.js` の `employeeRows` のクリックハンドラで、`move-up-btn` は行を 1 つ前の行の前へ、`move-down-btn` は行を 1 つ後の行の後ろへ移動する（`insertBefore`）。移動後に `renumberInputIndices()` を呼ぶ。テスト（JS の文字列確認）を先に書く。仕様 ID：F-8
   - 対象ファイル：`src/main/resources/static/js/shift-form.js`、`ShiftControllerTest.java`
   - 完了条件：
     - `[F-8]` で始まるテストが、`shift-form.js` に `move-up-btn`・`move-down-btn`・`insertBefore` と、移動処理から `renumberInputIndices` を呼ぶ記述があることを確認している
     - RED を確認してから実装した
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
-- [ ] **T3. 先頭行の▲・末尾行の▼を無効化し、行の追加・削除・移動のたびに更新する**
+- [x] **T3. 先頭行の▲・末尾行の▼を無効化し、行の追加・削除・移動のたびに更新する**
   - 依頼事項：`shift-form.js` に `updateMoveButtonState()` を追加する。先頭行の `.move-up-btn` と末尾行の `.move-down-btn` を `disabled` にし、それ以外は有効にする。初期表示、行追加、行削除、行移動の各処理の末尾で呼ぶ。行追加（`addRowBtn` のハンドラ）で作る新しい行にも ▲▼ ボタンを削除ボタンの前に追加する。仕様 ID：F-8
   - 対象ファイル：`src/main/resources/static/js/shift-form.js`、`ShiftControllerTest.java`
   - 完了条件：
     - `[F-8]` で始まるテストが、`shift-form.js` に `updateMoveButtonState` の定義と、動的に作る行の `move-up-btn`・`move-down-btn` の生成があることを確認している
     - RED を確認してから実装した
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
-- [ ] **T4. ボタンの CSS を追加する**
+- [x] **T4. ボタンの CSS を追加する**
   - 依頼事項：`shift-form.css` で `.move-up-btn`・`.move-down-btn` を `.delete-row-btn` と同系統の見た目（小さめ・枠線・ホバー・`:disabled` で薄く・`:focus-visible`）にする。ボタンが横に並んでも折り返さないよう、最後のセルを `white-space: nowrap` にする。スマホ幅（640px 以下）でも崩れないよう、`.input-table td:last-child` の既存指定を確認する。テストは不要（見た目のみ）
   - 対象ファイル：`src/main/resources/static/css/shift-form.css`
   - 完了条件：

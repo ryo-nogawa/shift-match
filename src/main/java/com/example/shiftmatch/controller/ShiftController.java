@@ -199,7 +199,7 @@ public class ShiftController {
       Employee employee = assignment.employee();
       LOGGER.info(
           "割当 {} 希望={}〜{} 割当={} 差={}分 入れる枠={}",
-          employee.name(),
+          escapeControlCharacters(employee.name()),
           employee.start().format(TIME_FORMATTER),
           employee.end().format(TIME_FORMATTER),
           formatSlot(assignment.slot()),
@@ -209,11 +209,35 @@ public class ShiftController {
     for (Employee employee : result.unassignedEmployees()) {
       LOGGER.info(
           "未出勤 {} 理由={} 入れる枠={}",
-          employee.name(),
-          result.unassignedReasonLabel(employee),
+          escapeControlCharacters(employee.name()),
+          escapeControlCharacters(result.unassignedReasonLabel(employee)),
           formatSlots(employee.workableSlots()));
     }
     LOGGER.info("合計 = {} = {} 分", join(result.gapMinutesList()), result.score());
+  }
+
+  /**
+   * ログ出力用に、改行などの制御文字を可視文字列へ変換します。
+   *
+   * <p>氏名は利用者が入力した任意の文字列のため、そのまま出力すると偽のログ行を挿入できてしまいます。 画面や保存する値は変えず、ログへ渡す直前にだけ変換します。
+   *
+   * @param value 変換前の文字列
+   * @return 制御文字を 改行は {@code \r}・{@code \n}、その他は 16 進数 4 桁のエスケープ表記に変換した文字列
+   */
+  private String escapeControlCharacters(String value) {
+    StringBuilder escaped = new StringBuilder();
+    for (char c : value.toCharArray()) {
+      if (c == '\r') {
+        escaped.append("\\r");
+      } else if (c == '\n') {
+        escaped.append("\\n");
+      } else if (Character.isISOControl(c)) {
+        escaped.append(String.format("\\u%04x", (int) c));
+      } else {
+        escaped.append(c);
+      }
+    }
+    return escaped.toString();
   }
 
   private String join(List<Integer> values) {

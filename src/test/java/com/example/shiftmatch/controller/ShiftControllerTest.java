@@ -1452,7 +1452,7 @@ class ShiftControllerTest {
   }
 
   @Nested
-  @DisplayName("[F-2][F-6] JavaScriptの行追加・削除機能")
+  @DisplayName("[F-2][F-6][F-8] JavaScriptの行追加・削除・並べ替え機能")
   class JavaScriptAddDeleteRows {
 
     private String readShiftFormJs() throws Exception {
@@ -1658,14 +1658,12 @@ class ShiftControllerTest {
               .getResponse()
               .getContentAsString();
 
-      // 入力行の行数を取得
       Pattern rowPattern =
           Pattern.compile("<tbody id=\"employee-rows\">.*?</tbody>", Pattern.DOTALL);
       Matcher rowMatcher = rowPattern.matcher(htmlContent);
       assertTrue(rowMatcher.find(), "Input table body should exist");
       String tbody = rowMatcher.group(0);
 
-      // tbody内の<tr>の数を数える
       Pattern trPattern = Pattern.compile("<tr>");
       Matcher trMatcher = trPattern.matcher(tbody);
       int rowCount = 0;
@@ -1673,7 +1671,6 @@ class ShiftControllerTest {
         rowCount++;
       }
 
-      // move-up-btn と move-down-btn の数を確認
       Pattern moveUpPattern = Pattern.compile("class=\"move-up-btn\"");
       Matcher moveUpMatcher = moveUpPattern.matcher(htmlContent);
       int moveUpCount = 0;
@@ -2201,16 +2198,27 @@ class ShiftControllerTest {
       List<String> logs =
           postAndCollectInfoLogs(
               new AssignmentResult(createStandardResult().assignments(), 1380, List.of()));
-      String joined = String.join("\n", logs);
 
-      assertTrue(
-          joined.contains("合計 = 240 + 240 + 210 + 180 + 210 + 120 + 90 + 90 = 1380 分"), joined);
-      assertTrue(
-          joined.contains(
-              "A 希望=07:30〜18:30 割当=07:30〜14:30 差=240分"
-                  + " 入れる枠=[07:30〜14:30, 08:00〜15:30, 08:30〜16:30, 09:00〜16:30, 09:00〜18:00,"
-                  + " 09:00〜18:30]"),
-          joined);
+      List<String> assignmentLogs = logs.stream().filter(log -> log.startsWith("割当 ")).toList();
+      String allSlots =
+          "[07:30〜14:30, 08:00〜15:30, 08:30〜16:30, 09:00〜16:30, 09:00〜18:00, 09:00〜18:30]";
+      List<String> expectedAssigned =
+          List.of(
+              "A 希望=07:30〜18:30 割当=07:30〜14:30 差=240分 入れる枠=",
+              "B 希望=07:30〜18:30 割当=07:30〜14:30 差=240分 入れる枠=",
+              "C 希望=07:30〜18:30 割当=08:00〜15:30 差=210分 入れる枠=",
+              "D 希望=07:30〜18:30 割当=08:30〜16:30 差=180分 入れる枠=",
+              "E 希望=07:30〜18:30 割当=09:00〜16:30 差=210分 入れる枠=",
+              "F 希望=07:30〜18:30 割当=09:00〜18:00 差=120分 入れる枠=",
+              "G 希望=07:30〜18:30 割当=09:00〜18:30 差=90分 入れる枠=",
+              "H 希望=07:30〜18:30 割当=09:00〜18:30 差=90分 入れる枠=");
+      assertEquals(8, assignmentLogs.size(), String.join("\n", logs));
+      for (int i = 0; i < 8; i++) {
+        assertEquals("割当 " + expectedAssigned.get(i) + allSlots, assignmentLogs.get(i));
+      }
+      assertEquals(
+          List.of("合計 = 240 + 240 + 210 + 180 + 210 + 120 + 90 + 90 = 1380 分"),
+          logs.stream().filter(log -> log.startsWith("合計")).toList());
     }
 
     @Test
@@ -2228,6 +2236,35 @@ class ShiftControllerTest {
 
       assertTrue(joined.contains("未出勤 K 理由=休み 入れる枠=[]"), joined);
       assertTrue(joined.contains("未出勤 J 理由=どの枠にも入れない 入れる枠=[]"), joined);
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 氏名に改行を含む割当者と未出勤者がいるとき, When: POST /shift すると,"
+            + " Then: 改行はエスケープされ、1 件のログイベントが 1 行に保たれる")
+    void escapesLineBreaksInNamesWhenLogging() throws Exception {
+      List<ShiftAssignment> assignments =
+          new java.util.ArrayList<>(createStandardResult().assignments());
+      ShiftAssignment first = assignments.get(0);
+      assignments.set(
+          0,
+          new ShiftAssignment(
+              Employee.working(
+                  "A\r\n合計 = 0 = 0 分", first.employee().start(), first.employee().end()),
+              first.slot(),
+              first.breakStart(),
+              first.breakEnd()));
+      List<Employee> unassigned = List.of(Employee.onLeave("K\nERROR 偽装"));
+
+      List<String> logs =
+          postAndCollectInfoLogs(new AssignmentResult(assignments, 1380, unassigned));
+
+      for (String log : logs) {
+        assertFalse(log.contains("\n") || log.contains("\r"), "Log should be one line: " + log);
+      }
+      String joined = String.join("\n", logs);
+      assertTrue(joined.contains("割当 A\\r\\n合計 = 0 = 0 分 希望="), joined);
+      assertTrue(joined.contains("未出勤 K\\nERROR 偽装 理由=休み"), joined);
     }
   }
 
