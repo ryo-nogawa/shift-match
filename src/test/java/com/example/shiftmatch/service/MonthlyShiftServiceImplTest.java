@@ -4,14 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.DailyWish;
+import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InputError;
@@ -19,6 +23,7 @@ import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
+import com.example.shiftmatch.domain.ShiftAssignment;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -27,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -161,6 +167,12 @@ class MonthlyShiftServiceImplTest {
       MonthlyShiftInput input = new MonthlyShiftInput(month, employees, List.of(adjustment));
 
       ShiftAssignmentService assignmentService = mock(ShiftAssignmentService.class);
+      // 1 日目は成立する結果を返す
+      // (2日目は8名中7名しか勤務不可のため、ハード制約を満たさず不成立→Optional.empty())
+      when(assignmentService.assign(anyList()))
+          .thenReturn(createDummyAssignmentResult())
+          .thenReturn(Optional.empty());
+
       MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
       SelectionRationaleLogger logger = mock(SelectionRationaleLogger.class);
       MonthlyShiftServiceImpl service =
@@ -174,10 +186,14 @@ class MonthlyShiftServiceImplTest {
 
       // 月曜日は 8 人が勤務可能
       assertEquals(8, day1Result.availableCount());
+      assertTrue(day1Result.assignment().isPresent(), "day1 should have an assignment");
 
       // 火曜日は 7 人が勤務可能
       assertEquals(7, day2Result.availableCount());
       assertTrue(day2Result.assignment().isEmpty(), "day2 should not have an assignment");
+
+      // 両日分 assign が呼ばれたことを確認
+      verify(assignmentService, times(2)).assign(anyList());
     }
   }
 
@@ -318,5 +334,16 @@ class MonthlyShiftServiceImplTest {
       verify(rationaleLogger).log(eq(day1), any());
       verify(rationaleLogger).log(eq(day2), any());
     }
+  }
+
+  private Optional<AssignmentResult> createDummyAssignmentResult() {
+    List<ShiftAssignment> assignments = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      Employee employee = mock(Employee.class);
+      ShiftAssignment assignment = mock(ShiftAssignment.class);
+      assignments.add(assignment);
+    }
+    AssignmentResult result = new AssignmentResult(assignments, 0, List.of());
+    return Optional.of(result);
   }
 }
