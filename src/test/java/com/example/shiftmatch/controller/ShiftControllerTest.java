@@ -1152,33 +1152,12 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
-        "[F-4] Given: ずれの合計が90分の割当結果が表示されるとき, When: スコア表示部分を確認すると, Then:"
-            + " '.score-num'に'90'と'分'が表示され、'/ 8'は表示されない")
-    void displaysGapTotalInMinutes() throws Exception {
-      AssignmentResult result =
-          new AssignmentResult(createStandardResult().assignments(), 90, List.of());
-      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
-
+        "[F-4] Given: 割当結果が表示されるとき, When: ページを確認すると, Then:" + " ずれの合計（スコア）と旧スコアの記号（U+25CE）は表示されない")
+    void doesNotDisplayGapTotal() throws Exception {
       String responseContent = postEmployees(8);
 
-      Matcher matcher =
-          Pattern.compile("class=\"score-num\"[^>]*>\\s*<span>(\\d+)</span><small> 分</small>")
-              .matcher(responseContent);
-      assertTrue(matcher.find(), "Score should be displayed as '<n> 分'");
-      assertEquals("90", matcher.group(1));
-      assertFalse(responseContent.contains("/ 8"), "Score should not show '/ 8'");
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4] Given: 割当結果が表示されるとき, When: スコアのラベルを確認すると, Then:"
-            + " 'ずれの合計'のラベルがあり、旧スコアの記号（U+25CE）は表示されない")
-    void displaysGapTotalLabelWithoutDesiredMark() throws Exception {
-      String responseContent = postEmployees(8);
-
-      assertTrue(
-          responseContent.contains("ずれの合計（入力時間帯と割り当てた枠の差。0 が最良）"),
-          "Score label should describe the gap total");
+      assertFalse(responseContent.contains("score-num"), "Gap total should not be displayed");
+      assertFalse(responseContent.contains("ずれの合計"), "Gap total label should not be displayed");
       assertFalse(
           responseContent.contains(LEGACY_MARK), "Result should not contain the old score mark");
     }
@@ -1671,23 +1650,11 @@ class ShiftControllerTest {
   @DisplayName("[F-4][H-3] 選定根拠の表示")
   class SelectionRationaleDisplay {
 
-    private static final Pattern SLOT_TAG_PATTERN =
-        Pattern.compile("class=\"(slot-tag[^\"]*)\"[^>]*>([^<]*)<");
-
     private static final Pattern ASSIGNED_ROW_PATTERN =
         Pattern.compile("class=\"result-table\">.*?<tbody[^>]*>(.*?)</tbody>", Pattern.DOTALL);
 
     private static final Pattern UNASSIGNED_ITEM_PATTERN =
         Pattern.compile("<div class=\"unassigned-item\">(.*?)</div>", Pattern.DOTALL);
-
-    private static final List<String> ALL_SLOT_TIMES =
-        List.of(
-            "07:30〜14:30",
-            "08:00〜15:30",
-            "08:30〜16:30",
-            "09:00〜16:30",
-            "09:00〜18:00",
-            "09:00〜18:30");
 
     /**
      * 指定の割当結果をスタブし、10 名分のフォームを送信して、レスポンス本文を返します。
@@ -1738,121 +1705,45 @@ class ShiftControllerTest {
       return result;
     }
 
-    /**
-     * 行の HTML から、入れる枠のラベル（勤務時間）と、割り当てた枠かどうかを順に取り出します。
-     *
-     * @param html 行または項目の HTML
-     * @return 「勤務時間」または「勤務時間*」（* は slot-chosen）のリスト
-     */
-    private List<String> slotTags(String html) {
-      Matcher matcher = SLOT_TAG_PATTERN.matcher(html);
-      List<String> result = new java.util.ArrayList<>();
-      while (matcher.find()) {
-        result.add(matcher.group(2) + (matcher.group(1).contains("slot-chosen") ? "*" : ""));
-      }
-      return result;
-    }
-
     @Test
     @DisplayName(
         "[F-4] Given: 割当結果が表示されるとき, When: 結果表の見出しを確認すると,"
-            + " Then: 「休憩時間」の後ろに「希望時間帯」「差（分）」「入れる枠」がこの順で並ぶ")
-    void addsRationaleColumnsAfterBreakTime() throws Exception {
+            + " Then: 「休憩時間」の後ろに「希望時間帯」が並び、「差（分）」「入れる枠」は表示されない")
+    void showsWishRangeColumnWithoutGapAndWorkableSlotColumns() throws Exception {
       String html = postWith(createStandardResult());
 
       int breakPos = html.indexOf("<th>休憩時間</th>");
       int wishPos = html.indexOf("<th>希望時間帯</th>");
-      int gapPos = html.indexOf("<th>差（分）</th>");
 
       assertTrue(breakPos >= 0, "Should contain header '休憩時間'");
       assertTrue(breakPos < wishPos, "'希望時間帯' should come after '休憩時間'");
-      assertTrue(wishPos < gapPos, "'差（分）' should come after '希望時間帯'");
-      int slotsPos = html.indexOf("<th>入れる枠</th>");
-      assertTrue(gapPos < slotsPos, "'入れる枠' should come after '差（分）'");
+      assertFalse(html.contains("<th>差（分）</th>"), "Should not contain header '差（分）'");
+      assertFalse(html.contains("<th>入れる枠</th>"), "Should not contain header '入れる枠'");
     }
 
     @Test
     @DisplayName(
         "[F-4] Given: 7:30〜18:30 の 8 名が割り当てられたとき, When: 結果表の各行を確認すると,"
-            + " Then: 希望時間帯と、枠ごとのずれ（分）が表示される")
-    void showsWishRangeAndGapForEachRow() throws Exception {
+            + " Then: 希望時間帯が表示され、ずれ（分）と入れる枠のタグは表示されない")
+    void showsWishRangeWithoutGapAndSlotTags() throws Exception {
       List<String> rows = assignedRows(postWith(createStandardResult()));
-      int[] expectedGaps = {240, 240, 210, 180, 210, 120, 90, 90};
 
       assertEquals(8, rows.size());
       for (int i = 0; i < 8; i++) {
         assertTrue(rows.get(i).contains("07:30〜18:30"), "Row " + i + " should show wish range");
-        assertTrue(
-            rows.get(i).contains("<td>" + expectedGaps[i] + "</td>"),
-            "Row " + i + " should show gap " + expectedGaps[i]);
+        assertFalse(rows.get(i).contains("slot-tag"), "Row " + i + " should not show slot tags");
+        assertEquals(
+            4, rows.get(i).split("<td", -1).length - 1, "Row " + i + " should have 4 cells");
       }
     }
 
     @Test
-    @DisplayName(
-        "[H-3] Given: 7:30〜18:30 の人が枠 1 に割り当てられたとき, When: 入れる枠を確認すると,"
-            + " Then: 枠 1〜6 の勤務時間が順に並び、枠 1 だけが割り当てた枠として区別される")
-    void showsAllSlotsInOrderWithChosenSlotMarked() throws Exception {
-      List<String> rows = assignedRows(postWith(createStandardResult()));
+    @DisplayName("[F-4] Given: 割当結果が表示されるとき, When: 選定根拠を確認すると, Then: ずれの合計の計算式は表示されない")
+    void doesNotShowScoreFormula() throws Exception {
+      String html = postWith(createStandardResult());
 
-      assertEquals(
-          List.of(
-              "07:30〜14:30*",
-              "08:00〜15:30",
-              "08:30〜16:30",
-              "09:00〜16:30",
-              "09:00〜18:00",
-              "09:00〜18:30"),
-          slotTags(rows.get(0)));
-      assertEquals(
-          List.of(
-              "07:30〜14:30",
-              "08:00〜15:30",
-              "08:30〜16:30",
-              "09:00〜16:30*",
-              "09:00〜18:00",
-              "09:00〜18:30"),
-          slotTags(rows.get(4)));
-    }
-
-    @Test
-    @DisplayName(
-        "[H-3] Given: 9:00〜16:30 の人が枠 4 に割り当てられたとき, When: 入れる枠を確認すると,"
-            + " Then: 入れる枠は枠 4 の 1 件だけで、割り当てた枠として区別され、ずれは 0 分である")
-    void showsOnlyChosenSlotWhenOnlyOneSlotIsWorkable() throws Exception {
-      List<ShiftAssignment> assignments =
-          new java.util.ArrayList<>(createStandardResult().assignments());
-      assignments.set(
-          4,
-          new ShiftAssignment(
-              Employee.working("X", LocalTime.of(9, 0), LocalTime.of(16, 30)),
-              ShiftSlot.SLOT_4,
-              LocalTime.of(13, 30),
-              LocalTime.of(14, 15)));
-
-      List<String> rows = assignedRows(postWith(new AssignmentResult(assignments, 8, List.of())));
-
-      assertEquals(List.of("09:00〜16:30*"), slotTags(rows.get(4)));
-      assertTrue(rows.get(4).contains("<td>0</td>"), "Gap should be 0 minutes");
-    }
-
-    @Test
-    @DisplayName("[F-4] Given: 割当結果が表示されるとき, When: 選定根拠を確認すると," + " Then: 見出しと、各人のずれを並べた計算式が表示される")
-    void showsSelectionRationaleHeadingAndScoreFormula() throws Exception {
-      int expectedTotalGapMinutes = 240 + 240 + 210 + 180 + 210 + 120 + 90 + 90;
-      String html =
-          postWith(
-              new AssignmentResult(
-                  createStandardResult().assignments(), expectedTotalGapMinutes, List.of()));
-
-      assertTrue(html.contains("<h3>選定根拠</h3>"), "Should contain the rationale heading");
-      assertTrue(
-          html.contains(
-              "合計 = 240 + 240 + 210 + 180 + 210 + 120 + 90 + 90 = "
-                  + expectedTotalGapMinutes
-                  + " 分"),
-          "Should contain the score formula");
-      assertTrue(html.contains("class=\"score-formula\""), "Should contain score-formula class");
+      assertFalse(html.contains("<h3>選定根拠</h3>"), "Should not contain the rationale heading");
+      assertFalse(html.contains("score-formula"), "Should not contain the score formula");
     }
 
     @Test
@@ -1869,7 +1760,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-4][H-3] Given: 未出勤者が休み・入れる枠あり・入れる枠なしの 3 名のとき, When: 未出勤者を確認すると,"
-            + " Then: それぞれの理由が表示され、入れる枠がある人だけ枠が表示される")
+            + " Then: それぞれの理由が表示され、入れる枠のタグは表示されない")
     void showsReasonAndWorkableSlotsForEachUnassignedEmployee() throws Exception {
       List<Employee> unassigned =
           List.of(
@@ -1884,13 +1775,11 @@ class ShiftControllerTest {
       assertEquals(3, items.size());
       assertTrue(items.get(0).contains(">K<"));
       assertTrue(items.get(0).contains(">休み<"));
-      assertTrue(slotTags(items.get(0)).isEmpty());
       assertTrue(items.get(1).contains(">I<"));
       assertTrue(items.get(1).contains(">入れる枠はあったが、同じずれの案があり、入力順で優先度が高い A が選ばれた<"));
-      assertEquals(ALL_SLOT_TIMES, slotTags(items.get(1)));
       assertTrue(items.get(2).contains(">J<"));
       assertTrue(items.get(2).contains(">どの枠にも入れない<"));
-      assertTrue(slotTags(items.get(2)).isEmpty());
+      assertFalse(html.contains("slot-tag"), "Should not show slot tags");
     }
 
     @Test
@@ -2181,6 +2070,74 @@ class ShiftControllerTest {
       } finally {
         logger.detachAppender(listAppender);
       }
+    }
+  }
+
+  @Nested
+  @DisplayName("[F-4] 選定根拠のログ出力")
+  class SelectionRationaleLogging {
+
+    private List<String> postAndCollectInfoLogs(AssignmentResult result) throws Exception {
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      Logger logger = (Logger) LoggerFactory.getLogger(ShiftController.class);
+      ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ListAppender<>();
+      appender.start();
+      logger.addAppender(appender);
+      try {
+        var request = post("/shift");
+        for (int i = 0; i < 8; i++) {
+          request.param("employees[" + i + "].name", String.valueOf((char) ('A' + i)));
+          request.param("employees[" + i + "].off", "false");
+          request.param("employees[" + i + "].start", "07:30");
+          request.param("employees[" + i + "].end", "18:30");
+        }
+        mockMvc.perform(request).andExpect(status().isOk());
+        return appender.list.stream()
+            .filter(event -> event.getLevel() == Level.INFO)
+            .map(event -> event.getFormattedMessage())
+            .toList();
+      } finally {
+        logger.detachAppender(appender);
+      }
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 割当結果があるとき, When: POST /shift すると, Then: 各人の希望時間帯・割り当てた枠・ずれ・入れる枠と、ずれの合計が INFO"
+            + " ログに出力される")
+    void logsRationaleForEachAssignment() throws Exception {
+      List<String> logs =
+          postAndCollectInfoLogs(
+              new AssignmentResult(createStandardResult().assignments(), 1380, List.of()));
+      String joined = String.join("\n", logs);
+
+      assertTrue(
+          joined.contains("合計 = 240 + 240 + 210 + 180 + 210 + 120 + 90 + 90 = 1380 分"), joined);
+      assertTrue(
+          joined.contains(
+              "A 希望=07:30〜18:30 割当=07:30〜14:30 差=240分"
+                  + " 入れる枠=[07:30〜14:30, 08:00〜15:30, 08:30〜16:30, 09:00〜16:30, 09:00〜18:00,"
+                  + " 09:00〜18:30]"),
+          joined);
+    }
+
+    @Test
+    @DisplayName("[F-4] Given: 未出勤者がいるとき, When: POST /shift すると, Then: 氏名・理由・入れる枠が INFO ログに出力される")
+    void logsRationaleForUnassignedEmployees() throws Exception {
+      List<Employee> unassigned =
+          List.of(
+              Employee.onLeave("K"),
+              Employee.working("J", LocalTime.of(9, 0), LocalTime.of(10, 0)));
+
+      List<String> logs =
+          postAndCollectInfoLogs(
+              new AssignmentResult(createStandardResult().assignments(), 1380, unassigned));
+      String joined = String.join("\n", logs);
+
+      assertTrue(joined.contains("未出勤 K 理由=休み 入れる枠=[]"), joined);
+      assertTrue(joined.contains("未出勤 J 理由=どの枠にも入れない 入れる枠=[]"), joined);
     }
   }
 
