@@ -38,7 +38,7 @@
     - `[F-10]` を含む `@DisplayName` のテストが存在し、Given-When-Then で書かれている：見出し行の読み飛ばし、日本語の祝日名（例：`スポーツの日`）が文字化けしない、空行の無視、`2026/10/12` が `LocalDate.of(2026, 10, 12)` になる、不正な行で `IllegalArgumentException`
     - `./mvnw test -Dtest=HolidayCsvParserTest` が成功する
 
-- [ ] **T2. 祝日テーブルと HolidayRepository を作る（F-10）**
+- [x] **T2. 祝日テーブルと HolidayRepository を作る（F-10）**
   - 依頼事項：`schema.sql` に `holiday` テーブル（`holiday_date DATE PRIMARY KEY`、`name VARCHAR(64) NOT NULL`）を追加する。`persistence/HolidayRepository.java`（`@Repository`、`JdbcClient` を使う）に次を実装する：`void replaceAll(List<Holiday> holidays)`（`@Transactional`。全件削除してから登録するため、途中で失敗しても元のデータが残る）、`List<Holiday> findByYear(int year)`（日付順）、`boolean existsInYear(int year)`。既存の `LatestShiftRepositoryTest.java` と `SchemaTest.java` のテストの作り方に倣う
   - 対象ファイル：`src/main/resources/schema.sql`、`src/main/java/com/example/shiftmatch/persistence/HolidayRepository.java`、`src/test/java/com/example/shiftmatch/persistence/HolidayRepositoryTest.java`、`src/test/java/com/example/shiftmatch/persistence/SchemaTest.java`（テーブルの存在確認を追加）
   - 完了条件：

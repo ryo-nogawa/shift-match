@@ -21,3 +21,8 @@ CREATE TABLE IF NOT EXISTS saved_score (
   id INT PRIMARY KEY CHECK (id = 1),
   score INT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS holiday (
+  holiday_date DATE PRIMARY KEY,
+  name VARCHAR(64) NOT NULL
+);

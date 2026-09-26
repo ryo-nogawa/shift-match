@@ -26,6 +26,7 @@ class SchemaTest {
     jdbcClient.sql("DELETE FROM saved_score").update();
     jdbcClient.sql("DELETE FROM saved_assignment").update();
     jdbcClient.sql("DELETE FROM saved_employee").update();
+    jdbcClient.sql("DELETE FROM holiday").update();
   }
 
   @Nested
@@ -53,6 +54,13 @@ class SchemaTest {
     void savedScoreTableExistsAndIsEmpty() {
       Integer count =
           jdbcClient.sql("SELECT COUNT(*) FROM saved_score").query(Integer.class).single();
+      assertEquals(0, count);
+    }
+
+    @Test
+    @DisplayName("[F-10] Given: テスト開始時, When: holiday テーブルを確認すると, Then: 空である")
+    void holidayTableExistsAndIsEmpty() {
+      Integer count = jdbcClient.sql("SELECT COUNT(*) FROM holiday").query(Integer.class).single();
       assertEquals(0, count);
     }
 
