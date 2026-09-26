@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
-@SpringBootTest
+@SpringBootTest(properties = "holiday.refresh-on-startup=false")
 @DisplayName("HolidayRepository")
 class HolidayRepositoryTest {
 

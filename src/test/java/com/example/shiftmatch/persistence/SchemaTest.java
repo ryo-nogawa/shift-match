@@ -15,7 +15,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /** Schema initialization test. */
-@SpringBootTest
+@SpringBootTest(properties = "holiday.refresh-on-startup=false")
 @DisplayName("スキーマ検証")
 class SchemaTest {
 

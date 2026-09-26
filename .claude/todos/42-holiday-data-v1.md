@@ -79,7 +79,7 @@
     - `[F-10]` を含む `@DisplayName` のテスト：2026 年 10 月の営業日が 21 日で 10/12 を含まず、土日を含まない。`[V-8]` を含むテスト：判定できない年月で `HolidayDataUnavailableError`。`holidaysOf` が祝日名付きで返る、土曜と重なる祝日（テスト用 CSV に `2026/10/10`（土曜）を加えて、営業日の件数が変わらず、`holidaysOf` には含まれること）
     - `./mvnw test -Dtest=HolidayServiceImplTest` が成功する
 
-- [ ] **T7. 起動時に祝日データを更新する（F-10）**
+- [x] **T7. 起動時に祝日データを更新する（F-10）**
   - 依頼事項：`config/HolidayStartupRunner.java`（`@Component`、`ApplicationRunner`）を作り、`HolidayService.refresh()` を呼ぶ。`@ConditionalOnProperty(name = "holiday.refresh-on-startup", havingValue = "true")` で有効・無効を切り替え、`application.properties` に `holiday.refresh-on-startup=true` を定義する。取得に失敗してもアプリの起動を止めない（`refresh` が例外を出さないため、追加の処理は不要）。`@SpringBootTest` を使う既存のテスト（`grep -rn "@SpringBootTest" src/test` で探す。例：`ShiftMatchApplicationTests.java`）は、外部にアクセスしないよう `properties = "holiday.refresh-on-startup=false"` を指定する。`ShiftControllerTest` など `@WebMvcTest` を使うテストで、新しい Bean が原因で失敗する場合は、`@MockitoBean` で `HolidayService` を差し替える
   - 対象ファイル：`src/main/java/com/example/shiftmatch/config/HolidayStartupRunner.java`、`src/main/resources/application.properties`、`src/test/java/com/example/shiftmatch/config/HolidayStartupRunnerTest.java`、既存の `@SpringBootTest` を使うテスト
   - 完了条件：

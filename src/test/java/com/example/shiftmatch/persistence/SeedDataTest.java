@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 /** 初期データ（seed.sql）の検証。 */
-@SpringBootTest
+@SpringBootTest(properties = "holiday.refresh-on-startup=false")
 @DisplayName("初期データ（seed.sql）")
 class SeedDataTest {
 
