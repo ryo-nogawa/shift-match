@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<body>
+  <!-- 画面 3（結果）の中身。GET / と GET /shift/saved で共有する -->
+  <th:block th:fragment="resultPanel">
+      <p th:if="${saveError}" class="alert" role="alert" th:text="${saveError}"></p>
+      <p th:if="${resultSource == 'saved'}" class="result-source">保存済みのシフトを表示しています</p>
+      <div th:if="${resultView}" class="result">
+        <p id="result-summary" class="result-summary" th:text="'営業日数 ' + ${resultView.businessDayCount()} + '・成立 ' + ${resultView.successCount()} + '・不成立 ' + ${resultView.failureCount()}"></p>
+        <div class="tab-buttons" role="tablist">
+          <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="calendar">カレンダー表示</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="employees">従業員別表示</button>
+          <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="detail">日別詳細</button>
+        </div>
+        <div class="tab-panels">
+          <div id="tab-calendar" class="tab-panel">
+            <div class="calendar-grid">
+              <div class="calendar-head">月</div>
+              <div class="calendar-head">火</div>
+              <div class="calendar-head">水</div>
+              <div class="calendar-head">木</div>
+              <div class="calendar-head">金</div>
+              <th:block th:each="cell : ${resultView.calendarCells()}">
+                <div th:if="${cell.blank()}" class="blank"></div>
+                <div th:if="${cell.holiday() != null}" class="holiday">
+                  <div class="calendar-date" th:text="${cell.holiday().date().dayOfMonth}"></div>
+                  <div th:text="${cell.holiday().name()}"></div>
+                </div>
+                <div th:if="${cell.day() != null}" class="calendar-cell">
+                  <button type="button" class="calendar-day" th:attr="data-date=${cell.day().date()}" th:text="${cell.day().date().dayOfMonth}"></button>
+                  <div th:if="${cell.day().failed()}" class="failed" th:text="'不成立（勤務可 ' + ${cell.day().availableCount()} + ' 名）'"></div>
+                  <th:block th:unless="${cell.day().failed()}">
+                    <div th:each="group : ${cell.day().groups()}" class="work-group" th:text="${group.workTime()} + ' ' + ${group.names()}"></div>
+                  </th:block>
+                </div>
+              </th:block>
+            </div>
+          </div>
+          <div id="tab-employees" class="tab-panel" hidden>
+            <table class="employee-result-table">
+              <thead>
+                <tr>
+                  <th class="sticky-col">従業員</th>
+                  <th th:each="day : ${resultView.days()}" th:text="${#temporals.format(day.date(), 'M/d(E)', T(java.util.Locale).JAPAN)}"></th>
+                  <th>出勤日数</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr th:each="row : ${resultView.employeeRows()}">
+                  <td class="sticky-col" th:text="${row.name()}"></td>
+                  <td th:each="cell : ${row.cells()}" th:text="${cell}"></td>
+                  <td class="work-days" th:text="${row.workDays()}"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="tab-detail" class="tab-panel" hidden>
+            <label>日付
+              <select id="detail-date">
+                <option th:each="dayResult : ${monthlyResult.days()}" th:value="${dayResult.date()}" th:text="${#temporals.format(dayResult.date(), 'M/d(E)', T(java.util.Locale).JAPAN)}"></option>
+              </select>
+            </label>
+            <section th:each="dayResult : ${monthlyResult.days()}" class="day-detail" th:attr="data-date=${dayResult.date()}" hidden>
+              <p th:if="${dayResult.assignment().isEmpty()}" class="failed" th:text="'不成立です。勤務できる人数：' + ${dayResult.availableCount()} + ' 名'"></p>
+              <th:block th:if="${dayResult.assignment().isPresent()}" th:with="result=${dayResult.assignment().get()}">
+                <table class="detail-table">
+                  <thead>
+                    <tr>
+                      <th>氏名</th>
+                      <th>区分</th>
+                      <th>勤務時間</th>
+                      <th>休憩時間</th>
+                      <th>希望時間帯</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr th:each="assignment : ${result.assignments()}">
+                      <td th:text="${assignment.employee().name()}"></td>
+                      <td th:text="${assignment.employee().employmentType().label()}"></td>
+                      <td>
+                        <span th:text="${#temporals.format(assignment.slot().startTime(), 'HH:mm')} + '〜' + ${#temporals.format(assignment.slot().endTime(), 'HH:mm')}"></span>
+                        <span class="duration" th:attr="data-start=${#temporals.format(assignment.slot().startTime(), 'HH:mm')},data-end=${#temporals.format(assignment.slot().endTime(), 'HH:mm')}"></span>
+                      </td>
+                      <td>
+                        <span th:text="${#temporals.format(assignment.breakStart(), 'HH:mm')} + '〜' + ${#temporals.format(assignment.breakEnd(), 'HH:mm')}"></span>
+                        <span class="duration" th:attr="data-start=${#temporals.format(assignment.breakStart(), 'HH:mm')},data-end=${#temporals.format(assignment.breakEnd(), 'HH:mm')}"></span>
+                      </td>
+                      <td th:text="${#temporals.format(assignment.employee().start(), 'HH:mm')} + '〜' + ${#temporals.format(assignment.employee().end(), 'HH:mm')}"></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <h3>未出勤者</h3>
+                <ul class="unassigned-list">
+                  <li th:each="employee : ${result.unassignedEmployees()}" th:text="${employee.name()} + '（' + ${employee.employmentType().label()} + '）：' + ${result.unassignedReasonLabel(employee)}"></li>
+                </ul>
+                <p class="tl-legend"><span class="lg"></span><span>勤務</span><span class="lg brk"></span><span>休憩</span></p>
+                <div class="timeline">
+                  <div class="tl-row" th:each="assignment : ${result.assignments()}">
+                    <span class="tl-name" th:text="${assignment.employee().name()}"></span>
+                    <div class="tl-track">
+                      <div class="tl-work" th:style="|left:${#numbers.formatDecimal((assignment.slot().startTime().hour * 60 + assignment.slot().startTime().minute - 450) * 100.0 / 660, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(assignment.slot().workMinutes() * 100.0 / 660, 1, 2, 'POINT')}%|"></div>
+                      <div class="tl-break" th:style="|left:${#numbers.formatDecimal((assignment.breakStart().hour * 60 + assignment.breakStart().minute - 450) * 100.0 / 660, 1, 2, 'POINT')}%;width:${#numbers.formatDecimal(((assignment.breakEnd().hour * 60 + assignment.breakEnd().minute) - (assignment.breakStart().hour * 60 + assignment.breakStart().minute)) * 100.0 / 660, 1, 2, 'POINT')}%|"></div>
+                    </div>
+                  </div>
+                </div>
+              </th:block>
+            </section>
+          </div>
+        </div>
+      </div>
+      <div th:if="${resultSource == 'none'}">
+        <p>この月のシフトはまだ作成されていません</p>
+      </div>
+  </th:block>
+</body>
+</html>

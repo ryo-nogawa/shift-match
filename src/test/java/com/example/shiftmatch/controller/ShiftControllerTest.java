@@ -41,6 +41,7 @@ import com.example.shiftmatch.service.ShiftStorageService;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Year;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -66,6 +67,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @WebMvcTest(ShiftController.class)
 @Import({MonthlyFormConverter.class, MonthlyResultViewFactory.class, SavedInputFormConverter.class})
 class ShiftControllerTest {
+
+  /** Thymeleaf のフラグメント指定（区切りがメソッド参照の検査に誤検出されないよう分割）。 */
+  private static final String RESULT_FRAGMENT = "fragments/result :" + ": resultPanel";
 
   /** 廃止した枠ごとの 3 段階の希望入力の名残を検出する語（ソース検索で誤検出しないよう分割）。 */
   private static final String LEGACY_TOKEN = "wi" + "sh";
@@ -795,6 +799,83 @@ class ShiftControllerTest {
       assertTrue(html.contains("id=\"result-summary\""));
       assertFalse(html.contains("保存済みのシフトを表示しています"));
       assertFalse(html.contains("この月のシフトはまだ作成されていません"));
+    }
+  }
+
+  @Nested
+  class 保存済みシフトの取得 {
+
+    private static final YearMonth MONTH = YearMonth.of(2026, 10);
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 指定した月の保存済みシフトがある, When: GET /shift/saved を呼ぶと,"
+            + " Then: 結果のフラグメントだけが「保存済みのシフトを表示しています」つきで返る")
+    void returnsSavedFragment() throws Exception {
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(Optional.of(new SavedMonthlyShift(monthly, List.of("A"))));
+
+      MvcResult result =
+          mockMvc
+              .perform(get("/shift/saved").param("month", "2026-10"))
+              .andExpect(status().isOk())
+              .andExpect(view().name(RESULT_FRAGMENT))
+              .andReturn();
+
+      String html = bodyOf(result);
+      assertTrue(html.contains("保存済みのシフトを表示しています"));
+      assertTrue(html.contains("id=\"result-summary\""));
+      assertFalse(html.contains("id=\"screen-3\""));
+      assertFalse(html.contains("<form"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 指定した月の保存済みシフトがない, When: GET /shift/saved を呼ぶと,"
+            + " Then: 「この月のシフトはまだ作成されていません」だけが返る")
+    void returnsNotCreatedFragment() throws Exception {
+      String html =
+          bodyOf(
+              mockMvc
+                  .perform(get("/shift/saved").param("month", "2026-10"))
+                  .andExpect(status().isOk())
+                  .andReturn());
+
+      assertTrue(html.contains("この月のシフトはまだ作成されていません"));
+      assertFalse(html.contains("id=\"result-summary\""));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 形式が不正な month, When: GET /shift/saved を呼ぶと, Then: 400 で保存は参照しない")
+    void returnsBadRequestWhenMonthIsInvalid() throws Exception {
+      mockMvc
+          .perform(get("/shift/saved").param("month", "2026-13"))
+          .andExpect(status().isBadRequest());
+
+      verify(shiftStorageService, never()).load(any());
+    }
+
+    @Test
+    @DisplayName("[F-7][8.3節] Given: month がない, When: GET /shift/saved を呼ぶと, Then: 400 になる")
+    void returnsBadRequestWhenMonthIsMissing() throws Exception {
+      mockMvc.perform(get("/shift/saved")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.3節] Given: 祝日データの収録範囲外の年, When: GET /shift/saved を呼ぶと, Then: 400 で保存は参照しない")
+    void returnsBadRequestWhenYearIsOutOfRange() throws Exception {
+      mockMvc
+          .perform(get("/shift/saved").param("month", "1954-12"))
+          .andExpect(status().isBadRequest());
+      mockMvc
+          .perform(get("/shift/saved").param("month", (Year.now().getValue() + 2) + "-01"))
+          .andExpect(status().isBadRequest());
+
+      verify(shiftStorageService, never()).load(any());
     }
   }
 }

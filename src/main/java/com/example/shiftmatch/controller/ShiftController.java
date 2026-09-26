@@ -18,11 +18,14 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * 月間シフト作成画面のコントローラーです。
@@ -31,6 +34,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 public class ShiftController {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ShiftController.class);
+
+  /** Thymeleaf のフラグメント指定（区切りがメソッド参照の検査に誤検出されないよう分割）。 */
+  private static final String RESULT_FRAGMENT = "fragments/result :" + ": resultPanel";
 
   private static final String SAVE_ERROR_MESSAGE = "保存に失敗しました。もう一度シフトを作成して保存し直してください";
 
@@ -117,10 +123,37 @@ public class ShiftController {
     return "index";
   }
 
+  /**
+   * 指定した月の保存済みシフトを、画面 3 の中身（フラグメント）だけで返します。
+   *
+   * <p>画面 1 で対象月を切り替えたあとに、保存済みのシフトを取得するために使います。
+   *
+   * @param month 対象月（YYYY-MM 形式）
+   * @param model モデルオブジェクト
+   * @return 画面 3 の中身のフラグメント
+   * @throws ResponseStatusException month が不正、または祝日データの収録範囲外の場合（400）
+   */
+  @GetMapping("/shift/saved")
+  public String savedShift(@RequestParam("month") String month, Model model) {
+    YearMonth yearMonth =
+        InputParsers.parseYearMonth(month)
+            .filter(value -> CalendarController.isWithinHolidayDataRange(value))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST));
+    addSavedResult(yearMonth, model);
+    return RESULT_FRAGMENT;
+  }
+
   private void addSavedResult(ShiftForm shiftForm, Model model) {
-    Optional<SavedMonthlyShift> saved =
-        InputParsers.parseYearMonth(shiftForm.getTargetMonth())
-            .flatMap(month -> shiftStorageService.load(month));
+    Optional<YearMonth> month = InputParsers.parseYearMonth(shiftForm.getTargetMonth());
+    if (month.isEmpty()) {
+      model.addAttribute("resultSource", "none");
+      return;
+    }
+    addSavedResult(month.get(), model);
+  }
+
+  private void addSavedResult(YearMonth month, Model model) {
+    Optional<SavedMonthlyShift> saved = shiftStorageService.load(month);
     if (saved.isEmpty()) {
       model.addAttribute("resultSource", "none");
       return;
