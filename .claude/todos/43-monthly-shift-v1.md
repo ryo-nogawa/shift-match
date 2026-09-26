@@ -50,7 +50,7 @@
     - 次を検証する `[F-11]` 付きのテストがある：個別変更がなければ曜日の基本シフト（例：火曜は火曜の設定）を使う／個別変更があれば基本シフトより優先する（休みへの変更、時間帯の変更の両方）／個別変更は日付が違う日には効かない／氏名が一致しない個別変更は無視される
     - `./mvnw test -Dtest=<追加したテストクラス>` が成功する
 
-- [ ] **T3. 営業日ごとに独立して割り当てを算出する（F-3、5 章）**
+- [x] **T3. 営業日ごとに独立して割り当てを算出する（F-3、5 章）**
   - 依頼事項：`MonthlyShiftService` と `MonthlyShiftServiceImpl` を作る（`@Service`。コンストラクタで `HolidayService` と `ShiftAssignmentService` を受け取る）。`create` は、`HolidayService.businessDays(input.month())` の各営業日について、名前が空でない従業員（入力順のまま）の希望を T2 で決め、`Employee` のリストにして `ShiftAssignmentService.assign` を呼び、`DailyShiftResult` に詰めて営業日順の `MonthlyShiftResult` を返す。`availableCount` は、その日の有効な従業員のうち休みでない人の数。この段階では入力検証（V-2〜V-9）は行わなくてよい（T5〜T7 で追加する）。従業員名が空の行は除外する（V-1）
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/MonthlyShiftService.java`、`.../MonthlyShiftServiceImpl.java`、`src/test/java/com/example/shiftmatch/service/MonthlyShiftServiceImplTest.java`
   - 完了条件：
