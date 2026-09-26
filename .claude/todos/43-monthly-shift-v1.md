@@ -59,7 +59,7 @@
     - 従業員名が空の行が結果（`assignment` の割り当て・未出勤者・`availableCount`）に含まれない `[V-1]` 付きのテストがある
     - `./mvnw test -Dtest=MonthlyShiftServiceImplTest` が成功する
 
-- [ ] **T4. 勤務できる人が 8 名未満の日だけを不成立にする（V-4、F-5、6 章）**
+- [x] **T4. 勤務できる人が 8 名未満の日だけを不成立にする（V-4、F-5、6 章）**
   - 依頼事項：T3 の `create` で、ある営業日に勤務できる人（有効な従業員のうち休みでない人）が 8 名未満のとき、エラーにせず、その日の `DailyShiftResult` を `assignment` が空・`availableCount` に勤務できる人数を入れた状態で返す。ハード制約を満たす案がない日（8 名以上いても特定の枠に入れる人がいない日）も `assign` が空を返すので不成立になる。**他の営業日の算出は止めない**（例外を投げない）。`availableCount` は不成立でない日にも設定する
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/MonthlyShiftServiceImpl.java`、`src/test/java/com/example/shiftmatch/service/MonthlyShiftServiceImplTest.java`
   - 完了条件：
