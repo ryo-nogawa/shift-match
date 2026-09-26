@@ -83,20 +83,28 @@ class AssignmentResultTest {
 
     @Test
     @DisplayName(
-        "[F-4] Given: 各割り当てのずれが計算されるとき, When: gapMinutesListを呼ぶと, Then:" + " 合計がscoreに一致する")
-    void gapMinutesListSumEqualsScore() {
+        "[F-4] Given: 各割り当てのずれが計算されるとき, When: gapMinutesListを呼ぶと, Then:" + " 期待される各人のずれが返される")
+    void gapMinutesListReturnsCorrectGaps() {
       List<ShiftAssignment> assignments = createStandardAssignments();
-      // すべての従業員が 7:30-18:30（660分）で、各枠に割り当てられた場合のずれ：
-      // createStandardAssignments() の各割り当ての計算結果が、
-      // gapMinutesList() の合計と一致することを確認する
-      // 実装と計算結果が一致することが条件
+      // すべての従業員が 7:30-18:30（660分）に設定されている
+      // 各枠の勤務時間から手計算したずれ：
+      // i=0：枠1(420分) → gap = 660-420 = 240
+      // i=1：枠2(450分) → gap = 660-450 = 210
+      // i=2：枠3(480分) → gap = 660-480 = 180
+      // i=3：枠4(450分) → gap = 660-450 = 210
+      // i=4：枠5(540分) → gap = 660-540 = 120
+      // i=5：枠6(570分) → gap = 660-570 = 90
+      // i=6：枠6(570分) → gap = 660-570 = 90  （Math.min(6, 5) = 5 → 枠6）
+      // i=7：枠6(570分) → gap = 660-570 = 90  （Math.min(7, 5) = 5 → 枠6）
+      List<Integer> expectedGaps = List.of(240, 210, 180, 210, 120, 90, 90, 90);
       int expectedScore = 1230;
       AssignmentResult result = new AssignmentResult(assignments, expectedScore, new ArrayList<>());
 
-      var gapList = result.gapMinutesList();
-      int sumOfGaps = gapList.stream().mapToInt(i -> i.intValue()).sum();
+      List<Integer> actualGaps = result.gapMinutesList();
 
-      assertEquals(expectedScore, sumOfGaps);
+      assertEquals(expectedGaps, actualGaps, "ずれのリストが期待値と一致する");
+      int sumOfGaps = actualGaps.stream().mapToInt(i -> i.intValue()).sum();
+      assertEquals(expectedScore, sumOfGaps, "ずれの合計がスコアと一致する");
     }
   }
 
