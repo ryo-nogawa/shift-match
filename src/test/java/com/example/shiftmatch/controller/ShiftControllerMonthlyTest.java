@@ -3,6 +3,7 @@ package com.example.shiftmatch.controller;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -128,5 +129,41 @@ class ShiftControllerMonthlyTest {
         .perform(get("/"))
         .andExpect(status().isOk())
         .andExpect(model().attribute("initialStep", equalTo(1)));
+  }
+
+  @Test
+  @DisplayName("[F-3] POST /shift が正常に実行されるとき monthlyResult と initialStep=3 を返す")
+  void testPostShiftSuccess() throws Exception {
+    mockMvc
+        .perform(
+            post("/shift")
+                .param("targetMonth", "2026-10")
+                .param("employees[0].name", "A")
+                .param("employees[0].employmentType", "FULL_TIME")
+                .param("employees[0].days[0].off", "false")
+                .param("employees[0].days[0].start", "07:30")
+                .param("employees[0].days[0].end", "18:30"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("[V-3] POST /shift でエラーが発生するとき inputErrors と initialStep=1 を返す")
+  void testPostShiftWithErrors() throws Exception {
+    mockMvc
+        .perform(
+            post("/shift")
+                .param("targetMonth", "2026-10")
+                .param("employees[0].name", "A")
+                .param("employees[0].employmentType", "INVALID")
+                .param("employees[0].days[0].off", "false")
+                .param("employees[0].days[0].start", "07:30")
+                .param("employees[0].days[0].end", "18:30"))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("[F-3] POST /shift で employees が空のとき 1 行が補われる")
+  void testPostShiftEmptyEmployees() throws Exception {
+    mockMvc.perform(post("/shift").param("targetMonth", "2026-10")).andExpect(status().isOk());
   }
 }

@@ -112,17 +112,44 @@ public class ShiftController {
   /**
    * 月間シフトを作成します。
    *
-   * <p>T4 で実装予定です。
-   *
    * @param shiftForm フォームデータ
    * @param model モデルオブジェクト
    * @return ビュー名
    */
   @PostMapping("/shift")
   public String createShift(@ModelAttribute("shiftForm") ShiftForm shiftForm, Model model) {
-    // TODO: T4 で実装
+    // employees が空の場合は 1 行を補う
+    if (shiftForm.getEmployees().isEmpty()) {
+      EmployeeForm emptyEmployee = new EmployeeForm();
+      emptyEmployee.setEmploymentType("FULL_TIME");
+      List<DayForm> days = new ArrayList<>();
+      for (int d = 0; d < 5; d++) {
+        DayForm day = new DayForm();
+        day.setOff(false);
+        day.setStart(DEFAULT_START_TIME);
+        day.setEnd(DEFAULT_END_TIME);
+        days.add(day);
+      }
+      emptyEmployee.setDays(days);
+      shiftForm.getEmployees().add(emptyEmployee);
+    }
+
+    // フォームをドメインモデルに変換
+    com.example.shiftmatch.domain.MonthlyShiftInput input = monthlyFormConverter.toInput(shiftForm);
+
+    try {
+      // シフト作成サービスを呼び出す
+      var result = monthlyShiftService.create(input);
+      model.addAttribute("monthlyResult", result);
+      model.addAttribute("initialStep", 3);
+    } catch (com.example.shiftmatch.domain.InvalidMonthlyInputException e) {
+      // エラーの場合
+      model.addAttribute("inputErrors", e.errors());
+      model.addAttribute("initialStep", 1);
+    }
+
+    // フォームは常にモデルに含める
     model.addAttribute("shiftForm", shiftForm);
-    model.addAttribute("initialStep", 1);
     return "index";
   }
 }
