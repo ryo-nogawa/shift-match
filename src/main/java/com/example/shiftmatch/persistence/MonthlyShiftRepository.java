@@ -3,11 +3,14 @@ package com.example.shiftmatch.persistence;
 import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.ShiftAdjustment;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -119,6 +122,8 @@ public class MonthlyShiftRepository {
     return employees;
   }
 
+  private record AdjustmentKey(LocalDate date, String employeeName) {}
+
   private record DayRow(DayOfWeek day, DailyWish wish) {}
 
   private record EmployeeRow(int rowIndex, String name, EmploymentType employmentType) {}
@@ -134,5 +139,55 @@ public class MonthlyShiftRepository {
         .query(String.class)
         .optional()
         .map(value -> YearMonth.parse(value));
+  }
+
+  /**
+   * 対象月の個別変更を上書き保存します。
+   *
+   * @param month 対象月
+   * @param adjustments 個別変更のリスト
+   */
+  @Transactional
+  public void saveAdjustments(YearMonth month, List<ShiftAdjustment> adjustments) {
+    jdbcClient
+        .sql("DELETE FROM saved_adjustment WHERE adjust_date BETWEEN ? AND ?")
+        .params(month.atDay(1), month.atEndOfMonth())
+        .update();
+    Map<AdjustmentKey, ShiftAdjustment> latest = new LinkedHashMap<>();
+    for (ShiftAdjustment adjustment : adjustments) {
+      latest.put(new AdjustmentKey(adjustment.date(), adjustment.employeeName()), adjustment);
+    }
+    for (ShiftAdjustment adjustment : latest.values()) {
+      DailyWish wish = adjustment.wish();
+      jdbcClient
+          .sql(
+              "INSERT INTO saved_adjustment (adjust_date, employee_name, off, start_time,"
+                  + " end_time) VALUES (?, ?, ?, ?, ?)")
+          .params(
+              adjustment.date(), adjustment.employeeName(), wish.off(), wish.start(), wish.end())
+          .update();
+    }
+  }
+
+  /**
+   * 保存済みの個別変更をすべて、日付・従業員名順に復元します。
+   *
+   * @return 個別変更のリスト
+   */
+  public List<ShiftAdjustment> findAdjustments() {
+    return jdbcClient
+        .sql(
+            "SELECT adjust_date, employee_name, off, start_time, end_time FROM saved_adjustment"
+                + " ORDER BY adjust_date, employee_name")
+        .query(
+            (rs, rowNum) ->
+                new ShiftAdjustment(
+                    rs.getObject("adjust_date", LocalDate.class),
+                    rs.getString("employee_name"),
+                    new DailyWish(
+                        rs.getBoolean("off"),
+                        rs.getObject("start_time", LocalTime.class),
+                        rs.getObject("end_time", LocalTime.class))))
+        .list();
   }
 }

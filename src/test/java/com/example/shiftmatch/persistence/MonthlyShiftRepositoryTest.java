@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.ShiftAdjustment;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.EnumMap;
@@ -149,6 +151,94 @@ class MonthlyShiftRepositoryTest {
       repository.saveInput(List.of(), YearMonth.of(2026, 11));
 
       assertEquals(Optional.of(YearMonth.of(2026, 11)), repository.findLastTargetMonth());
+    }
+  }
+
+  @Nested
+  @DisplayName("個別変更")
+  class Adjustments {
+
+    private ShiftAdjustment adjustment(LocalDate date, String name, DailyWish wish) {
+      return new ShiftAdjustment(date, name, wish);
+    }
+
+    private DailyWish working(int startHour, int endHour) {
+      return new DailyWish(false, LocalTime.of(startHour, 0), LocalTime.of(endHour, 0));
+    }
+
+    @Nested
+    class 正常系 {
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 個別変更を保存したとき, When: 復元すると, Then: 休み・時間帯が日付・従業員名順で一致する")
+      void restoresAdjustmentsSortedByDateAndName() {
+        ShiftAdjustment off =
+            adjustment(LocalDate.of(2026, 10, 2), "佐藤", new DailyWish(true, null, null));
+        ShiftAdjustment work = adjustment(LocalDate.of(2026, 10, 1), "鈴木", working(9, 17));
+
+        repository.saveAdjustments(YearMonth.of(2026, 10), List.of(off, work));
+
+        assertEquals(List.of(work, off), repository.findAdjustments());
+      }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 他の月の個別変更があるとき, When: 対象月を保存すると, Then: 他の月の分が残る")
+      void keepsAdjustmentsOfOtherMonths() {
+        ShiftAdjustment september = adjustment(LocalDate.of(2026, 9, 30), "佐藤", working(9, 17));
+        ShiftAdjustment october = adjustment(LocalDate.of(2026, 10, 1), "佐藤", working(9, 17));
+        repository.saveAdjustments(YearMonth.of(2026, 9), List.of(september));
+
+        repository.saveAdjustments(YearMonth.of(2026, 10), List.of(october));
+
+        assertEquals(List.of(september, october), repository.findAdjustments());
+      }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 同じ日付・従業員名を再保存するとき, When: 復元すると, Then: 最新で上書きされる")
+      void overwritesSameDateAndName() {
+        LocalDate date = LocalDate.of(2026, 10, 1);
+        repository.saveAdjustments(
+            YearMonth.of(2026, 10), List.of(adjustment(date, "佐藤", working(9, 17))));
+        ShiftAdjustment latest = adjustment(date, "佐藤", working(8, 16));
+
+        repository.saveAdjustments(YearMonth.of(2026, 10), List.of(latest));
+
+        assertEquals(List.of(latest), repository.findAdjustments());
+      }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 送信に同じ日付・従業員名が重複するとき, When: 保存すると, Then: 後のものが採用される")
+      void lastDuplicateWins() {
+        LocalDate date = LocalDate.of(2026, 10, 1);
+        ShiftAdjustment latest = adjustment(date, "佐藤", working(8, 16));
+
+        repository.saveAdjustments(
+            YearMonth.of(2026, 10), List.of(adjustment(date, "佐藤", working(9, 17)), latest));
+
+        assertEquals(List.of(latest), repository.findAdjustments());
+      }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 対象月に個別変更が保存済みのとき, When: 0 件で保存すると, Then: 対象月分が消える")
+      void removesMonthWhenSavedWithNoAdjustments() {
+        repository.saveAdjustments(
+            YearMonth.of(2026, 10),
+            List.of(adjustment(LocalDate.of(2026, 10, 1), "佐藤", working(9, 17))));
+
+        repository.saveAdjustments(YearMonth.of(2026, 10), List.of());
+
+        assertTrue(repository.findAdjustments().isEmpty());
+      }
+    }
+
+    @Nested
+    class 異常系 {
+
+      @Test
+      @DisplayName("[F-7] Given: 何も保存していないとき, When: 個別変更を復元すると, Then: 空のリストが返る")
+      void returnsEmptyWhenNothingSaved() {
+        assertTrue(repository.findAdjustments().isEmpty());
+      }
     }
   }
 }
