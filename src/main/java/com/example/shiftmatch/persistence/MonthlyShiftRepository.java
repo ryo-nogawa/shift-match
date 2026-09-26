@@ -214,18 +214,22 @@ public class MonthlyShiftRepository {
           .update();
     }
     for (DailyShiftResult day : result.days()) {
-      if (day.assignment().isEmpty()) {
-        continue;
-      }
-      AssignmentResult assignment = day.assignment().get();
+      Optional<AssignmentResult> assignment = day.assignment();
       jdbcClient
           .sql(
               "INSERT INTO saved_day (day_date, target_month, available_count, score)"
                   + " VALUES (?, ?, ?, ?)")
-          .params(day.date(), targetMonth, day.availableCount(), assignment.score())
+          .params(
+              day.date(),
+              targetMonth,
+              day.availableCount(),
+              assignment.map(value -> value.score()).orElse(null))
           .update();
-      insertAssignments(day.date(), assignment.assignments());
-      insertUnassigned(day.date(), assignment.unassignedEmployees());
+      assignment.ifPresent(
+          value -> {
+            insertAssignments(day.date(), value.assignments());
+            insertUnassigned(day.date(), value.unassignedEmployees());
+          });
     }
   }
 

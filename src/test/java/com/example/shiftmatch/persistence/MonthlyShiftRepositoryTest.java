@@ -349,6 +349,25 @@ class MonthlyShiftRepositoryTest {
         assertEquals(second, saved.result());
         assertEquals(List.of("C"), saved.employeeNames());
       }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 成立日と不成立日が混在するとき, When: 復元すると, Then: 勤務可能人数と日付順が一致する")
+      void restoresUnsuccessfulDaysInDateOrder() {
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                successDay(LocalDate.of(2026, 10, 1), employees()),
+                new DailyShiftResult(LocalDate.of(2026, 10, 2), 5, Optional.empty()),
+                successDay(LocalDate.of(2026, 10, 5), employees()),
+                new DailyShiftResult(LocalDate.of(2026, 10, 6), 0, Optional.empty()));
+
+        repository.saveShift(result, List.of("A"));
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals(result, saved.result());
+        assertEquals(5, saved.result().days().get(1).availableCount());
+        assertTrue(saved.result().days().get(1).assignment().isEmpty());
+      }
     }
 
     @Nested
