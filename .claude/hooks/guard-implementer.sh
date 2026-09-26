@@ -1,5 +1,6 @@
 #!/bin/bash
 # implementer サブエージェントの禁止事項（.claude/agents/implementer.md）を機械的に強制する PreToolUse フック。
+# pom.xml は deny せず、settings.json の ask でユーザーに確認する（依存の追加は Todo に明記されたものだけ）。
 # メインエージェントからの呼び出しは対象外（agent_type が implementer のときだけ判定する）。
 set -euo pipefail
 
@@ -28,7 +29,6 @@ case "$tool_name" in
     file_path=$(jq -r '.tool_input.file_path // empty' <<<"$input")
     case "$file_path" in
       */docs/*) deny "docs/ の仕様書の変更" ;;
-      */pom.xml) deny "pom.xml の変更（依存ライブラリの追加はユーザー確認が必要です）" ;;
     esac
     ;;
 esac
