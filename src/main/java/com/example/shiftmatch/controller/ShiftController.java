@@ -82,6 +82,18 @@ public class ShiftController {
   }
 
   /**
+   * 雇用区分の選択肢（常勤、パート、管理職）をモデルに設定します。
+   *
+   * <p>GET と POST の全経路でモデルに含まれるよう、{@code @ModelAttribute} を使用します。
+   *
+   * @return 雇用区分の選択肢のリスト
+   */
+  @ModelAttribute("employmentTypes")
+  public List<EmploymentType> employmentTypes() {
+    return List.of(EmploymentType.FULL_TIME, EmploymentType.PART_TIME, EmploymentType.MANAGER);
+  }
+
+  /**
    * 初期フォームを表示します。保存済みの従業員入力がある場合は復元します。
    *
    * @param model モデルオブジェクト

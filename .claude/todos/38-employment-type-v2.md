@@ -47,7 +47,7 @@
     - テストを先に書き、RED を確認した
     - `@DisplayName` の先頭に `[V-7]` を付けた次のテストがある：不正な区分の行でエラーメッセージ（行番号つき）が表示される／そのとき `LatestShiftRepository#save` も `ShiftAssignmentService#assign` も呼ばれない／氏名が空の行の不正な区分はエラーにならない／ほかの検査（V-2〜V-6）のエラーと同時に発生しても各エラーが表示される
     - `./mvnw test -Dtest=ShiftControllerTest` が成功する
-- [ ] **T7. 入力画面に「区分」列を追加する（初期値は常勤・行の追加／並べ替え／削除に追従）**
+- [x] **T7. 入力画面に「区分」列を追加する（初期値は常勤・行の追加／並べ替え／削除に追従）**
   - 依頼事項：`index.html` の入力表に、氏名の右へ「区分」列（`th:field="*{employees[__${stat.index}__].employmentType}"` の `select`。選択肢は `EmploymentType` の 3 値で、表示はラベル、値は列挙名）を追加する。選択肢はコントローラーの `@ModelAttribute("employmentTypes")` で渡す。`shift-form.js` の行追加（`addRow`）にも同じ `select`（初期値 常勤）を加え、インデックス振り直し処理が `employmentType` も対象にするよう確認・修正する。並べ替え（F-8）では区分の値も行と一緒に移動すること。CSS（`shift-form.css`）は入力表の列幅が崩れないよう最小限だけ調整する
   - 対象ファイル：`src/main/resources/templates/index.html`、`src/main/resources/static/js/shift-form.js`、`src/main/resources/static/css/shift-form.css`、`ShiftController.java`、`ShiftControllerTest.java`
   - 完了条件：

@@ -922,6 +922,59 @@ class ShiftControllerTest {
   }
 
   @Nested
+  @DisplayName("[F-8][F-2][F-6] 入力画面の区分列")
+  class EmploymentTypeInputColumn {
+
+    @Test
+    @DisplayName(
+        "[F-8] Given: GET /のとき, When: 画面が表示されると," + " Then: 各行の氏名の次に区分selectがあり、選択肢は常勤・パート・管理職である")
+    void showsEmploymentTypeSelectWithThreeOptions() throws Exception {
+      when(latestShiftRepository.findEmployees()).thenReturn(List.of());
+
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+      String html = result.getResponse().getContentAsString();
+
+      assertTrue(html.contains("name=\"employees[0].employmentType\""), "Row 0 select");
+      assertTrue(html.contains("value=\"FULL_TIME\""), "FULL_TIME option");
+      assertTrue(html.contains("value=\"PART_TIME\""), "PART_TIME option");
+      assertTrue(html.contains("value=\"MANAGER\""), "MANAGER option");
+      assertTrue(html.contains("常勤"), "Label for FULL_TIME");
+      assertTrue(html.contains("パート"), "Label for PART_TIME");
+      assertTrue(html.contains("管理職"), "Label for MANAGER");
+    }
+
+    @Test
+    @DisplayName("[F-8] Given: POSTでエラーが返ったとき, When: indexが表示されるとき," + " Then: 送信した区分が選択されたまま表示される")
+    void preservesEmploymentTypeSelectionAfterError() throws Exception {
+      mockMvc
+          .perform(
+              post("/shift")
+                  .param("employees[0].name", "A")
+                  .param("employees[0].employmentType", "PART_TIME")
+                  .param("employees[0].start", "invalid")
+                  .param("employees[0].end", "18:30"))
+          .andExpect(status().isOk());
+
+      String html =
+          mockMvc
+              .perform(
+                  post("/shift")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].employmentType", "MANAGER")
+                      .param("employees[0].start", "invalid")
+                      .param("employees[0].end", "18:30"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+
+      // Check that MANAGER is selected (selected attribute in HTML)
+      assertTrue(html.contains("name=\"employees[0].employmentType\""), "Row 0 select");
+      assertTrue(html.contains("value=\"MANAGER\""), "MANAGER option in HTML");
+    }
+  }
+
+  @Nested
   @DisplayName("[F-1] GET・POST の全戻り経路で timeOptions をモデルに設定")
   class TimeOptionsInModel {
 
