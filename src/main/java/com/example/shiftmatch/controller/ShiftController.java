@@ -26,15 +26,6 @@ public class ShiftController {
 
   private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
-  private static final LocalTime FIRST_TIME_OPTION = LocalTime.of(7, 30);
-
-  private static final LocalTime LAST_TIME_OPTION = LocalTime.of(18, 30);
-
-  private static final int TIME_OPTION_STEP_MINUTES = 30;
-
-  /** 開始・終了の選択肢（07:30〜18:30 の 30 分刻み、HH:mm）。 */
-  private static final List<String> TIME_OPTIONS = createTimeOptions();
-
   private final ShiftAssignmentService shiftAssignmentService;
 
   /**
@@ -56,7 +47,7 @@ public class ShiftController {
    */
   @ModelAttribute("timeOptions")
   public List<String> timeOptions() {
-    return TIME_OPTIONS;
+    return TimeOptions.VALUES;
   }
 
   /**
@@ -127,21 +118,6 @@ public class ShiftController {
   }
 
   /**
-   * 開始・終了の選択肢を作成します。
-   *
-   * @return 07:30 から 18:30 までの 30 分刻みの時刻（HH:mm）のリスト
-   */
-  private static List<String> createTimeOptions() {
-    List<String> options = new ArrayList<>();
-    for (LocalTime time = FIRST_TIME_OPTION;
-        !time.isAfter(LAST_TIME_OPTION);
-        time = time.plusMinutes(TIME_OPTION_STEP_MINUTES)) {
-      options.add(time.format(TIME_FORMATTER));
-    }
-    return List.copyOf(options);
-  }
-
-  /**
    * 開始・終了の入力をチェックします（V-3）。
    *
    * <p>氏名が入力され、休みでない行だけを対象にします（V-1）。
@@ -183,7 +159,7 @@ public class ShiftController {
     if (time == null || time.isEmpty()) {
       return label + "が未選択です";
     }
-    if (!TIME_OPTIONS.contains(time)) {
+    if (!TimeOptions.VALUES.contains(time)) {
       return label + "は選択肢にありません";
     }
     return null;
