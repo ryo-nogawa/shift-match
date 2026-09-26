@@ -30,7 +30,7 @@
     - `grep -n "国民の祝日・休日月日" src/main/java/com/example/shiftmatch/service/HolidayCsvParser.java` の結果が、定数の定義の行だけ（または列名ごとの定数の定義の行だけ）になっている
     - `./mvnw test -Dtest=HolidayCsvParserTest` が成功する
 
-- [ ] **S3. 全テストと静的解析を通す**
+- [x] **S3. 全テストと静的解析を通す**
   - 依頼事項：`./mvnw spotless:apply` を実行して整形し、`./mvnw test` で全テスト・Spotless・Checkstyle を通す。`pom.xml` に変更がないことを確認する
   - 対象ファイル：変更した全ファイル
   - 完了条件：
