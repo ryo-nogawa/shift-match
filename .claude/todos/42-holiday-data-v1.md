@@ -71,7 +71,7 @@
     - `[V-8]` を含む `@DisplayName` のテストが存在する：保存済みの年は true で取得を呼ばない、保存されていない年は取得して true になる、保存されておらず取得にも失敗した年は false
     - `./mvnw test -Dtest=HolidayServiceImplTest` が成功する
 
-- [ ] **T6. 営業日と祝日の一覧を返す（F-10、V-8）**
+- [x] **T6. 営業日と祝日の一覧を返す（F-10、V-8）**
   - 依頼事項：`HolidayService` に `List<LocalDate> businessDays(YearMonth month)`（月〜金かつ祝日でない日を日付順に返す）と `Map<LocalDate, String> holidaysOf(YearMonth month)`（その月の祝日の日付と祝日名。日付順の `LinkedHashMap` または `TreeMap`）を追加して実装する。どちらも、最初に `isSupported(month)` を確認し、false のときは `domain/HolidayDataUnavailableError.java`（`RuntimeException`。`domain/` の既存の `*Error` に倣う。メッセージに年月を含める）を投げる（V-8）。祝日が土日と重なる日は、営業日に含まれないだけで、`holidaysOf` には含める。2026 年 10 月（12 日がスポーツの日）を検証に使う：営業日は 10/1〜10/30 の月〜金から 10/12 を除いた 21 日
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HolidayService.java`、`src/main/java/com/example/shiftmatch/service/HolidayServiceImpl.java`、`src/main/java/com/example/shiftmatch/domain/HolidayDataUnavailableError.java`、`src/test/java/com/example/shiftmatch/service/HolidayServiceImplTest.java`
   - 完了条件：

@@ -1,9 +1,15 @@
 package com.example.shiftmatch.service;
 
 import com.example.shiftmatch.domain.Holiday;
+import com.example.shiftmatch.domain.HolidayDataUnavailableError;
 import com.example.shiftmatch.persistence.HolidayRepository;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -77,5 +83,75 @@ public class HolidayServiceImpl implements HolidayService {
 
     // 取得後、もう一度確認
     return repository.existsInYear(year);
+  }
+
+  /**
+   * 指定月の営業日一覧を取得します。
+   *
+   * <p>営業日は月〜金かつ祝日でない日です。日付は昇順で返されます。
+   *
+   * @param month 対象月
+   * @return 営業日の一覧（日付順）
+   * @throws HolidayDataUnavailableError 祝日データが利用できない場合
+   */
+  @Override
+  public List<LocalDate> businessDays(YearMonth month) {
+    if (!isSupported(month)) {
+      throw new HolidayDataUnavailableError(month);
+    }
+
+    List<Holiday> holidays = repository.findByYear(month.getYear());
+    var holidayDates =
+        holidays.stream()
+            .filter(holiday -> holiday.date().getMonthValue() == month.getMonthValue())
+            .map(holiday -> holiday.date())
+            .collect(Collectors.toSet());
+
+    var result =
+        month
+            .atDay(1)
+            .datesUntil(month.atEndOfMonth().plusDays(1))
+            .filter(date -> isWeekday(date) && !holidayDates.contains(date))
+            .collect(Collectors.toList());
+
+    return result;
+  }
+
+  /**
+   * 指定月の祝日一覧を取得します。
+   *
+   * <p>祝日は日付と祝日名のマップです。日付順で返されます。
+   *
+   * @param month 対象月
+   * @return 祝日の一覧（日付順の LinkedHashMap）
+   * @throws HolidayDataUnavailableError 祝日データが利用できない場合
+   */
+  @Override
+  public Map<LocalDate, String> holidaysOf(YearMonth month) {
+    if (!isSupported(month)) {
+      throw new HolidayDataUnavailableError(month);
+    }
+
+    List<Holiday> holidays = repository.findByYear(month.getYear());
+    var result = new LinkedHashMap<LocalDate, String>();
+
+    for (Holiday holiday : holidays) {
+      if (holiday.date().getMonthValue() == month.getMonthValue()) {
+        result.put(holiday.date(), holiday.name());
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * 指定日が平日（月〜金）かどうかを判定します。
+   *
+   * @param date 判定する日付
+   * @return 平日の場合は true、そうでない場合は false
+   */
+  private boolean isWeekday(LocalDate date) {
+    DayOfWeek dayOfWeek = date.getDayOfWeek();
+    return dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY;
   }
 }
