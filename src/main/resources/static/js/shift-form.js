@@ -15,6 +15,20 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function updateMoveButtonState() {
+    const rows = employeeRows.querySelectorAll("tr");
+    const moveUpButtons = employeeRows.querySelectorAll(".move-up-btn");
+    const moveDownButtons = employeeRows.querySelectorAll(".move-down-btn");
+
+    moveUpButtons.forEach((btn, index) => {
+      btn.disabled = index === 0;
+    });
+
+    moveDownButtons.forEach((btn, index) => {
+      btn.disabled = index === rows.length - 1;
+    });
+  }
+
   function updateAddButtonState() {
     const maxRows = parseInt(addRowBtn.getAttribute("data-max-rows"), 10);
     const currentRowCount = employeeRows.querySelectorAll("tr").length;
@@ -119,19 +133,35 @@ document.addEventListener("DOMContentLoaded", function () {
     newRow.appendChild(createCell("開始", createTimeSelect(prefix + ".start")));
     newRow.appendChild(createCell("終了", createTimeSelect(prefix + ".end")));
 
-    const deleteCell = document.createElement("td");
+    const actionCell = document.createElement("td");
+    const moveUpBtn = document.createElement("button");
+    moveUpBtn.type = "button";
+    moveUpBtn.className = "move-up-btn";
+    moveUpBtn.setAttribute("aria-label", "上へ");
+    moveUpBtn.textContent = "▲";
+    actionCell.appendChild(moveUpBtn);
+
+    const moveDownBtn = document.createElement("button");
+    moveDownBtn.type = "button";
+    moveDownBtn.className = "move-down-btn";
+    moveDownBtn.setAttribute("aria-label", "下へ");
+    moveDownBtn.textContent = "▼";
+    actionCell.appendChild(moveDownBtn);
+
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
     deleteBtn.className = "delete-row-btn";
     deleteBtn.textContent = "削除";
-    deleteCell.appendChild(deleteBtn);
-    newRow.appendChild(deleteCell);
+    actionCell.appendChild(deleteBtn);
+
+    newRow.appendChild(actionCell);
 
     employeeRows.appendChild(newRow);
 
     updateDeleteButtonState();
     updateAddButtonState();
     updateRowCount();
+    updateMoveButtonState();
   });
 
   employeeRows.addEventListener("click", function (event) {
@@ -143,6 +173,7 @@ document.addEventListener("DOMContentLoaded", function () {
         updateDeleteButtonState();
         updateAddButtonState();
         updateRowCount();
+        updateMoveButtonState();
       }
     }
 
@@ -153,6 +184,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (previousRow) {
           employeeRows.insertBefore(row, previousRow);
           renumberInputIndices();
+          updateMoveButtonState();
         }
       }
     }
@@ -167,6 +199,7 @@ document.addEventListener("DOMContentLoaded", function () {
           employeeRows.appendChild(row);
         }
         renumberInputIndices();
+        updateMoveButtonState();
       }
     }
   });
@@ -183,4 +216,5 @@ document.addEventListener("DOMContentLoaded", function () {
   updateDeleteButtonState();
   updateAddButtonState();
   updateRowCount();
+  updateMoveButtonState();
 });

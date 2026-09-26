@@ -1710,6 +1710,30 @@ class ShiftControllerTest {
           jsContent.contains("renumberInputIndices()"),
           "shift-form.js should call renumberInputIndices after moving rows");
     }
+
+    @Test
+    @DisplayName(
+        "[F-8] Given: shift-form.jsをロードしたとき, When: ファイルの内容を確認すると,"
+            + " Then: updateMoveButtonState の定義があり、動的に作る行の move-up-btn・move-down-btn"
+            + " の生成がある")
+    void shiftFormJsHasUpdateMoveButtonStateAndGeneratesButtonsInNewRows() throws Exception {
+      String jsContent = readShiftFormJs();
+
+      assertTrue(
+          jsContent.contains("function updateMoveButtonState"),
+          "shift-form.js should have updateMoveButtonState function");
+      assertTrue(
+          jsContent.contains("updateMoveButtonState()"),
+          "shift-form.js should call updateMoveButtonState");
+
+      // Check that new rows include move buttons
+      assertTrue(
+          jsContent.contains(".move-up-btn") || jsContent.contains("move-up-btn"),
+          "shift-form.js should create move-up-btn in new rows");
+      assertTrue(
+          jsContent.contains(".move-down-btn") || jsContent.contains("move-down-btn"),
+          "shift-form.js should create move-down-btn in new rows");
+    }
   }
 
   @Nested
