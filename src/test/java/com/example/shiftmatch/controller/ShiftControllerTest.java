@@ -75,6 +75,11 @@ class ShiftControllerTest {
 
   /** 8 名を枠 1 → 6 の順に割り当てた成立の日を作ります。名前は先頭から順に firstName、e2〜e8 です。 */
   private static DailyShiftResult feasibleDay(LocalDate date, String firstName) {
+    return feasibleDay(date, firstName, List.of());
+  }
+
+  private static DailyShiftResult feasibleDay(
+      LocalDate date, String firstName, List<Employee> unassigned) {
     List<ShiftAssignment> assignments = new ArrayList<>();
     for (int i = 0; i < SLOTS_IN_ORDER.size(); i++) {
       String name = i == 0 ? firstName : "e" + (i + 1);
@@ -86,7 +91,7 @@ class ShiftControllerTest {
               LocalTime.of(12, 45)));
     }
     return new DailyShiftResult(
-        date, 8, Optional.of(new AssignmentResult(assignments, 0, List.of())));
+        date, 8 + unassigned.size(), Optional.of(new AssignmentResult(assignments, 0, unassigned)));
   }
 
   private MockHttpServletRequestBuilder validRequest() {
@@ -371,6 +376,52 @@ class ShiftControllerTest {
 
       assertFalse(html.contains("<script>alert(1)</script>"));
       assertTrue(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;・e2"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4] Given: 割り当て・休み・割り当てなし・不成立の日がある結果, When: POST /shift の HTML を見ると,"
+            + " Then: 従業員別表示に従業員名・日付見出し・各セル・出勤日数・名前列の固定が出る")
+    void rendersEmployeesTab() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10),
+                  List.of(
+                      feasibleDay(
+                          LocalDate.of(2026, 10, 1),
+                          "e1",
+                          List.of(
+                              Employee.onLeave("休みさん"),
+                              Employee.working("控えさん", LocalTime.of(7, 30), LocalTime.of(8, 0)))),
+                      new DailyShiftResult(LocalDate.of(2026, 10, 2), 5, Optional.empty()))));
+
+      String html =
+          bodyOf(
+              perform(
+                  post("/shift")
+                      .param("targetMonth", "2026-10")
+                      .param("employees[0].name", "e1")
+                      .param("employees[0].employmentType", "FULL_TIME")
+                      .param("employees[1].name", "休みさん")
+                      .param("employees[1].employmentType", "FULL_TIME")
+                      .param("employees[2].name", "控えさん")
+                      .param("employees[2].employmentType", "FULL_TIME")));
+
+      int start = html.indexOf("id=\"tab-employees\"");
+      int end = html.indexOf("id=\"tab-detail\"");
+      String panel = html.substring(start, end);
+      assertTrue(panel.contains(">10/1(木)<"));
+      assertTrue(panel.contains(">10/2(金)<"));
+      assertTrue(panel.contains(">e1<"));
+      assertTrue(panel.contains(">休みさん<"));
+      assertTrue(panel.contains(">7:30–14:30<"));
+      assertTrue(panel.contains(">休<"));
+      assertTrue(panel.contains(">–<"));
+      assertTrue(panel.contains(">×<"));
+      assertTrue(panel.contains("出勤日数"));
+      assertTrue(panel.contains("class=\"sticky-col\""));
+      assertTrue(panel.contains("class=\"work-days\">1<"));
     }
 
     @Test

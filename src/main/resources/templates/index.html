@@ -165,7 +165,24 @@
                     </th:block>
                   </div>
                 </div>
-                <div id="tab-employees" class="tab-panel" hidden></div>
+                <div id="tab-employees" class="tab-panel" hidden>
+                  <table class="employee-result-table">
+                    <thead>
+                      <tr>
+                        <th class="sticky-col">従業員</th>
+                        <th th:each="day : ${resultView.days()}" th:text="${#temporals.format(day.date(), 'M/d(E)', T(java.util.Locale).JAPAN)}"></th>
+                        <th>出勤日数</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr th:each="row : ${resultView.employeeRows()}">
+                        <td class="sticky-col" th:text="${row.name()}"></td>
+                        <td th:each="cell : ${row.cells()}" th:text="${cell}"></td>
+                        <td class="work-days" th:text="${row.workDays()}"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
                 <div id="tab-detail" class="tab-panel" hidden></div>
               </div>
             </div>

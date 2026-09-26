@@ -212,3 +212,8 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 .calendar-day:hover { border-color: var(--accent) }
 .work-group { margin-top: 2px }
 .failed { margin-top: 4px; color: var(--u-fg); font-weight: 600 }
+
+/* 従業員別表示 */
+.employee-result-table th, .employee-result-table td { padding: 6px 10px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--line); font-size: 13px }
+.employee-result-table .sticky-col { position: sticky; left: 0; background: var(--card); text-align: left; z-index: 1 }
+.employee-result-table .work-days { font-weight: 600 }
