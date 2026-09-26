@@ -19,6 +19,11 @@
       <p th:text="${limitExceededError}"></p>
     </section>
 
+    <section class="alert" role="alert" th:if="${saveError != null}">
+      <h2>エラー</h2>
+      <p th:text="${saveError}"></p>
+    </section>
+
     <section class="alert" role="alert" th:if="${duplicateErrors != null && !duplicateErrors.isEmpty()}">
       <h2>重複エラー</h2>
       <ul>

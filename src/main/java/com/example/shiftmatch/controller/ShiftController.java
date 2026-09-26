@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -151,7 +152,11 @@ public class ShiftController {
     var result = shiftAssignmentService.assign(validEmployees);
 
     // 入力エラーがなく算出まで完了したときに保存
-    latestShiftRepository.save(validEmployees, result);
+    try {
+      latestShiftRepository.save(validEmployees, result);
+    } catch (DataAccessException e) {
+      model.addAttribute("saveError", "保存に失敗しました。もう一度シフトを作成して保存し直してください。");
+    }
 
     if (result.isPresent()) {
       model.addAttribute("assignmentResult", result.get());

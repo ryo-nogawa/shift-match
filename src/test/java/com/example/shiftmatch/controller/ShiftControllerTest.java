@@ -2046,4 +2046,64 @@ class ShiftControllerTest {
       verify(latestShiftRepository, never()).save(any(), any());
     }
   }
+
+  @Nested
+  @DisplayName("保存に失敗したらエラーとリトライを促す文言を表示する")
+  class SaveFailureErrorDisplay {
+
+    private static final String ERROR_MESSAGE = "保存に失敗しました。もう一度シフトを作成して保存し直してください。";
+
+    @Test
+    @DisplayName("保存失敗時にエラーメッセージと結果を表示")
+    void displaysErrorMessageOnSaveFailure() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+      Mockito.doThrow(new org.springframework.dao.DataAccessResourceFailureException("test"))
+          .when(latestShiftRepository)
+          .save(any(), any());
+
+      var request = post("/shift");
+      List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      MvcResult mvcResult = mockMvc.perform(request).andExpect(status().isOk()).andReturn();
+
+      String html = mvcResult.getResponse().getContentAsString();
+
+      // エラーメッセージが含まれ、割当結果も表示
+      assertTrue(html.contains(ERROR_MESSAGE), "Error message should be displayed");
+      assertTrue(html.contains("class=\"card result\""), "Assignment result should be displayed");
+    }
+
+    @Test
+    @DisplayName("保存成功時に saveError は null")
+    void doesNotDisplayErrorMessageOnSaveSuccess() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+      Mockito.doNothing().when(latestShiftRepository).save(any(), any());
+
+      var request = post("/shift");
+      List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      MvcResult mvcResult = mockMvc.perform(request).andExpect(status().isOk()).andReturn();
+
+      String html = mvcResult.getResponse().getContentAsString();
+
+      // エラーメッセージが含まれない
+      assertFalse(html.contains(ERROR_MESSAGE), "Error message should not be displayed");
+    }
+  }
 }
