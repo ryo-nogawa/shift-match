@@ -17,7 +17,7 @@
 
 ## Todo
 
-- [ ] **R1. パーサーの `Exception` 一括捕捉をなくす（MUST、exception.md）**
+- [x] **R1. パーサーの `Exception` 一括捕捉をなくす（MUST、exception.md）**
   - 依頼事項：`HolidayCsvParser.parse` の日付の読み取りから `try-catch` を取り除く。チェック例外を投げない処理は `try-catch` で囲まない。日付は、正規表現 `\d{4}/\d{1,2}/\d{1,2}` に一致することを先に確かめ、一致しなければ `IllegalArgumentException("日付形式が不正です: ...")` を投げる。一致したら 3 つの数値を `Integer.parseInt` で読み（桁数が限られるので例外は出ない）、月が 1〜12 の範囲であること、`YearMonth.of(year, month).isValidDay(day)` が true であることを確かめ、そうでなければ `IllegalArgumentException("日付が読めません: ...")` を投げる。その後で `LocalDate.of` を呼ぶ。既存のテストの期待値（不正な行で `IllegalArgumentException`）は変えない
   - 対象ファイル：`src/main/java/com/example/shiftmatch/service/HolidayCsvParser.java`、`src/test/java/com/example/shiftmatch/service/HolidayCsvParserTest.java`
   - 完了条件：

@@ -142,4 +142,92 @@ class HolidayCsvParserTest {
       assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
     }
   }
+
+  @Nested
+  @DisplayName("[F-10] CSV の完全性を検証する")
+  class ValidateCsvCompleteness {
+
+    @Test
+    @DisplayName("[F-10] Given: 空のバイト列が与えられたとき, When: パースすると, Then: IllegalArgumentException を投げる")
+    void throwsWhenCsvIsEmpty() {
+      byte[] csvBytes = new byte[0];
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 見出しだけで有効な祝日がない CSV のとき, When: パースすると, Then: IllegalArgumentException を投げる")
+    void throwsWhenNoValidHolidaysAfterHeader() {
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
+
+    @Test
+    @DisplayName("[F-10] Given: 見出しが異なる CSV のとき, When: パースすると, Then: IllegalArgumentException を投げる")
+    void throwsWhenHeaderIsDifferent() {
+      String csv = "日付,祝日名\n2026/1/1,元日\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 同じ日付が 2 回以上出現する CSV のとき, When: パースすると, Then: IllegalArgumentException を投げる")
+    void throwsWhenDuplicateDates() {
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/1/1,元日\n2026/1/1,元日（重複）\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 祝日名が空の行がある CSV のとき, When: パースすると, Then: IllegalArgumentException を投げる")
+    void throwsWhenHolidayNameIsEmpty() {
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/1/1,\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-10] Given: 祝日名が 65 文字の CSV のとき, When: パースすると, Then: IllegalArgumentException を投げる")
+    void throwsWhenHolidayNameExceeds64Chars() {
+      String name = "a".repeat(65);
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\n2026/1/1," + name + "\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      assertThrows(IllegalArgumentException.class, () -> parser.parse(csvBytes));
+    }
+
+    @Test
+    @DisplayName("[F-10] Given: 見出しの前後に空白を含む CSV のとき, When: パースすると, Then: 見出しは正規化されて受け入れられる")
+    void acceptsHeaderWithWhitespace() {
+      String csv = "  国民の祝日・休日月日  ,  国民の祝日・休日名称  \n2026/1/1,元日\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      List<Holiday> result = parser.parse(csvBytes);
+
+      assertEquals(1, result.size());
+      assertEquals(LocalDate.of(2026, 1, 1), result.get(0).date());
+    }
+
+    @Test
+    @DisplayName("[F-10] Given: 行末が \\r\\n の CSV のとき, When: パースすると, Then: 正常に読める")
+    void parsesWithCrlfLineEndings() {
+      String csv = "国民の祝日・休日月日,国民の祝日・休日名称\r\n2026/1/1,元日\r\n2026/10/12,スポーツの日\r\n";
+      byte[] csvBytes = csv.getBytes(Charset.forName("Shift_JIS"));
+
+      List<Holiday> result = parser.parse(csvBytes);
+
+      assertEquals(2, result.size());
+      assertEquals(LocalDate.of(2026, 1, 1), result.get(0).date());
+      assertEquals(LocalDate.of(2026, 10, 12), result.get(1).date());
+    }
+  }
 }
