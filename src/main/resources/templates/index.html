@@ -42,6 +42,15 @@
       </ul>
     </section>
 
+    <section class="alert" role="alert" th:if="${nameErrors != null && !nameErrors.isEmpty()}">
+      <h2>入力エラー</h2>
+      <ul>
+        <li th:each="error : ${nameErrors}">
+          <span th:text="|${error.rowIndex() + 1}行目 ${error.message()}|"></span>
+        </li>
+      </ul>
+    </section>
+
     <form
       method="post"
       th:action="@{/shift}"

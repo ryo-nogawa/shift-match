@@ -2160,4 +2160,95 @@ class ShiftControllerTest {
       }
     }
   }
+
+  @Nested
+  @DisplayName("氏名の最大長チェック")
+  class NameLengthValidation {
+
+    @Test
+    @DisplayName("Given: 256文字の氏名があるとき, When: POSTすると, Then: saveが呼ばれずindex が表示される")
+    void doesNotSaveWhenNameExceedsMaxLength() throws Exception {
+      var request = post("/shift");
+      String longName = "A".repeat(256);
+      List<String> names = List.of(longName, "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      // save が呼ばれていないことを確認
+      verify(latestShiftRepository, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("Given: 255文字の氏名があるとき, When: POSTすると, Then: saveが呼ばれる")
+    void saveWhenNameIsMaxLength() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      var request = post("/shift");
+      String maxName = "A".repeat(255);
+      List<String> names = List.of(maxName, "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      // save が呼ばれていることを確認
+      verify(latestShiftRepository).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("Given: 256文字の氏名があるとき, When: POSTすると, Then: エラーメッセージが表示される")
+    void displaysErrorMessageWhenNameExceedsMaxLength() throws Exception {
+      var request = post("/shift");
+      String longName = "A".repeat(256);
+      List<String> names = List.of(longName, "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      MvcResult mvcResult = mockMvc.perform(request).andExpect(status().isOk()).andReturn();
+      String html = mvcResult.getResponse().getContentAsString();
+
+      // エラーメッセージに行番号が含まれることを確認
+      assertTrue(
+          html.contains("1") && html.contains("255"),
+          "Error message should contain row number and max length");
+    }
+
+    @Test
+    @DisplayName("Given: 空の氏名があるとき, When: POSTすると, Then: エラーにならず除外される")
+    void excludesEmptyNameRows() throws Exception {
+      var result = createStandardResult();
+      when(shiftAssignmentService.findDuplicateNames(any())).thenReturn(List.of());
+      when(shiftAssignmentService.assign(any())).thenReturn(java.util.Optional.of(result));
+
+      var request = post("/shift");
+      List<String> names = List.of("", "B", "C", "D", "E", "F", "G", "H");
+      for (int i = 0; i < names.size(); i++) {
+        request.param("employees[" + i + "].name", names.get(i));
+        request.param("employees[" + i + "].off", "false");
+        request.param("employees[" + i + "].start", "07:30");
+        request.param("employees[" + i + "].end", "18:30");
+      }
+
+      mockMvc.perform(request).andExpect(status().isOk());
+
+      // save が呼ばれていることを確認（空行は除外される）
+      verify(latestShiftRepository).save(any(), any());
+    }
+  }
 }
