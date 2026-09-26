@@ -13,13 +13,13 @@ import org.junit.jupiter.api.Test;
 class EmployeeTest {
 
   @Nested
-  @DisplayName("[F-1] 従業員入力（時間帯・休み）")
+  @DisplayName("[F-1] 従業員入力（時間帯・休み・雇用区分）")
   class EmployeeTimeRange {
 
     @Test
     @DisplayName(
         "[F-1] Given: Employee.working()で従業員を作成するとき, When: 属性にアクセスすると, Then:"
-            + " nameと時間帯が取得でき、offがfalseである")
+            + " nameと時間帯が取得でき、offがfalseで、employmentTypeが常勤である")
     void workingEmployeeHasCorrectAttributes() {
       String name = "山田太郎";
       LocalTime start = LocalTime.of(8, 0);
@@ -31,12 +31,13 @@ class EmployeeTest {
       assertEquals(start, employee.start());
       assertEquals(end, employee.end());
       assertEquals(false, employee.off());
+      assertEquals(EmploymentType.FULL_TIME, employee.employmentType());
     }
 
     @Test
     @DisplayName(
         "[F-1] Given: Employee.onLeave()で従業員を作成するとき, When: 属性にアクセスすると, Then:"
-            + " offがtrueで、startとendがnullである")
+            + " offがtrueで、startとendがnullで、employmentTypeが常勤である")
     void onLeaveEmployeeHasNullTimeRange() {
       String name = "山田太郎";
 
@@ -46,6 +47,41 @@ class EmployeeTest {
       assertEquals(true, employee.off());
       assertNull(employee.start());
       assertNull(employee.end());
+      assertEquals(EmploymentType.FULL_TIME, employee.employmentType());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: Employee.working(name, type, start, end)で従業員を作成するとき, When: 属性にアクセスすると,"
+            + " Then: employmentTypeに指定した型が保持される")
+    void workingEmployeeWithSpecifiedType() {
+      String name = "太郎";
+      LocalTime start = LocalTime.of(8, 0);
+      LocalTime end = LocalTime.of(17, 0);
+
+      Employee employee = Employee.working(name, EmploymentType.MANAGER, start, end);
+
+      assertEquals(name, employee.name());
+      assertEquals(start, employee.start());
+      assertEquals(end, employee.end());
+      assertEquals(false, employee.off());
+      assertEquals(EmploymentType.MANAGER, employee.employmentType());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: Employee.onLeave(name, type)で従業員を作成するとき, When: 属性にアクセスすると,"
+            + " Then: employmentTypeに指定した型が保持される")
+    void onLeaveEmployeeWithSpecifiedType() {
+      String name = "太郎";
+
+      Employee employee = Employee.onLeave(name, EmploymentType.PART_TIME);
+
+      assertEquals(name, employee.name());
+      assertEquals(true, employee.off());
+      assertNull(employee.start());
+      assertNull(employee.end());
+      assertEquals(EmploymentType.PART_TIME, employee.employmentType());
     }
   }
 
@@ -91,7 +127,8 @@ class EmployeeTest {
     @Test
     @DisplayName("[H-3] Given: startがnullの従業員のとき, When: canWorkを呼ぶと, Then: falseである")
     void canWorkReturnsFalseWhenStartIsNull() {
-      Employee employee = new Employee("太郎", false, null, LocalTime.of(17, 0));
+      Employee employee =
+          new Employee("太郎", EmploymentType.FULL_TIME, false, null, LocalTime.of(17, 0));
 
       assertEquals(false, employee.canWork(ShiftSlot.SLOT_1));
     }
@@ -99,7 +136,8 @@ class EmployeeTest {
     @Test
     @DisplayName("[H-3] Given: endがnullの従業員のとき, When: canWorkを呼ぶと, Then: falseである")
     void canWorkReturnsFalseWhenEndIsNull() {
-      Employee employee = new Employee("太郎", false, LocalTime.of(8, 0), null);
+      Employee employee =
+          new Employee("太郎", EmploymentType.FULL_TIME, false, LocalTime.of(8, 0), null);
 
       assertEquals(false, employee.canWork(ShiftSlot.SLOT_1));
     }
@@ -149,7 +187,7 @@ class EmployeeTest {
     @Test
     @DisplayName("[H-3] Given: 開始・終了がnullの従業員のとき, When: workableSlotsを呼ぶと, Then:" + " 空のリストを返す")
     void workableSlotsReturnsEmptyWhenTimeRangeIsNull() {
-      Employee employee = new Employee("太郎", false, null, null);
+      Employee employee = new Employee("太郎", EmploymentType.FULL_TIME, false, null, null);
 
       var slots = employee.workableSlots();
 
@@ -166,6 +204,24 @@ class EmployeeTest {
 
       assertEquals(1, slots.size());
       assertEquals(ShiftSlot.SLOT_2, slots.get(0));
+    }
+
+    @Test
+    @DisplayName(
+        "[H-3] Given: 同じ時間帯の従業員が常勤・パート・管理職のときときき, When: canWorkの結果を比較すると,"
+            + " Then: 雇用区分に関わらず結果が同じである")
+    void canWorkDoesNotDependOnEmploymentType() {
+      LocalTime start = LocalTime.of(8, 0);
+      LocalTime end = LocalTime.of(17, 0);
+
+      Employee fullTime = Employee.working("太郎", start, end);
+      Employee partTime = Employee.working("花子", EmploymentType.PART_TIME, start, end);
+      Employee manager = Employee.working("次郎", EmploymentType.MANAGER, start, end);
+
+      for (ShiftSlot slot : ShiftSlot.values()) {
+        assertEquals(fullTime.canWork(slot), partTime.canWork(slot), "常勤とパートで canWork の結果が異なります");
+        assertEquals(fullTime.canWork(slot), manager.canWork(slot), "常勤と管理職で canWork の結果が異なります");
+      }
     }
   }
 
@@ -186,7 +242,7 @@ class EmployeeTest {
         "[F-4][H-3] Given: 開始・終了がnullの従業員, When: unassignedReason()を呼ぶと, Then:"
             + " NO_AVAILABLE_SLOT を返す")
     void nullTimeRangeReturnsNoAvailableSlot() {
-      Employee employee = new Employee("X", false, null, null);
+      Employee employee = new Employee("X", EmploymentType.FULL_TIME, false, null, null);
 
       assertEquals(UnassignedReason.NO_AVAILABLE_SLOT, employee.unassignedReason());
     }
@@ -247,6 +303,23 @@ class EmployeeTest {
       Employee employee = Employee.working("太郎", LocalTime.of(8, 0), LocalTime.of(17, 0));
 
       assertThrows(IllegalStateException.class, () -> employee.gapMinutes(ShiftSlot.SLOT_5));
+    }
+
+    @Test
+    @DisplayName(
+        "[H-3] Given: 同じ時間帯の従業員が常勤・パート・管理職のときときき, When: gapMinutesの結果を比較すると,"
+            + " Then: 雇用区分に関わらず結果が同じである")
+    void gapMinutesDoesNotDependOnEmploymentType() {
+      LocalTime start = LocalTime.of(8, 0);
+      LocalTime end = LocalTime.of(17, 0);
+
+      Employee fullTime = Employee.working("太郎", start, end);
+      Employee partTime = Employee.working("花子", EmploymentType.PART_TIME, start, end);
+      Employee manager = Employee.working("次郎", EmploymentType.MANAGER, start, end);
+
+      assertEquals(90, fullTime.gapMinutes(ShiftSlot.SLOT_2));
+      assertEquals(90, partTime.gapMinutes(ShiftSlot.SLOT_2));
+      assertEquals(90, manager.gapMinutes(ShiftSlot.SLOT_2));
     }
   }
 }

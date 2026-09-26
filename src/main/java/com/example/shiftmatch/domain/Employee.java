@@ -6,30 +6,56 @@ import java.util.List;
 /**
  * 従業員情報を表すレコード。
  *
- * <p>従業員の名前、勤務可能時間帯、休みの有無を保持します。
+ * <p>従業員の名前、雇用区分、勤務可能時間帯、休みの有無を保持します。
  */
-public record Employee(String name, boolean off, LocalTime start, LocalTime end) {
+public record Employee(
+    String name, EmploymentType employmentType, boolean off, LocalTime start, LocalTime end) {
 
   /**
-   * 勤務可能時間帯を指定して従業員を作成します。
+   * 勤務可能時間帯を指定して従業員を作成します（常勤）。
    *
    * @param name 従業員名
    * @param start 勤務開始時刻
    * @param end 勤務終了時刻
-   * @return 新しい従業員インスタンス
+   * @return 新しい従業員インスタンス（常勤）
    */
   public static Employee working(String name, LocalTime start, LocalTime end) {
-    return new Employee(name, false, start, end);
+    return new Employee(name, EmploymentType.FULL_TIME, false, start, end);
+  }
+
+  /**
+   * 勤務可能時間帯と雇用区分を指定して従業員を作成します。
+   *
+   * @param name 従業員名
+   * @param employmentType 雇用区分
+   * @param start 勤務開始時刻
+   * @param end 勤務終了時刻
+   * @return 新しい従業員インスタンス
+   */
+  public static Employee working(
+      String name, EmploymentType employmentType, LocalTime start, LocalTime end) {
+    return new Employee(name, employmentType, false, start, end);
+  }
+
+  /**
+   * 休みの従業員を作成します（常勤）。
+   *
+   * @param name 従業員名
+   * @return 新しい従業員インスタンス（常勤、休み）
+   */
+  public static Employee onLeave(String name) {
+    return new Employee(name, EmploymentType.FULL_TIME, true, null, null);
   }
 
   /**
    * 休みの従業員を作成します。
    *
    * @param name 従業員名
+   * @param employmentType 雇用区分
    * @return 新しい従業員インスタンス（休み）
    */
-  public static Employee onLeave(String name) {
-    return new Employee(name, true, null, null);
+  public static Employee onLeave(String name, EmploymentType employmentType) {
+    return new Employee(name, employmentType, true, null, null);
   }
 
   /**
