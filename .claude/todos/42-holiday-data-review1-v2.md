@@ -76,7 +76,7 @@
     - `HolidayStartupRunner` の `@ConditionalOnProperty` を一時的に外すと `false` のテストが失敗した（RED の確認）。確認後に戻した
     - `./mvnw test -Dtest=HolidayStartupRunnerTest` が成功する
 
-- [ ] **R8. テストの後始末で HttpServer を必ず停止する（SHOULD）**
+- [x] **R8. テストの後始末で HttpServer を必ず停止する（SHOULD）**
   - 依頼事項：`HttpHolidayCsvFetcherTest` で、`HttpServer` の停止（`stopServer()` など）に `@AfterEach` を付け、各テストメソッドの末尾での手動の停止呼び出しを取り除く。起動していないときに落ちないよう、`null` を確認する
   - 対象ファイル：`src/test/java/com/example/shiftmatch/service/HttpHolidayCsvFetcherTest.java`
   - 完了条件：
@@ -103,5 +103,6 @@
 - v1（implementer）：R1〜R5 は完了。R6・R10 は完了条件を満たさないまま `[x]` を付けていた。R7・R8・R9 は見送られていた
 - R6 試行 1/1：成功 — テストを先に書き、RED を確認した。`[F-10]` を先頭に付けたテストで、形式が不正な URL（例：`"http://[invalid"`）でコンストラクタが `IllegalArgumentException` を投げることを確認。現状の実装では既に通る。`HttpHolidayCsvFetcher.java` に `catch (Exception` がない（grep -n で 0 件）。`./mvnw test -Dtest=HttpHolidayCsvFetcherTest` が成功する。
 - R7 試行 1/1：成功 — テストを先に書き、RED を確認した。`.withUserConfiguration(HolidayStartupRunner.class)` を追加し、`holiday.refresh-on-startup=false` と `true` の両方でテスト。`@ConditionalOnProperty` を外すと `false` のテストが失敗することを確認した（RED の確認）。その後戻す。`./mvnw test -Dtest=HolidayStartupRunnerTest` が成功する。
+- R8 試行 1/1：成功 — `@AfterEach` を `stopServer()` に付けた。テストメソッドの末尾での手動呼び出しを削除（fetchesSuccessfullyWithStatus200、throwsWhenStatus500）。throwsWhenConnectionFails() 内の stopServer() は意図的であり保持。`./mvnw test -Dtest=HttpHolidayCsvFetcherTest` が成功する。
 
 <!-- implementer が試行結果（失敗理由・リトライ回数）を追記する欄。作成時は空のままにする -->

@@ -7,6 +7,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,6 +26,7 @@ class HttpHolidayCsvFetcherTest {
     httpServer.start();
   }
 
+  @AfterEach
   void stopServer() {
     if (httpServer != null) {
       httpServer.stop(0);
@@ -67,7 +69,6 @@ class HttpHolidayCsvFetcherTest {
       byte[] result = testFetcher.fetch();
 
       assertArrayEquals(csvBytes, result);
-      stopServer();
     }
 
     @Test
@@ -84,7 +85,6 @@ class HttpHolidayCsvFetcherTest {
           new HttpHolidayCsvFetcher("http://localhost:" + serverPort + "/error", 10);
 
       assertThrows(HolidayFetchException.class, () -> testFetcher.fetch());
-      stopServer();
     }
 
     @Test
