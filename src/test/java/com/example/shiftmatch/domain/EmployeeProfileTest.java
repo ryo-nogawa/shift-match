@@ -10,6 +10,7 @@ import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -91,6 +92,47 @@ class EmployeeProfileTest {
       assertTrue(employee.off());
       assertNull(employee.start());
       assertNull(employee.end());
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: パートと曜日休み, When: EmployeeProfile を作成すると, Then: offDays が保持される")
+    void partTimeKeepsOffDays() {
+      EmployeeProfile profile =
+          new EmployeeProfile(
+              "Taro",
+              EmploymentType.PART_TIME,
+              Map.of(),
+              Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
+
+      assertEquals(Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY), profile.offDays());
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: 常勤・管理職に曜日休み, When: EmployeeProfile を作成すると, Then: offDays は空になる")
+    void nonPartTimeIgnoresOffDays() {
+      EmployeeProfile fullTime =
+          new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Map.of(), Set.of(DayOfWeek.MONDAY));
+      EmployeeProfile manager =
+          new EmployeeProfile("Hanako", EmploymentType.MANAGER, Map.of(), Set.of(DayOfWeek.FRIDAY));
+
+      assertTrue(fullTime.offDays().isEmpty());
+      assertTrue(manager.offDays().isEmpty());
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: パートの曜日休み, When: 曜日休みの曜日で toEmployee を実行すると, Then: 休みの Employee になる")
+    void partTimeOffDayBecomesOnLeave() {
+      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+      DailyWish wish = new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(18, 0));
+      for (DayOfWeek day : DayOfWeek.values()) {
+        baseShifts.put(day, wish);
+      }
+      EmployeeProfile profile =
+          new EmployeeProfile(
+              "Taro", EmploymentType.PART_TIME, baseShifts, Set.of(DayOfWeek.TUESDAY));
+
+      assertTrue(profile.toEmployee(DayOfWeek.TUESDAY).off());
+      assertFalse(profile.toEmployee(DayOfWeek.MONDAY).off());
     }
   }
 }
