@@ -103,8 +103,7 @@ public class MonthlyResultViewFactory {
   private static int actualWorkMinutesOf(String name, DailyShiftResult daily) {
     for (ShiftAssignment shiftAssignment : daily.assignment().get().assignments()) {
       if (shiftAssignment.employee().name().equals(name)) {
-        ShiftSlot slot = shiftAssignment.slot();
-        return slot.workMinutes() - slot.breakDurationMinutes();
+        return shiftAssignment.slot().actualWorkMinutes();
       }
     }
     return 0;
