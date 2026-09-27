@@ -6,13 +6,32 @@ import java.util.List;
 /**
  * 従業員情報を表すレコード。
  *
- * <p>従業員の名前、雇用区分、勤務可能時間帯、休みの有無を保持します。
+ * <p>従業員の名前、雇用区分、勤務可能時間帯、休みの有無、週の残り時間（H-4）を保持します。
  */
 public record Employee(
-    String name, EmploymentType employmentType, boolean off, LocalTime start, LocalTime end) {
+    String name,
+    EmploymentType employmentType,
+    boolean off,
+    LocalTime start,
+    LocalTime end,
+    Integer weeklyRemainingMinutes) {
 
   /**
-   * 旧シグネチャのコンストラクタ（常勤を補う）。互換性のために残しています。
+   * 旧シグネチャのコンストラクタ（週の残り時間を上限なしで補う）。互換性のために残しています。
+   *
+   * @param name 従業員名
+   * @param employmentType 雇用区分
+   * @param off 休みの有無
+   * @param start 勤務開始時刻
+   * @param end 勤務終了時刻
+   */
+  public Employee(
+      String name, EmploymentType employmentType, boolean off, LocalTime start, LocalTime end) {
+    this(name, employmentType, off, start, end, null);
+  }
+
+  /**
+   * 旧シグネチャのコンストラクタ（常勤・週の残り時間を上限なしで補う）。互換性のために残しています。
    *
    * @param name 従業員名
    * @param off 休みの有無
@@ -20,7 +39,7 @@ public record Employee(
    * @param end 勤務終了時刻
    */
   public Employee(String name, boolean off, LocalTime start, LocalTime end) {
-    this(name, EmploymentType.FULL_TIME, off, start, end);
+    this(name, EmploymentType.FULL_TIME, off, start, end, null);
   }
 
   /**
@@ -32,7 +51,7 @@ public record Employee(
    * @return 新しい従業員インスタンス（常勤）
    */
   public static Employee working(String name, LocalTime start, LocalTime end) {
-    return new Employee(name, EmploymentType.FULL_TIME, false, start, end);
+    return new Employee(name, EmploymentType.FULL_TIME, false, start, end, null);
   }
 
   /**
@@ -46,7 +65,7 @@ public record Employee(
    */
   public static Employee working(
       String name, EmploymentType employmentType, LocalTime start, LocalTime end) {
-    return new Employee(name, employmentType, false, start, end);
+    return new Employee(name, employmentType, false, start, end, null);
   }
 
   /**
@@ -56,7 +75,7 @@ public record Employee(
    * @return 新しい従業員インスタンス（常勤、休み）
    */
   public static Employee onLeave(String name) {
-    return new Employee(name, EmploymentType.FULL_TIME, true, null, null);
+    return new Employee(name, EmploymentType.FULL_TIME, true, null, null, null);
   }
 
   /**
@@ -67,7 +86,7 @@ public record Employee(
    * @return 新しい従業員インスタンス（休み）
    */
   public static Employee onLeave(String name, EmploymentType employmentType) {
-    return new Employee(name, employmentType, true, null, null);
+    return new Employee(name, employmentType, true, null, null, null);
   }
 
   /**
@@ -83,6 +102,32 @@ public record Employee(
       return false;
     }
     return !slot.startTime().isBefore(start) && !slot.endTime().isAfter(end);
+  }
+
+  /**
+   * 週の残り時間だけを変えた新しいインスタンスを返します。
+   *
+   * @param minutes 週の残り時間（分）
+   * @return 週の残り時間を変えた新しい従業員インスタンス
+   */
+  public Employee withWeeklyRemainingMinutes(int minutes) {
+    return new Employee(name, employmentType, off, start, end, minutes);
+  }
+
+  /**
+   * 枠にこの従業員を割り当てられるかを判定します。
+   *
+   * <p>{@link #canWork(ShiftSlot)} が true で、かつ週の残り時間（{@link #weeklyRemainingMinutes()}）が {@code
+   * null}（上限なし）であるか、枠の実労働時間（{@link ShiftSlot#actualWorkMinutes()}）以上であるときに true を返します（H-4）。
+   *
+   * @param slot 判定対象の枠
+   * @return 割り当てられる場合は true、そうでなければ false
+   */
+  public boolean canAssign(ShiftSlot slot) {
+    if (!canWork(slot)) {
+      return false;
+    }
+    return weeklyRemainingMinutes == null || slot.actualWorkMinutes() <= weeklyRemainingMinutes;
   }
 
   /**

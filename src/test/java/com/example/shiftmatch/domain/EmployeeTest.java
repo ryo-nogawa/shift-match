@@ -322,4 +322,51 @@ class EmployeeTest {
       assertEquals(90, manager.gapMinutes(ShiftSlot.SLOT_2));
     }
   }
+
+  @Nested
+  @DisplayName("[H-4] 週の残り時間による割り当て可否の判定")
+  class CanAssign {
+
+    @Test
+    @DisplayName(
+        "[H-4] Given: 週の残り時間がnull（上限なし）の従業員のとき, When: canAssignを呼ぶと, Then:" + " canWorkと同じ結果である")
+    void canAssignMatchesCanWorkWhenRemainingMinutesIsNull() {
+      Employee employee = Employee.working("太郎", LocalTime.of(7, 30), LocalTime.of(18, 30));
+
+      for (ShiftSlot slot : ShiftSlot.values()) {
+        assertEquals(employee.canWork(slot), employee.canAssign(slot));
+      }
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 週の残り時間が405分の従業員のとき, When: 枠2（405分）でcanAssignを呼ぶと, Then: trueである")
+    void canAssignReturnsTrueWhenRemainingMinutesEqualsSlotActualWorkMinutes() {
+      Employee employee =
+          Employee.working("太郎", LocalTime.of(7, 30), LocalTime.of(18, 30))
+              .withWeeklyRemainingMinutes(405);
+
+      assertEquals(true, employee.canAssign(ShiftSlot.SLOT_2));
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 週の残り時間が405分の従業員のとき, When: 枠3（435分）でcanAssignを呼ぶと, Then: falseである")
+    void canAssignReturnsFalseWhenRemainingMinutesIsLessThanSlotActualWorkMinutes() {
+      Employee employee =
+          Employee.working("太郎", LocalTime.of(7, 30), LocalTime.of(18, 30))
+              .withWeeklyRemainingMinutes(405);
+
+      assertEquals(false, employee.canAssign(ShiftSlot.SLOT_3));
+    }
+
+    @Test
+    @DisplayName(
+        "[H-3][H-4] Given: H-3を満たさない枠で、週の残り時間が十分な従業員のとき, When: canAssignを呼ぶと, Then:" + " falseである")
+    void canAssignReturnsFalseWhenCanWorkIsFalseEvenWithEnoughRemainingMinutes() {
+      Employee employee =
+          Employee.working("太郎", LocalTime.of(8, 0), LocalTime.of(17, 0))
+              .withWeeklyRemainingMinutes(1200);
+
+      assertEquals(false, employee.canAssign(ShiftSlot.SLOT_1));
+    }
+  }
 }
