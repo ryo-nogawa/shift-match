@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.ShiftSlot;
 import java.time.Duration;
 import java.time.LocalTime;
@@ -794,6 +795,90 @@ class ShiftAssignmentServiceImplTest {
         case SLOT_5 -> LocalTime.of(13, 30);
         case SLOT_6 -> slotIndex == 1 ? LocalTime.of(14, 15) : LocalTime.of(14, 30);
       };
+    }
+  }
+
+  @Nested
+  @DisplayName("[H-4] パートの残り実働時間")
+  class WeeklyRemaining {
+
+    private final ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+
+    private List<Employee> parts(int count) {
+      List<Employee> list = new ArrayList<>();
+      for (int i = 0; i < count; i++) {
+        list.add(
+            Employee.working(
+                "P" + i, EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30)));
+      }
+      return list;
+    }
+
+    private ShiftSlot slotOf(AssignmentResult result, String name) {
+      return result.assignments().stream()
+          .filter(a -> a.employee().name().equals(name))
+          .findFirst()
+          .map(a -> a.slot())
+          .orElse(null);
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 残り400分のパート, When: assignを実行すると, Then: 実働が残りを超える枠に入らず別の人に回る")
+    void partWithShortRemainingIsNotPlacedInLongSlots() {
+      AssignmentResult result = service.assign(parts(9), Map.of("P4", 400)).orElseThrow();
+
+      assertEquals(null, slotOf(result, "P4"));
+      assertEquals(ShiftSlot.SLOT_4, slotOf(result, "P5"));
+      assertEquals(ShiftSlot.SLOT_5, slotOf(result, "P6"));
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 残りが 375 分のパート, When: assignを実行すると, Then: 実働がちょうど残りと等しい枠には入れる")
+    void partCanTakeSlotEqualToRemaining() {
+      AssignmentResult result = service.assign(parts(8), Map.of("P3", 375)).orElseThrow();
+
+      assertEquals(ShiftSlot.SLOT_1, slotOf(result, "P3"));
+      assertEquals(ShiftSlot.SLOT_2, slotOf(result, "P1"));
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 全員に十分な残り, When: assignを実行すると, Then: 制限なしと同じ結果になる")
+    void sufficientRemainingGivesSameResultAsUnrestricted() {
+      List<Employee> employees = parts(10);
+      Map<String, Integer> remaining = new HashMap<>();
+      for (Employee employee : employees) {
+        remaining.put(employee.name(), 1200);
+      }
+
+      assertEquals(service.assign(employees), service.assign(employees, remaining));
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 残りが足りず 8 名が埋まらない, When: assignを実行すると, Then: 空を返す")
+    void returnsEmptyWhenRemainingIsInsufficient() {
+      Map<String, Integer> remaining = new HashMap<>();
+      remaining.put("P0", 100);
+      remaining.put("P1", 100);
+
+      assertTrue(service.assign(parts(8), remaining).isEmpty());
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 常勤・管理職に小さい残りを指定, When: assignを実行すると, Then: 制限されない")
+    void fullTimeAndManagerAreNotLimited() {
+      List<Employee> employees = new ArrayList<>();
+      employees.add(
+          Employee.working(
+              "F0", EmploymentType.FULL_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30)));
+      employees.add(
+          Employee.working(
+              "M0", EmploymentType.MANAGER, LocalTime.of(7, 30), LocalTime.of(18, 30)));
+      employees.addAll(parts(6));
+
+      AssignmentResult result = service.assign(employees, Map.of("F0", 0, "M0", 0)).orElseThrow();
+
+      assertEquals(ShiftSlot.SLOT_1, slotOf(result, "F0"));
+      assertEquals(ShiftSlot.SLOT_1, slotOf(result, "M0"));
     }
   }
 }

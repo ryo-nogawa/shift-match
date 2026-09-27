@@ -4,6 +4,7 @@ import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -20,6 +21,19 @@ public interface ShiftAssignmentService {
    * @return 割り当て結果。条件を満たす案がない場合は空の Optional を返す
    */
   Optional<AssignmentResult> assign(List<Employee> employees);
+
+  /**
+   * パートの週の残り実働時間を考慮して、シフト割り当てを行う。
+   *
+   * <p>週の上限（H-4）が適用される従業員は、実働時間（{@code ShiftSlot#netWorkMinutes()}）が残りを超える枠に入れない。
+   * マップにない従業員と、上限が適用されない従業員は制限しない。
+   *
+   * @param employees 従業員一覧
+   * @param remainingWeeklyMinutes 従業員名から、その週の残り実働分（分）への対応
+   * @return 割り当て結果。条件を満たす案がない場合は空の Optional を返す
+   */
+  Optional<AssignmentResult> assign(
+      List<Employee> employees, Map<String, Integer> remainingWeeklyMinutes);
 
   /**
    * 従業員一覧の中から重複する氏名を検出する。
