@@ -4,14 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +60,19 @@ class MonthlyFormConverterTest {
     return employee;
   }
 
+  private static DayForm day(String start, String end) {
+    DayForm day = new DayForm();
+    day.setStart(start);
+    day.setEnd(end);
+    return day;
+  }
+
+  private static EmployeeForm employeeWithDays(String name, String type, List<DayForm> days) {
+    EmployeeForm employee = employee(name, type);
+    employee.setDays(days);
+    return employee;
+  }
+
   private Set<DayOfWeek> convertedOffDays(String type, List<Integer> offDays) {
     ShiftForm form =
         form("2026-10", List.of(employeeWithOffDays(type, offDays)), new ArrayList<>());
@@ -88,6 +104,118 @@ class MonthlyFormConverterTest {
       Set<DayOfWeek> converted = convertedOffDays("PART_TIME", offDays);
 
       assertEquals(Set.of(DayOfWeek.FRIDAY), converted);
+    }
+  }
+
+  @Nested
+  class 基本シフト {
+
+    @Test
+    @DisplayName("[F-1] Given: 月〜金それぞれ異なる開始・終了のフォームのとき, When: 変換すると, Then: 曜日ごとの基本シフトになる")
+    void convertsDayFormsToBaseShiftsPerWeekday() {
+      List<DayForm> days =
+          List.of(
+              day("09:00", "17:00"),
+              day("08:00", "16:00"),
+              day("07:30", "18:30"),
+              day("09:30", "17:30"),
+              day("08:30", "16:30"));
+      ShiftForm form =
+          form("2026-10", List.of(employeeWithDays("山田太郎", "FULL_TIME", days)), new ArrayList<>());
+
+      Map<DayOfWeek, DailyWish> baseShifts =
+          converter.toInput(form).employees().get(0).baseShifts();
+
+      assertEquals(LocalTime.of(9, 0), baseShifts.get(DayOfWeek.MONDAY).start());
+      assertEquals(LocalTime.of(17, 0), baseShifts.get(DayOfWeek.MONDAY).end());
+      assertEquals(LocalTime.of(8, 0), baseShifts.get(DayOfWeek.TUESDAY).start());
+      assertEquals(LocalTime.of(16, 0), baseShifts.get(DayOfWeek.TUESDAY).end());
+      assertEquals(LocalTime.of(7, 30), baseShifts.get(DayOfWeek.WEDNESDAY).start());
+      assertEquals(LocalTime.of(18, 30), baseShifts.get(DayOfWeek.WEDNESDAY).end());
+      assertEquals(LocalTime.of(9, 30), baseShifts.get(DayOfWeek.THURSDAY).start());
+      assertEquals(LocalTime.of(17, 30), baseShifts.get(DayOfWeek.THURSDAY).end());
+      assertEquals(LocalTime.of(8, 30), baseShifts.get(DayOfWeek.FRIDAY).start());
+      assertEquals(LocalTime.of(16, 30), baseShifts.get(DayOfWeek.FRIDAY).end());
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: 月曜日の開始が不正な時刻文字列のとき, When: 変換すると, Then: 開始・終了が null になる")
+    void returnsNullStartAndEndWhenBaseShiftTimeIsInvalid() {
+      List<DayForm> days =
+          new ArrayList<>(
+              List.of(
+                  day("invalid", "18:00"),
+                  day("08:00", "16:00"),
+                  day("07:30", "18:30"),
+                  day("09:30", "17:30"),
+                  day("08:30", "16:30")));
+      ShiftForm form =
+          form("2026-10", List.of(employeeWithDays("山田太郎", "FULL_TIME", days)), new ArrayList<>());
+
+      Map<DayOfWeek, DailyWish> baseShifts =
+          converter.toInput(form).employees().get(0).baseShifts();
+
+      assertNull(baseShifts.get(DayOfWeek.MONDAY).start());
+      assertEquals(LocalTime.of(18, 0), baseShifts.get(DayOfWeek.MONDAY).end());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: days が 3 件しかないとき, When: 変換すると, Then: 例外にならず不足する曜日は baseShifts に含まれない")
+    void doesNotThrowWhenDaysHasFewerThanFiveElements() {
+      List<DayForm> days =
+          List.of(day("09:00", "17:00"), day("08:00", "16:00"), day("07:30", "18:30"));
+      ShiftForm form =
+          form("2026-10", List.of(employeeWithDays("山田太郎", "FULL_TIME", days)), new ArrayList<>());
+
+      Map<DayOfWeek, DailyWish> baseShifts =
+          converter.toInput(form).employees().get(0).baseShifts();
+
+      assertTrue(baseShifts.containsKey(DayOfWeek.MONDAY));
+      assertTrue(baseShifts.containsKey(DayOfWeek.WEDNESDAY));
+      assertTrue(!baseShifts.containsKey(DayOfWeek.THURSDAY));
+      assertTrue(!baseShifts.containsKey(DayOfWeek.FRIDAY));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: days の途中の要素が null のとき, When: 変換すると, Then: 例外にならずその曜日は baseShifts に含まれない")
+    void doesNotThrowWhenDaysContainsNullElement() {
+      List<DayForm> days = new ArrayList<>();
+      days.add(day("09:00", "17:00"));
+      days.add(null);
+      days.add(day("07:30", "18:30"));
+      days.add(day("09:30", "17:30"));
+      days.add(day("08:30", "16:30"));
+      ShiftForm form =
+          form("2026-10", List.of(employeeWithDays("山田太郎", "FULL_TIME", days)), new ArrayList<>());
+
+      Map<DayOfWeek, DailyWish> baseShifts =
+          converter.toInput(form).employees().get(0).baseShifts();
+
+      assertTrue(baseShifts.containsKey(DayOfWeek.MONDAY));
+      assertTrue(!baseShifts.containsKey(DayOfWeek.TUESDAY));
+      assertTrue(baseShifts.containsKey(DayOfWeek.WEDNESDAY));
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: パートの月曜日が曜日休みのとき, When: 変換すると, Then: 月曜日は baseShifts に含まれない")
+    void excludesOffDayFromBaseShifts() {
+      List<DayForm> days =
+          List.of(
+              day("09:00", "17:00"),
+              day("08:00", "16:00"),
+              day("07:30", "18:30"),
+              day("09:30", "17:30"),
+              day("08:30", "16:30"));
+      EmployeeForm employee = employeeWithDays("山田太郎", "PART_TIME", days);
+      employee.setOffDays(List.of(0));
+      ShiftForm form = form("2026-10", List.of(employee), new ArrayList<>());
+
+      Map<DayOfWeek, DailyWish> baseShifts =
+          converter.toInput(form).employees().get(0).baseShifts();
+
+      assertTrue(!baseShifts.containsKey(DayOfWeek.MONDAY));
     }
   }
 
