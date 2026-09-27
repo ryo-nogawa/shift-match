@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS saved_employee;
 DROP TABLE IF EXISTS saved_assignment;
 DROP TABLE IF EXISTS saved_score;
--- 旧バージョンの基本シフト（廃止）。使わないため削除する
+-- 旧バージョンの曜日別の時間帯の保存用テーブル（廃止）。使わないため削除する
 DROP TABLE IF EXISTS saved_input_base_shift;
 
 CREATE TABLE IF NOT EXISTS saved_input_employee (

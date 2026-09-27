@@ -86,17 +86,27 @@
     return a.start === b.start && a.end === b.end;
   }
 
-  /** 選択日の入力を Map に反映する。基本シフトと同じ内容なら個別変更を消す（8.2 節）。 */
-  function applyEdit(map, date, employeeName, wish, base) {
+  /**
+   * 個別変更がないときの希望（初期値）。パートの曜日休みの曜日は休み、それ以外は 07:30〜18:30。
+   * 休みの日も時刻欄には 07:30〜18:30 を残す。employee は {employmentType, offDays（0＝月〜4＝金）}。
+   */
+  function initialWishOf(employee, date) {
+    const isOff =
+      employee.employmentType === "PART_TIME" && employee.offDays.indexOf(weekdayIndex(date)) >= 0;
+    return { off: isOff, start: DEFAULT_START, end: DEFAULT_END };
+  }
+
+  /** 選択日の入力を Map に反映する。初期値と同じ内容なら個別変更を消す（8.2 節）。 */
+  function applyEdit(map, date, employeeName, wish, initial) {
     const key = adjustmentKey(date, employeeName);
-    if (isSameWish(wish, base)) {
+    if (isSameWish(wish, initial)) {
       map.delete(key);
     } else {
       map.set(key, { off: wish.off, start: wish.start, end: wish.end });
     }
   }
 
-  /** 「この日を基本に戻す」：その日の個別変更をすべて消す。 */
+  /** 「この日を初期値に戻す」：その日の個別変更をすべて消す。 */
   function resetDay(map, date) {
     Array.from(map.keys()).forEach(function (key) {
       if (splitKey(key).date === date) {
@@ -209,6 +219,7 @@
       listWeekdays,
       buildCalendarWeeks,
       isSameWish,
+      initialWishOf,
       applyEdit,
       resetDay,
       countChanges,
@@ -246,7 +257,7 @@
     // 画面に出している従業員（描画した時点の並び）。入力行の data-employee-index はこの添字
     let shownEmployees = [];
 
-    /** 氏名が空白だけでない行（有効な従業員。V-1）を、並び順に読む。 */
+    /** 氏名が空白だけでない行（有効な従業員。V-1）を、並び順に区分・曜日休み付きで読む。 */
     function readEmployees() {
       const employees = [];
       rowsContainer.querySelectorAll(".employee-row").forEach(function (row) {
@@ -254,16 +265,18 @@
         if (name.trim() === "") {
           return;
         }
-        const days = WEEKDAY_LABELS.map(function () {
-          return { off: false, start: DEFAULT_START, end: DEFAULT_END };
+        const offDays = Array.from(row.querySelectorAll(".off-day-checkbox:checked")).map(
+          function (checkbox) {
+            return Number(checkbox.value);
+          }
+        );
+        employees.push({
+          name: name,
+          employmentType: row.querySelector(".type-select").value,
+          offDays: offDays,
         });
-        employees.push({ name: name, days: days });
       });
       return employees;
-    }
-
-    function baseWishOf(employee, date) {
-      return employee.days[weekdayIndex(date)] || { off: false, start: "", end: "" };
     }
 
     function rebuildHiddenInputs() {
@@ -388,9 +401,9 @@
         return;
       }
       shownEmployees.forEach(function (employee, index) {
-        const base = baseWishOf(employee, selectedDate);
+        const initial = initialWishOf(employee, selectedDate);
         const change = adjustments.get(adjustmentKey(selectedDate, employee.name));
-        const wish = change || base;
+        const wish = change || initial;
         const row = document.createElement("div");
         row.className = "day-panel-row";
         row.setAttribute("data-employee-index", String(index));
@@ -409,10 +422,10 @@
         label.appendChild(document.createTextNode("休み"));
         row.appendChild(label);
 
-        // 休みの日も時刻の欄には基本シフトの時刻（なければ既定の 07:30〜18:30）を残し、
+        // 休みの日も時刻の欄には既定の 07:30〜18:30 を残し、
         // 休みを外したときにそのまま有効な時間帯になるようにする
-        const start = wish.off ? base.start || DEFAULT_START : wish.start;
-        const end = wish.off ? base.end || DEFAULT_END : wish.end;
+        const start = wish.off ? initial.start : wish.start;
+        const end = wish.off ? initial.end : wish.end;
         row.appendChild(createTimeSelect("day-start", start, wish.off));
         row.appendChild(createTimeSelect("day-end", end, wish.off));
         dayPanel.appendChild(row);
@@ -420,7 +433,7 @@
       const reset = document.createElement("button");
       reset.type = "button";
       reset.className = "reset-all-btn";
-      reset.textContent = "この日を基本に戻す";
+      reset.textContent = "この日を初期値に戻す";
       dayPanel.appendChild(reset);
     }
 
@@ -447,7 +460,7 @@
         start: off ? "" : row.querySelector(".day-start").value,
         end: off ? "" : row.querySelector(".day-end").value,
       };
-      applyEdit(adjustments, selectedDate, employee.name, wish, baseWishOf(employee, selectedDate));
+      applyEdit(adjustments, selectedDate, employee.name, wish, initialWishOf(employee, selectedDate));
       row.classList.toggle("changed", adjustments.has(adjustmentKey(selectedDate, employee.name)));
       renderCalendar();
       rebuildHiddenInputs();
