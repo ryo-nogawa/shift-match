@@ -12,6 +12,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -145,6 +146,68 @@ class WishResolverTest {
 
       assertEquals(LocalTime.of(11, 0), resolved.start());
       assertEquals(LocalTime.of(16, 0), resolved.end());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-11] Given: 個別変更も曜日休みもなく水曜日の基本シフトが 9:00〜16:30, When: 水曜日を resolve すると, Then: その基本シフトになる")
+    void usesDayOfWeekBaseShiftWhenNoAdjustmentOrOffDay() {
+      LocalDate wednesday = LocalDate.of(2024, 9, 4);
+      EmployeeProfile profile =
+          new EmployeeProfile(
+              "Taro",
+              EmploymentType.FULL_TIME,
+              Map.of(
+                  DayOfWeek.WEDNESDAY,
+                  new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(16, 30))),
+              Set.of());
+
+      DailyWish resolved = new WishResolver().resolve(profile, wednesday, List.of());
+
+      assertFalse(resolved.off());
+      assertEquals(LocalTime.of(9, 0), resolved.start());
+      assertEquals(LocalTime.of(16, 30), resolved.end());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-11] Given: 水曜日の基本シフトがあるが個別変更もあるとき, When: 水曜日を resolve すると, Then: 個別変更が基本シフトより優先される")
+    void adjustmentOverridesBaseShift() {
+      LocalDate wednesday = LocalDate.of(2024, 9, 4);
+      EmployeeProfile profile =
+          new EmployeeProfile(
+              "Taro",
+              EmploymentType.FULL_TIME,
+              Map.of(
+                  DayOfWeek.WEDNESDAY,
+                  new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(16, 30))),
+              Set.of());
+      DailyWish adjustmentWish = new DailyWish(false, LocalTime.of(10, 0), LocalTime.of(17, 0));
+      List<ShiftAdjustment> adjustments =
+          List.of(new ShiftAdjustment(wednesday, "Taro", adjustmentWish));
+
+      DailyWish resolved = new WishResolver().resolve(profile, wednesday, adjustments);
+
+      assertEquals(LocalTime.of(10, 0), resolved.start());
+      assertEquals(LocalTime.of(17, 0), resolved.end());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-11] Given: 火曜日が曜日休みで基本シフトも設定されているパート, When: 火曜日を resolve すると, Then: 基本シフトより優先して休みになる")
+    void offDayTakesPriorityOverBaseShift() {
+      EmployeeProfile profile =
+          new EmployeeProfile(
+              "Taro",
+              EmploymentType.PART_TIME,
+              Map.of(
+                  DayOfWeek.TUESDAY,
+                  new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(16, 30))),
+              Set.of(DayOfWeek.TUESDAY));
+
+      DailyWish resolved = new WishResolver().resolve(profile, TUESDAY, List.of());
+
+      assertTrue(resolved.off());
     }
   }
 }
