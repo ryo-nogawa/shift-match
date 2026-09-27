@@ -24,6 +24,7 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.FailureReason;
 import com.example.shiftmatch.domain.HolidayDataUnavailableError;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
@@ -379,6 +380,44 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[7.1] Given: パートの成立の日と週上限で不成立の日, When: POST /shift の HTML を見ると,"
+            + " Then: 不成立（パートの週上限）・詳細の理由・週合計 / 20:00 が出る")
+    void rendersWeeklyLimitReasonAndPartWeeklyTotal() throws Exception {
+      List<ShiftAssignment> assignments = new ArrayList<>();
+      for (int i = 0; i < SLOTS_IN_ORDER.size(); i++) {
+        Employee who =
+            i == 0
+                ? Employee.working(
+                    "A", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30))
+                : Employee.working("e" + (i + 1), LocalTime.of(7, 30), LocalTime.of(18, 30));
+        assignments.add(
+            new ShiftAssignment(
+                who, SLOTS_IN_ORDER.get(i), LocalTime.of(12, 0), LocalTime.of(12, 45)));
+      }
+      DailyShiftResult success =
+          new DailyShiftResult(
+              LocalDate.of(2026, 10, 1),
+              8,
+              Optional.of(new AssignmentResult(assignments, 0, List.of())),
+              Optional.empty());
+      DailyShiftResult limited =
+          new DailyShiftResult(
+              LocalDate.of(2026, 10, 2),
+              9,
+              Optional.empty(),
+              Optional.of(FailureReason.WEEKLY_LIMIT));
+      when(monthlyShiftService.create(any()))
+          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of(success, limited)));
+
+      String html = bodyOf(perform(validRequest()));
+
+      assertTrue(html.contains("不成立（パートの週上限）"));
+      assertTrue(html.contains("不成立です。理由：パートの週上限。勤務できる人数：9 名"));
+      assertTrue(html.contains("1 週 6:15 / 20:00"));
+    }
+
+    @Test
+    @DisplayName(
         "[F-4][F-5][7.1節] Given: 成立の日・不成立の日・祝日がある月, When: POST /shift の HTML を見ると,"
             + " Then: カレンダーに勤務時間ごとの氏名・不成立（勤務可 n 名）・祝日名・日付ボタンが出る")
     void rendersCalendarTab() throws Exception {
@@ -511,7 +550,7 @@ class ShiftControllerTest {
       assertTrue(panel.contains(">休憩<"));
       assertTrue(panel.contains("休みさん（パート）"));
       assertTrue(panel.contains("休み"));
-      assertTrue(panel.contains("不成立です。勤務できる人数：5 名"));
+      assertTrue(panel.contains("不成立です。理由：人員不足。勤務できる人数：5 名"));
       assertFalse(panel.contains("枠"));
     }
 

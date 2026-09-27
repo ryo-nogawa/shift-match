@@ -29,7 +29,7 @@
                 </div>
                 <div th:if="${cell.day() != null}" class="calendar-cell">
                   <button type="button" class="calendar-day" th:attr="data-date=${cell.day().date()}" th:text="${cell.day().date().dayOfMonth}"></button>
-                  <div th:if="${cell.day().failed()}" class="failed" th:text="'不成立（勤務可 ' + ${cell.day().availableCount()} + ' 名）'"></div>
+                  <div th:if="${cell.day().failed()}" class="failed" th:text="${cell.day().calendarFailureText()}"></div>
                   <th:block th:unless="${cell.day().failed()}">
                     <div th:each="group : ${cell.day().groups()}" class="work-group" th:text="${group.workTime()} + ' ' + ${group.names()}"></div>
                   </th:block>
@@ -44,6 +44,7 @@
                   <th class="sticky-col">従業員</th>
                   <th th:each="day : ${resultView.days()}" th:text="${#temporals.format(day.date(), 'M/d(E)', T(java.util.Locale).JAPAN)}"></th>
                   <th>出勤日数</th>
+                  <th>週の実働時間（パート）</th>
                 </tr>
               </thead>
               <tbody>
@@ -51,6 +52,7 @@
                   <td class="sticky-col" th:text="${row.name()}"></td>
                   <td th:each="cell : ${row.cells()}" th:text="${cell}"></td>
                   <td class="work-days" th:text="${row.workDays()}"></td>
+                  <td class="weekly-totals"><div th:each="total : ${row.weeklyTotals()}" th:text="${total}"></div></td>
                 </tr>
               </tbody>
             </table>
@@ -61,8 +63,8 @@
                 <option th:each="dayResult : ${monthlyResult.days()}" th:value="${dayResult.date()}" th:text="${#temporals.format(dayResult.date(), 'M/d(E)', T(java.util.Locale).JAPAN)}"></option>
               </select>
             </label>
-            <section th:each="dayResult : ${monthlyResult.days()}" class="day-detail" th:attr="data-date=${dayResult.date()}" hidden>
-              <p th:if="${dayResult.assignment().isEmpty()}" class="failed" th:text="'不成立です。勤務できる人数：' + ${dayResult.availableCount()} + ' 名'"></p>
+            <section th:each="dayResult, dayStat : ${monthlyResult.days()}" class="day-detail" th:attr="data-date=${dayResult.date()}" hidden>
+              <p th:if="${dayResult.assignment().isEmpty()}" class="failed" th:text="${resultView.days().get(dayStat.index).detailFailureText()}"></p>
               <th:block th:if="${dayResult.assignment().isPresent()}" th:with="result=${dayResult.assignment().get()}">
                 <table class="detail-table">
                   <thead>
