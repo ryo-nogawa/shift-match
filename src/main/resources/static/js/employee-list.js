@@ -1,13 +1,16 @@
 /**
- * 画面 1 の従業員一覧（F-1・F-2・F-6・F-8、8.1 節・8.5 節）。
+ * 画面 1 の従業員一覧と基本シフトパネル（F-1・F-2・F-6・F-8、8.1 節・8.5 節）。
  *
- * 行（#employee-rows の .employee-row）には、氏名・区分・曜日休み（パートだけ）の入力がある。
+ * 行（#employee-rows の .employee-row）と基本シフトパネル（#base-panels の .base-panel）は
+ * 別々の要素なので、常に data-row-id で対応づける。
  */
 (function () {
   "use strict";
 
   const MAX_ROWS = 12;
   const DAY_LABELS = ["月", "火", "水", "木", "金"];
+  const DEFAULT_START = "07:30";
+  const DEFAULT_END = "18:30";
   const PART_TIME = "PART_TIME";
 
   /**
@@ -18,27 +21,73 @@
   }
 
   /**
-   * 行ごとの入力（氏名・区分・曜日休み）の name を、並び順どおり 0 から欠番なく振り直す（8.5 節）。
-   * 要素は name プロパティを持つものなら何でもよい。曜日休みの値（0〜4）は変えない。
+   * 行ごとの入力（氏名・区分）とパネルの入力（曜日ごとの start/end・曜日休み）の name を、
+   * 並び順どおり 0 から欠番なく振り直す（8.5 節）。要素は name プロパティを持つものなら何でもよい。
    */
   function renumber(rows) {
     rows.forEach(function (row, index) {
-      row.rowFields.forEach(function (field) {
+      row.rowFields.concat(row.panelFields).forEach(function (field) {
         field.name = rewriteEmployeeIndex(field.name, index);
       });
     });
   }
 
   /**
-   * 曜日休みのチェックボックスを区分に合わせる（F-1）。パート以外は、チェックを外して無効にする。
+   * 基本シフトの要約（例：07:30〜18:30）を作る（8.1 節）。
+   *
+   * <p>曜日休みの曜日は除く。全曜日が曜日休みなら「休み」を返す。未選択（空文字）の曜日は無視し、
+   * 対象（曜日休みでなく、開始・終了とも入力済みの日）が 0 件なら空文字を返す。
+   *
+   * @param {{start: string, end: string}[]} days 曜日ごとの開始・終了（0＝月〜4＝金）
+   * @param {number[]} offDays 曜日休みの曜日インデックス
+   * @returns {string} 要約文字列
    */
-  function syncOffDays(employmentType, checkboxes) {
-    const isPartTime = employmentType === PART_TIME;
-    checkboxes.forEach(function (checkbox) {
-      checkbox.disabled = !isPartTime;
-      if (!isPartTime) {
-        checkbox.checked = false;
+  function summarize(days, offDays) {
+    const offSet = new Set((offDays || []).map(Number));
+    const nonOffDays = days.filter(function (day, index) {
+      return !offSet.has(index);
+    });
+    if (nonOffDays.length === 0) {
+      return "休み";
+    }
+    const starts = [];
+    const ends = [];
+    nonOffDays.forEach(function (day) {
+      if (day.start) {
+        starts.push(day.start);
       }
+      if (day.end) {
+        ends.push(day.end);
+      }
+    });
+    if (starts.length === 0 || ends.length === 0) {
+      return "";
+    }
+    // HH:mm 形式はゼロ埋めされているので、文字列の大小比較で時刻の前後を判定できる
+    starts.sort();
+    ends.sort();
+    return starts[0] + "〜" + ends[ends.length - 1];
+  }
+
+  /**
+   * 曜日休みのチェックボックスと開始・終了 select を区分に合わせる（F-1）。
+   *
+   * <p>パート以外は全チェックボックスを未チェック・無効にし、開始・終了は有効にする。パートは
+   * チェックボックスを有効にし、チェックされた曜日の開始・終了だけ無効にする。
+   *
+   * @param {string} employmentType 雇用区分
+   * @param {{checkbox: object, startSelect: object, endSelect: object}[]} dayControls 曜日ごとの制御
+   */
+  function syncOffDays(employmentType, dayControls) {
+    const isPartTime = employmentType === PART_TIME;
+    dayControls.forEach(function (control) {
+      if (!isPartTime) {
+        control.checkbox.checked = false;
+      }
+      control.checkbox.disabled = !isPartTime;
+      const off = isPartTime && control.checkbox.checked;
+      control.startSelect.disabled = off;
+      control.endSelect.disabled = off;
     });
   }
 
@@ -56,7 +105,7 @@
   }
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { rewriteEmployeeIndex, renumber, syncOffDays, buttonStates, MAX_ROWS };
+    module.exports = { rewriteEmployeeIndex, renumber, summarize, syncOffDays, buttonStates, MAX_ROWS };
   }
 
   if (typeof document === "undefined") {
@@ -64,8 +113,15 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector("form");
     const rowsContainer = document.getElementById("employee-rows");
+    const panelsContainer = document.getElementById("base-panels");
     const addButton = document.getElementById("add-employee-btn");
+    const timeOptions = (form.getAttribute("data-time-options") || "")
+      .split("|")
+      .filter(function (value) {
+        return value !== "";
+      });
     let nextRowId = 0;
     let selectedRowId = null;
 
@@ -73,19 +129,79 @@
       return Array.from(rowsContainer.querySelectorAll(".employee-row"));
     }
 
-    function offDayBoxesOf(row) {
-      return Array.from(row.querySelectorAll(".off-day-checkbox"));
+    function panelOf(rowId) {
+      return (
+        Array.from(panelsContainer.querySelectorAll(".base-panel")).find(function (panel) {
+          return panel.getAttribute("data-row-id") === rowId;
+        }) || null
+      );
+    }
+
+    function rowOfPanel(panel) {
+      const rowId = panel.getAttribute("data-row-id");
+      return (
+        rows().find(function (row) {
+          return row.getAttribute("data-row-id") === rowId;
+        }) || null
+      );
+    }
+
+    function dayControlsOf(panel) {
+      return Array.from(panel.querySelectorAll(".day-row")).map(function (dayRow) {
+        return {
+          checkbox: dayRow.querySelector(".off-day-checkbox"),
+          startSelect: dayRow.querySelector(".start-select"),
+          endSelect: dayRow.querySelector(".end-select"),
+        };
+      });
+    }
+
+    function readDays(panel) {
+      return Array.from(panel.querySelectorAll(".day-row")).map(function (dayRow) {
+        return {
+          start: dayRow.querySelector(".start-select").value,
+          end: dayRow.querySelector(".end-select").value,
+        };
+      });
+    }
+
+    function readOffDays(panel) {
+      const offDays = [];
+      Array.from(panel.querySelectorAll(".day-row")).forEach(function (dayRow, index) {
+        if (dayRow.querySelector(".off-day-checkbox").checked) {
+          offDays.push(index);
+        }
+      });
+      return offDays;
     }
 
     function notifyChanged() {
       document.dispatchEvent(new CustomEvent("employees-changed"));
     }
 
+    function updateSummary(row) {
+      const panel = panelOf(row.getAttribute("data-row-id"));
+      if (panel) {
+        row.querySelector(".summary").textContent = summarize(readDays(panel), readOffDays(panel));
+      }
+    }
+
+    function syncPanel(row, panel) {
+      if (!panel) {
+        return;
+      }
+      syncOffDays(row.querySelector(".type-select").value, dayControlsOf(panel));
+    }
+
     function refreshRows() {
       const currentRows = rows();
       renumber(
         currentRows.map(function (row) {
-          return { rowFields: Array.from(row.querySelectorAll("[name]")) };
+          const panel = panelOf(row.getAttribute("data-row-id"));
+          return {
+            rowFields: Array.from(row.querySelectorAll("[name]")),
+            panelFields: panel ? Array.from(panel.querySelectorAll("[name]")) : [],
+          };
         })
       );
       const states = buttonStates(currentRows.length);
@@ -102,6 +218,26 @@
       rows().forEach(function (row) {
         row.classList.toggle("selected", row.getAttribute("data-row-id") === rowId);
       });
+      panelsContainer.querySelectorAll(".base-panel").forEach(function (panel) {
+        panel.hidden = panel.getAttribute("data-row-id") !== rowId;
+      });
+    }
+
+    function createTimeSelect(className, selected) {
+      const select = document.createElement("select");
+      select.className = className;
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "-- 未選択 --";
+      select.appendChild(empty);
+      timeOptions.forEach(function (time) {
+        const option = document.createElement("option");
+        option.value = time;
+        option.textContent = time;
+        select.appendChild(option);
+      });
+      select.value = selected;
+      return select;
     }
 
     function createButton(className, label) {
@@ -117,25 +253,6 @@
       if (child) {
         td.appendChild(child);
       }
-      return td;
-    }
-
-    // 月〜金のチェックボックス（値 0〜4）。既定は区分が常勤なので無効
-    function createOffDaysCell() {
-      const td = document.createElement("td");
-      td.className = "off-days-cell";
-      DAY_LABELS.forEach(function (label, d) {
-        const wrapper = document.createElement("label");
-        wrapper.className = "off-day";
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.className = "off-day-checkbox";
-        checkbox.name = "employees[0].offDays";
-        checkbox.value = String(d);
-        wrapper.appendChild(checkbox);
-        wrapper.appendChild(document.createTextNode(label));
-        td.appendChild(wrapper);
-      });
       return td;
     }
 
@@ -170,11 +287,59 @@
       typeSelect.value = "FULL_TIME";
       row.appendChild(cell(typeSelect));
 
-      row.appendChild(createOffDaysCell());
-      syncOffDays(typeSelect.value, offDayBoxesOf(row));
+      const summary = cell(null);
+      summary.className = "summary";
+      row.appendChild(summary);
 
       row.appendChild(cell(createButton("delete-btn", "削除")));
       return row;
+    }
+
+    function createPanel(rowId) {
+      const panel = document.createElement("div");
+      panel.className = "base-panel";
+      panel.setAttribute("data-row-id", rowId);
+      panel.hidden = true;
+
+      const table = document.createElement("table");
+      const head = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      ["曜日", "休み", "開始", "終了", ""].forEach(function (label) {
+        const th = document.createElement("th");
+        th.textContent = label;
+        headRow.appendChild(th);
+      });
+      head.appendChild(headRow);
+      table.appendChild(head);
+
+      const body = document.createElement("tbody");
+      DAY_LABELS.forEach(function (label, d) {
+        const dayRow = document.createElement("tr");
+        dayRow.className = "day-row";
+        const labelCell = cell(null);
+        labelCell.textContent = label;
+        dayRow.appendChild(labelCell);
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "off-day-checkbox";
+        checkbox.name = "employees[0].offDays";
+        checkbox.value = String(d);
+        dayRow.appendChild(cell(checkbox));
+
+        const start = createTimeSelect("start-select", DEFAULT_START);
+        start.name = "employees[0].days[" + d + "].start";
+        dayRow.appendChild(cell(start));
+        const end = createTimeSelect("end-select", DEFAULT_END);
+        end.name = "employees[0].days[" + d + "].end";
+        dayRow.appendChild(cell(end));
+
+        dayRow.appendChild(cell(createButton("copy-to-all-btn", "全曜日へ")));
+        body.appendChild(dayRow);
+      });
+      table.appendChild(body);
+      panel.appendChild(table);
+      return panel;
     }
 
     function addRow() {
@@ -183,7 +348,12 @@
       }
       // サーバーが付けた data-row-id（0 始まりの番号）と重ならないよう、追加行は "r" 付きの ID にする
       const rowId = "r" + nextRowId++;
-      rowsContainer.appendChild(createRow(rowId));
+      const row = createRow(rowId);
+      const panel = createPanel(rowId);
+      rowsContainer.appendChild(row);
+      panelsContainer.appendChild(panel);
+      syncPanel(row, panel);
+      updateSummary(row);
       refreshRows();
       selectRow(rowId);
       notifyChanged();
@@ -196,6 +366,10 @@
       }
       const rowId = row.getAttribute("data-row-id");
       const index = currentRows.indexOf(row);
+      const panel = panelOf(rowId);
+      if (panel) {
+        panel.remove();
+      }
       row.remove();
       refreshRows();
       if (selectedRowId === rowId) {
@@ -205,7 +379,7 @@
       notifyChanged();
     }
 
-    // 行の DOM ごと動かすので、曜日休みのチェック状態も行と一緒に移動する
+    // 行の DOM だけを動かす。パネルは data-row-id で対応づけているので動かす必要はない
     function moveRow(row, delta) {
       const sibling = delta < 0 ? row.previousElementSibling : row.nextElementSibling;
       if (!sibling) {
@@ -218,6 +392,18 @@
       }
       refreshRows();
       notifyChanged();
+    }
+
+    function copyToAllDays(panel, sourceDayRow, employmentType) {
+      const checked = sourceDayRow.querySelector(".off-day-checkbox").checked;
+      const start = sourceDayRow.querySelector(".start-select").value;
+      const end = sourceDayRow.querySelector(".end-select").value;
+      panel.querySelectorAll(".day-row").forEach(function (dayRow) {
+        dayRow.querySelector(".off-day-checkbox").checked = checked;
+        dayRow.querySelector(".start-select").value = start;
+        dayRow.querySelector(".end-select").value = end;
+      });
+      syncOffDays(employmentType, dayControlsOf(panel));
     }
 
     rowsContainer.addEventListener("click", function (event) {
@@ -251,21 +437,51 @@
 
     rowsContainer.addEventListener("change", function (event) {
       const row = event.target.closest(".employee-row");
-      if (!row) {
+      if (!row || !event.target.classList.contains("type-select")) {
         return;
       }
-      if (event.target.classList.contains("type-select")) {
-        syncOffDays(event.target.value, offDayBoxesOf(row));
-        notifyChanged();
-      } else if (event.target.classList.contains("off-day-checkbox")) {
-        notifyChanged();
+      const panel = panelOf(row.getAttribute("data-row-id"));
+      syncPanel(row, panel);
+      updateSummary(row);
+      notifyChanged();
+    });
+
+    panelsContainer.addEventListener("change", function (event) {
+      const panel = event.target.closest(".base-panel");
+      if (!panel) {
+        return;
       }
+      const row = rowOfPanel(panel);
+      if (event.target.classList.contains("off-day-checkbox") && row) {
+        syncPanel(row, panel);
+      }
+      if (row) {
+        updateSummary(row);
+      }
+      notifyChanged();
+    });
+
+    panelsContainer.addEventListener("click", function (event) {
+      const button = event.target.closest(".copy-to-all-btn");
+      if (!button) {
+        return;
+      }
+      const panel = button.closest(".base-panel");
+      const row = rowOfPanel(panel);
+      const employmentType = row ? row.querySelector(".type-select").value : "FULL_TIME";
+      copyToAllDays(panel, button.closest(".day-row"), employmentType);
+      if (row) {
+        updateSummary(row);
+      }
+      notifyChanged();
     });
 
     addButton.addEventListener("click", addRow);
 
     rows().forEach(function (row) {
-      syncOffDays(row.querySelector(".type-select").value, offDayBoxesOf(row));
+      const panel = panelOf(row.getAttribute("data-row-id"));
+      syncPanel(row, panel);
+      updateSummary(row);
     });
     refreshRows();
     const first = rows()[0];
