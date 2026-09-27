@@ -138,6 +138,29 @@ describe("day-adjustments.js", () => {
     assert.deepEqual(map.get("2026-10-20|A"), { off: false, start: "09:00", end: "18:30" });
   });
 
+  test("[F-11] 曜日休みを外すと、初期値と同じになった個別変更が消える", () => {
+    const map = new Map([["2026-10-20|A", { off: false, start: "07:30", end: "18:30" }]]);
+    const changed = { name: "A", employmentType: "PART_TIME", offDays: [3] };
+    const removed = dayAdjustments.pruneRedundantAdjustments(map, [changed], ["2026-10-19", "2026-10-20"]);
+    assert.equal(map.size, 0);
+    assert.equal(removed, true);
+  });
+
+  test("[F-11] 初期値と異なる個別変更は残る", () => {
+    const map = new Map([["2026-10-20|A", { off: false, start: "09:00", end: "17:00" }]]);
+    const changed = { name: "A", employmentType: "PART_TIME", offDays: [3] };
+    const removed = dayAdjustments.pruneRedundantAdjustments(map, [changed], ["2026-10-20"]);
+    assert.deepEqual(map.get("2026-10-20|A"), { off: false, start: "09:00", end: "17:00" });
+    assert.equal(removed, false);
+  });
+
+  test("[F-11] 画面 1 にいない氏名の個別変更は残る", () => {
+    const map = new Map([["2026-10-20|Z", { off: false, start: "07:30", end: "18:30" }]]);
+    const removed = dayAdjustments.pruneRedundantAdjustments(map, [part], ["2026-10-20"]);
+    assert.equal(map.size, 1);
+    assert.equal(removed, false);
+  });
+
   test("[F-11] 休みどうしは時刻が違っても同じとみなす", () => {
     const map = new Map([["2026-10-21|A", { off: false, start: "09:00", end: "18:00" }]]);
     dayAdjustments.applyEdit(

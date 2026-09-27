@@ -106,6 +106,28 @@
     }
   }
 
+  /**
+   * 従業員の区分・曜日休みの変更後に、新しい初期値と同じ内容になった個別変更を消す（8.2 節）。
+   * 画面 1 にいない氏名の個別変更は消さない。1 件でも消したら true を返す。
+   */
+  function pruneRedundantAdjustments(map, employees, dates) {
+    let removed = false;
+    employees.forEach(function (employee) {
+      dates.forEach(function (date) {
+        const key = adjustmentKey(date, employee.name);
+        const current = map.get(key);
+        if (current === undefined) {
+          return;
+        }
+        applyEdit(map, date, employee.name, current, initialWishOf(employee, date));
+        if (!map.has(key)) {
+          removed = true;
+        }
+      });
+    });
+    return removed;
+  }
+
   /** 「この日を初期値に戻す」：その日の個別変更をすべて消す。 */
   function resetDay(map, date) {
     Array.from(map.keys()).forEach(function (key) {
@@ -221,6 +243,7 @@
       isSameWish,
       initialWishOf,
       applyEdit,
+      pruneRedundantAdjustments,
       resetDay,
       countChanges,
       buildAdjustmentList,
@@ -497,6 +520,9 @@
 
     document.addEventListener("employees-changed", function () {
       if (calendarData !== null) {
+        if (pruneRedundantAdjustments(adjustments, readEmployees(), calendarData.businessDays)) {
+          rebuildHiddenInputs();
+        }
         renderCalendar();
       }
       renderDayPanel();
