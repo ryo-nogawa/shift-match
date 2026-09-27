@@ -27,6 +27,7 @@ import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.HolidayDataUnavailableError;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
@@ -149,6 +150,12 @@ class ShiftControllerTest {
   private void throwInputErrors(InputError... errors) {
     when(monthlyShiftService.create(any()))
         .thenThrow(new InvalidMonthlyInputException(List.of(errors)));
+  }
+
+  private static String employeesPanelOf(String html) {
+    int start = html.indexOf("id=\"tab-employees\"");
+    assertTrue(start >= 0, "tab-employees");
+    return html.substring(start, html.indexOf("id=\"tab-detail\""));
   }
 
   @Nested
@@ -470,6 +477,60 @@ class ShiftControllerTest {
       assertTrue(panel.contains("class=\"work-days\">1<"));
     }
 
+    private MockHttpServletRequestBuilder totalTimeRequest() {
+      return post("/shift")
+          .param("targetMonth", "2026-10")
+          .param("employees[0].name", "e1")
+          .param("employees[0].employmentType", "FULL_TIME")
+          .param("employees[1].name", "休みさん")
+          .param("employees[1].employmentType", "PART_TIME");
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][7.1節] Given: 成立 1 日・不成立 1 日の結果, When: POST /shift の HTML を見ると,"
+            + " Then: 月間勤務時間のタブはなく、従業員別表示に合計時間の列・(hh:mm)・不成立の注記が出る")
+    void rendersTotalTimeInEmployeesTabWithFailureNote() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10),
+                  List.of(
+                      feasibleDay(
+                          LocalDate.of(2026, 10, 1),
+                          "e1",
+                          List.of(Employee.onLeave("休みさん", EmploymentType.PART_TIME))),
+                      new DailyShiftResult(LocalDate.of(2026, 10, 2), 5, Optional.empty()))));
+
+      String html = bodyOf(perform(totalTimeRequest()));
+
+      assertFalse(html.contains("月間勤務時間"));
+      assertEquals(3, html.split("class=\"tab-btn", -1).length - 1);
+      String panel = employeesPanelOf(html);
+      assertTrue(panel.indexOf(">出勤日数<") < panel.indexOf(">合計時間<"));
+      assertTrue(panel.contains(">(06:15)<"));
+      assertTrue(panel.contains(">(00:00)<"));
+      assertFalse(panel.contains(">合計<"));
+      assertFalse(panel.contains(">区分<"));
+      assertTrue(panel.indexOf("</table>") < panel.indexOf("monthly-hours-note"));
+      assertTrue(panel.contains("不成立の日が 1 日あります（この日は 0 時間として集計しています）"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][7.1節] Given: 不成立の日がない結果, When: POST /shift の HTML を見ると," + " Then: 不成立の注記は出ない")
+    void omitsFailureNoteWhenNoFailedDay() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10), List.of(feasibleDay(LocalDate.of(2026, 10, 1), "e1"))));
+
+      String html = bodyOf(perform(totalTimeRequest()));
+
+      assertFalse(html.contains("不成立の日が"));
+      assertFalse(html.contains("class=\"monthly-hours-note\""));
+    }
+
     @Test
     @DisplayName(
         "[F-4][F-5][7.2節] Given: 成立の日・未出勤者・不成立の日がある結果, When: POST /shift の HTML を見ると,"
@@ -756,7 +817,10 @@ class ShiftControllerTest {
       MonthlyShiftResult monthly =
           new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
       when(shiftStorageService.load(MONTH))
-          .thenReturn(Optional.of(new SavedMonthlyShift(monthly, List.of("A"))));
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee("A", EmploymentType.FULL_TIME)))));
     }
 
     @Test
@@ -835,7 +899,10 @@ class ShiftControllerTest {
       MonthlyShiftResult monthly =
           new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
       when(shiftStorageService.load(MONTH))
-          .thenReturn(Optional.of(new SavedMonthlyShift(monthly, List.of("A"))));
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee("A", EmploymentType.FULL_TIME)))));
 
       MvcResult result =
           mockMvc
@@ -849,6 +916,34 @@ class ShiftControllerTest {
       assertTrue(html.contains("id=\"result-summary\""));
       assertFalse(html.contains("id=\"screen-3\""));
       assertFalse(html.contains("<form"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][F-7][7.1節] Given: 指定した月の保存済みシフトがある, When: GET /shift/saved を呼ぶと,"
+            + " Then: 月間勤務時間のタブはなく、従業員別表示に合計時間（(hh:mm)）が含まれる")
+    void returnsTotalTimeInEmployeesTabForSaved() throws Exception {
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee("A", EmploymentType.FULL_TIME)))));
+
+      String html =
+          bodyOf(
+              mockMvc
+                  .perform(get("/shift/saved").param("month", "2026-10"))
+                  .andExpect(status().isOk())
+                  .andReturn());
+
+      assertFalse(html.contains("月間勤務時間"));
+      assertEquals(3, html.split("class=\"tab-btn", -1).length - 1);
+      String panel = employeesPanelOf(html);
+      assertTrue(panel.contains(">合計時間<"));
+      assertTrue(panel.contains(">A<"));
+      assertTrue(panel.contains(">(06:15)<"));
     }
 
     @Test
