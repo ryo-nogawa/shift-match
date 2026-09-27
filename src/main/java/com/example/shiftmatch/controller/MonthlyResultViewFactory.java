@@ -7,6 +7,7 @@ import com.example.shiftmatch.controller.MonthlyResultView.WorkGroup;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
@@ -67,7 +68,13 @@ public class MonthlyResultViewFactory {
 
   private static CalendarDay toCalendarDay(DailyShiftResult daily, String holidayName) {
     if (daily.assignment().isEmpty()) {
-      return new CalendarDay(daily.date(), holidayName, true, daily.availableCount(), List.of());
+      return new CalendarDay(
+          daily.date(),
+          holidayName,
+          true,
+          daily.failureReason().orElse(null),
+          daily.availableCount(),
+          List.of());
     }
     Map<String, List<String>> namesByTime = new LinkedHashMap<>();
     for (ShiftAssignment assignment : daily.assignment().get().assignments()) {
@@ -79,7 +86,7 @@ public class MonthlyResultViewFactory {
     for (Map.Entry<String, List<String>> entry : namesByTime.entrySet()) {
       groups.add(new WorkGroup(entry.getKey(), String.join("・", entry.getValue())));
     }
-    return new CalendarDay(daily.date(), holidayName, false, daily.availableCount(), groups);
+    return new CalendarDay(daily.date(), holidayName, false, null, daily.availableCount(), groups);
   }
 
   private static EmployeeRow toEmployeeRow(String name, List<DailyShiftResult> dailyResults) {
@@ -94,7 +101,57 @@ public class MonthlyResultViewFactory {
       }
       cells.add(cell);
     }
-    return new EmployeeRow(name, cells, workDays);
+    return new EmployeeRow(name, cells, workDays, weeklyTotalsOf(name, dailyResults));
+  }
+
+  // H-4 の週は対象月の営業日だけで数えるため、結果にある日を月曜始まりでまとめる
+  private static List<String> weeklyTotalsOf(String name, List<DailyShiftResult> dailyResults) {
+    if (!isPart(name, dailyResults)) {
+      return List.of();
+    }
+    Map<LocalDate, Integer> minutesByWeek = new LinkedHashMap<>();
+    for (DailyShiftResult daily : dailyResults) {
+      int minutes = 0;
+      for (ShiftAssignment assignment :
+          daily.assignment().stream().flatMap(result -> result.assignments().stream()).toList()) {
+        if (assignment.employee().name().equals(name)) {
+          minutes += assignment.slot().netWorkMinutes();
+        }
+      }
+      minutesByWeek.merge(daily.date().with(DayOfWeek.MONDAY), minutes, (a, b) -> a + b);
+    }
+    List<String> totals = new ArrayList<>();
+    int weekNumber = 1;
+    for (int minutes : minutesByWeek.values()) {
+      totals.add(
+          String.format(
+              "%d 週 %d:%02d / %d:00",
+              weekNumber++,
+              minutes / 60,
+              minutes % 60,
+              EmploymentType.PART_TIME_WEEKLY_LIMIT_MINUTES / 60));
+    }
+    return totals;
+  }
+
+  private static boolean isPart(String name, List<DailyShiftResult> dailyResults) {
+    for (DailyShiftResult daily : dailyResults) {
+      if (daily.assignment().isEmpty()) {
+        continue;
+      }
+      AssignmentResult assignment = daily.assignment().get();
+      for (ShiftAssignment shiftAssignment : assignment.assignments()) {
+        if (shiftAssignment.employee().name().equals(name)) {
+          return shiftAssignment.employee().employmentType().hasWeeklyLimit();
+        }
+      }
+      for (Employee unassigned : assignment.unassignedEmployees()) {
+        if (unassigned.name().equals(name)) {
+          return unassigned.employmentType().hasWeeklyLimit();
+        }
+      }
+    }
+    return false;
   }
 
   private static String cellOf(String name, DailyShiftResult daily) {

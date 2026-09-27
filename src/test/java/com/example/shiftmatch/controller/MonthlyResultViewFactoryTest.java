@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.FailureReason;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
@@ -73,6 +75,30 @@ class MonthlyResultViewFactoryTest {
     return new DailyShiftResult(date, availableCount, Optional.empty());
   }
 
+  private static DailyShiftResult failedDay(
+      LocalDate date, int availableCount, FailureReason reason) {
+    return new DailyShiftResult(date, availableCount, Optional.empty(), Optional.of(reason));
+  }
+
+  /** 名前 p のパートを、指定した枠に割り当てた成立の日。ほかは e1〜e7 の常勤。 */
+  private static DailyShiftResult dayWithPart(LocalDate date, ShiftSlot partSlot) {
+    List<ShiftAssignment> assignments = new ArrayList<>();
+    boolean partPlaced = false;
+    for (int i = 0; i < SLOTS_IN_ORDER.size(); i++) {
+      ShiftSlot slot = SLOTS_IN_ORDER.get(i);
+      Employee who = employee("e" + (i + 1));
+      if (slot == partSlot && !partPlaced) {
+        who =
+            Employee.working(
+                "p", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30));
+        partPlaced = true;
+      }
+      assignments.add(new ShiftAssignment(who, slot, LocalTime.of(12, 0), LocalTime.of(12, 45)));
+    }
+    return new DailyShiftResult(
+        date, 8, Optional.of(new AssignmentResult(assignments, 0, List.of())), Optional.empty());
+  }
+
   private static List<String> names(String... names) {
     return List.of(names);
   }
@@ -81,6 +107,73 @@ class MonthlyResultViewFactoryTest {
       List<DailyShiftResult> days, List<String> employeeNames, Map<LocalDate, String> holidays) {
     return factory.create(
         new MonthlyShiftResult(YearMonth.of(2026, 10), days), employeeNames, holidays);
+  }
+
+  @Nested
+  class 不成立の理由と週合計 {
+
+    @Test
+    @DisplayName("[7.1] Given: 人員不足と週上限の不成立の日, When: 表示モデルを作ると, Then: カレンダー用・詳細用の文言が仕様どおり")
+    void failureTextsFollowReason() {
+      MonthlyResultView view =
+          createView(
+              List.of(
+                  failedDay(DAY_1, 5, FailureReason.SHORTAGE),
+                  failedDay(DAY_2, 9, FailureReason.WEEKLY_LIMIT)),
+              names("e1"),
+              Map.of());
+
+      MonthlyResultView.CalendarDay shortage = view.days().get(0);
+      MonthlyResultView.CalendarDay weekly = view.days().get(1);
+      assertEquals("不成立（勤務可 5 名）", shortage.calendarFailureText());
+      assertEquals("不成立です。理由：人員不足。勤務できる人数：5 名", shortage.detailFailureText());
+      assertEquals("不成立（パートの週上限）", weekly.calendarFailureText());
+      assertEquals("不成立です。理由：パートの週上限。勤務できる人数：9 名", weekly.detailFailureText());
+    }
+
+    @Test
+    @DisplayName("[7.1] Given: 枠 5・枠 1・枠 1 に割り当てたパート, When: 表示モデルを作ると, Then: 1 週 20:30 / 20:00 が出る")
+    void partRowShowsWeeklyTotal() {
+      MonthlyResultView view =
+          createView(
+              List.of(
+                  dayWithPart(LocalDate.of(2026, 10, 5), ShiftSlot.SLOT_5),
+                  dayWithPart(LocalDate.of(2026, 10, 6), ShiftSlot.SLOT_1),
+                  dayWithPart(LocalDate.of(2026, 10, 7), ShiftSlot.SLOT_1)),
+              names("p", "e3"),
+              Map.of());
+
+      assertEquals(List.of("1 週 20:30 / 20:00"), view.employeeRows().get(0).weeklyTotals());
+    }
+
+    @Test
+    @DisplayName("[7.1] Given: 常勤の行, When: 表示モデルを作ると, Then: 週合計は空")
+    void nonPartRowHasNoWeeklyTotal() {
+      MonthlyResultView view =
+          createView(
+              List.of(dayWithPart(LocalDate.of(2026, 10, 5), ShiftSlot.SLOT_5)),
+              names("p", "e3"),
+              Map.of());
+
+      assertTrue(view.employeeRows().get(1).weeklyTotals().isEmpty());
+    }
+
+    @Test
+    @DisplayName("[7.1] Given: 2 つの週にまたがるパートの割り当て, When: 表示モデルを作ると, Then: 1 週・2 週が並ぶ")
+    void partRowListsEachWeek() {
+      MonthlyResultView view =
+          createView(
+              List.of(
+                  dayWithPart(LocalDate.of(2026, 10, 1), ShiftSlot.SLOT_5),
+                  dayWithPart(LocalDate.of(2026, 10, 2), ShiftSlot.SLOT_1),
+                  dayWithPart(LocalDate.of(2026, 10, 5), ShiftSlot.SLOT_6)),
+              names("p"),
+              Map.of());
+
+      assertEquals(
+          List.of("1 週 14:15 / 20:00", "2 週 8:30 / 20:00"),
+          view.employeeRows().get(0).weeklyTotals());
+    }
   }
 
   @Nested
