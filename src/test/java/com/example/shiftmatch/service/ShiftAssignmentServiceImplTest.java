@@ -137,8 +137,12 @@ class ShiftAssignmentServiceImplTest {
     @Test
     @DisplayName(
         "[H-1][H-3][5.3] Given: 12名を\"全員常勤\"と\"常勤・パート・管理職を混在\"で割り当てるとき, When: assignを実行すると, Then:"
-            + " 採用される案（各枠の氏名、スコア）が同一である")
-    void assignmentResultIsIndependentOfEmploymentType() {
+            + " スコアと枠1〜5の割り当ては同一だが、5.3節の同点規則によりパートは優先的に除外され枠6の割り当てが変わる")
+    void assignmentResultDiffersOnlyBySlot6DueToPartTimeTieBreak() {
+      // 事前状態：このテストは元々「雇用区分によらず割り当て結果が完全に一致する」ことを検証していたが、
+      // H-4（5.3 節）でパートの実労働時間が同点時の判定に使われるようになったため、パートを含む入力では
+      // 結果が変わる。そのため、この入力（パートを含む）に限り期待値を仕様どおりに直す
+      // （実行ログ参照）。
       LocalTime start = LocalTime.of(7, 30);
       LocalTime end = LocalTime.of(18, 30);
 
@@ -176,18 +180,37 @@ class ShiftAssignmentServiceImplTest {
       assertTrue(resultFullTime.isPresent(), "全員常勤の割り当てが成立すべき");
       assertTrue(resultMixed.isPresent(), "混在の割り当てが成立すべき");
 
-      // スコアが同じであることを確認
+      // ずれの合計は雇用区分によらず同じ（全員の時間帯が同一のため）なのでスコアは一致する
       assertEquals(
           resultFullTime.get().score(), resultMixed.get().score(), "雇用区分が異なる場合、スコアが同じであるべき");
 
-      // 割り当てられた各人の枠が同じであることを確認（入力順の名前は異なるが、枠の構成は同じ）
       Map<ShiftSlot, Set<Integer>> slotsFullTime = extractSlotAssignments(resultFullTime.get());
       Map<ShiftSlot, Set<Integer>> slotsMixed = extractSlotAssignments(resultMixed.get());
 
-      for (ShiftSlot slot : ShiftSlot.values()) {
+      // 枠1〜5は雇用区分の影響を受けない（5.3節の同点規則が働くのはパートが競合する枠6のみ）
+      for (ShiftSlot slot :
+          List.of(
+              ShiftSlot.SLOT_1,
+              ShiftSlot.SLOT_2,
+              ShiftSlot.SLOT_3,
+              ShiftSlot.SLOT_4,
+              ShiftSlot.SLOT_5)) {
         assertEquals(
             slotsFullTime.get(slot), slotsMixed.get(slot), "枠 " + slot + " の割り当て人数が同じであるべき");
       }
+
+      // 全員常勤では入力順どおり Employee6・Employee7 が枠6に入るが、
+      // 混在ではパート（Employee6〜8）より実労働時間の合計が小さい常勤・管理職が優先され、
+      // 管理職の Employee9・Employee10 が枠6に入る（5.3節）
+      assertEquals(Set.of(6, 7), slotsFullTime.get(ShiftSlot.SLOT_6));
+      assertEquals(Set.of(9, 10), slotsMixed.get(ShiftSlot.SLOT_6));
+
+      // パート（Employee6〜8）は割り当てから除外され、未出勤者に含まれる
+      Set<String> unassignedNamesMixed =
+          resultMixed.get().unassignedEmployees().stream()
+              .map(emp -> emp.name())
+              .collect(java.util.stream.Collectors.toSet());
+      assertTrue(unassignedNamesMixed.containsAll(List.of("Employee6", "Employee7", "Employee8")));
     }
 
     private Map<ShiftSlot, Set<Integer>> extractSlotAssignments(AssignmentResult result) {
@@ -589,6 +612,45 @@ class ShiftAssignmentServiceImplTest {
       List<Employee> unassigned = assignment.unassignedEmployees();
       assertEquals(1, unassigned.size(), "Should have 1 unassigned employee");
       assertEquals("Employee8", unassigned.get(0).name(), "Employee8 should be unassigned");
+    }
+  }
+
+  @Nested
+  @DisplayName("[5.3] 同点時：パートの実労働時間の合計が小さい案を選ぶ")
+  class TiedScorePartTimePreference {
+
+    @Test
+    @DisplayName(
+        "[5.3] Given: 全員が7:30〜18:30の9名で先頭がパート（残り時間は上限なし）のとき, When: assignを実行すると, Then:"
+            + " そのパートは割り当てられず未出勤者になり、scoreは常勤のみのときと同じ1380である")
+    void excludesPartTimeWhenTiedWithFullTimeCandidates() {
+      List<Employee> employees = new ArrayList<>();
+      employees.add(
+          Employee.working(
+              "Employee0",
+              com.example.shiftmatch.domain.EmploymentType.PART_TIME,
+              java.time.LocalTime.of(7, 30),
+              java.time.LocalTime.of(18, 30)));
+      for (int i = 1; i < 9; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+      assertEquals(1380, assignment.score());
+
+      boolean partTimeAssigned =
+          assignment.assignments().stream().anyMatch(a -> a.employee().name().equals("Employee0"));
+      assertFalse(partTimeAssigned, "パートは割り当てられないはず");
+
+      boolean partTimeUnassigned =
+          assignment.unassignedEmployees().stream().anyMatch(e -> e.name().equals("Employee0"));
+      assertTrue(partTimeUnassigned, "パートは未出勤者に含まれるはず");
     }
   }
 
