@@ -144,11 +144,13 @@ public record Employee(
   /**
    * この従業員が出勤しない理由を返します。
    *
-   * <p>出勤する場合（割り当てられる可能性がある場合）や、出勤しない場合でも理由が異なります：
+   * <p>出勤する場合（割り当てられる可能性がある場合）や、出勤しない場合でも理由が異なります（7.2 節の判定順）：
    * <ul>
    *   <li>{@link UnassignedReason#ON_LEAVE} : 従業員が休み
-   *   <li>{@link UnassignedReason#NO_AVAILABLE_SLOT} : 入れる枠がない
-   *   <li>{@link UnassignedReason#LOWER_GAP_CHOSEN} : 入れる枠はあったが、より小さいずれの案が選ばれた
+   *   <li>{@link UnassignedReason#NO_AVAILABLE_SLOT} : {@link #canWork(ShiftSlot)} を満たす枠がない
+   *   <li>{@link UnassignedReason#WEEKLY_LIMIT_EXCEEDED} :
+   *       {@link #canWork(ShiftSlot)} を満たす枠はあるが、{@link #canAssign(ShiftSlot)} が true の枠がない（H-4）
+   *   <li>{@link UnassignedReason#LOWER_GAP_CHOSEN} : それ以外
    * </ul>
    *
    * @return 未出勤の理由
@@ -157,8 +159,12 @@ public record Employee(
     if (off) {
       return UnassignedReason.ON_LEAVE;
     }
-    if (workableSlots().isEmpty()) {
+    List<ShiftSlot> workableSlots = workableSlots();
+    if (workableSlots.isEmpty()) {
       return UnassignedReason.NO_AVAILABLE_SLOT;
+    }
+    if (workableSlots.stream().noneMatch(slot -> canAssign(slot))) {
+      return UnassignedReason.WEEKLY_LIMIT_EXCEEDED;
     }
     return UnassignedReason.LOWER_GAP_CHOSEN;
   }

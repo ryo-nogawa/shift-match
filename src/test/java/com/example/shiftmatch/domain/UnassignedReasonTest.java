@@ -32,5 +32,13 @@ class UnassignedReasonTest {
     void noAvailableSlotReturnsCorrectLabel() {
       assertEquals("どの枠にも入れない", UnassignedReason.NO_AVAILABLE_SLOT.label());
     }
+
+    @Test
+    @DisplayName(
+        "[7.2][H-4] Given: WEEKLY_LIMIT_EXCEEDED, When: label()を呼ぶと, Then:"
+            + " \"入れる枠はあったが、パートの週の上限（20 時間）を超える\" を返す")
+    void weeklyLimitExceededReturnsCorrectLabel() {
+      assertEquals("入れる枠はあったが、パートの週の上限（20 時間）を超える", UnassignedReason.WEEKLY_LIMIT_EXCEEDED.label());
+    }
   }
 }

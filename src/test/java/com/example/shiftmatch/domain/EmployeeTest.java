@@ -369,4 +369,52 @@ class EmployeeTest {
       assertEquals(false, employee.canAssign(ShiftSlot.SLOT_1));
     }
   }
+
+  @Nested
+  @DisplayName("[7.2][H-4] 未出勤の理由の判定順（休み → 入れる枠なし → 週上限超え → その他）")
+  class UnassignedReasonOrder {
+
+    @Test
+    @DisplayName("[7.2][H-4] Given: 休みの従業員, When: unassignedReason()を呼ぶと, Then: ON_LEAVE を返す")
+    void offReturnsOnLeave() {
+      Employee employee = Employee.onLeave("N", EmploymentType.PART_TIME);
+
+      assertEquals(UnassignedReason.ON_LEAVE, employee.unassignedReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2][H-4] Given: H-3を満たす枠がない従業員, When: unassignedReason()を呼ぶと, Then:"
+            + " NO_AVAILABLE_SLOT を返す")
+    void noWorkableSlotReturnsNoAvailableSlot() {
+      Employee employee =
+          Employee.working("O", EmploymentType.PART_TIME, LocalTime.of(9, 0), LocalTime.of(10, 0));
+
+      assertEquals(UnassignedReason.NO_AVAILABLE_SLOT, employee.unassignedReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2][H-4] Given: H-3を満たす枠はあるが週の残り時間が足りないパート, When: unassignedReason()を呼ぶと, Then:"
+            + " WEEKLY_LIMIT_EXCEEDED を返す")
+    void workableSlotButOverWeeklyLimitReturnsWeeklyLimitExceeded() {
+      Employee employee =
+          Employee.working("P", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(14, 30))
+              .withWeeklyRemainingMinutes(300);
+
+      assertEquals(UnassignedReason.WEEKLY_LIMIT_EXCEEDED, employee.unassignedReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2][H-4] Given: 入れる枠があり週の残り時間も十分な従業員, When: unassignedReason()を呼ぶと, Then:"
+            + " LOWER_GAP_CHOSEN を返す")
+    void workableSlotWithinWeeklyLimitReturnsLowerGapChosen() {
+      Employee employee =
+          Employee.working("Q", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(14, 30))
+              .withWeeklyRemainingMinutes(375);
+
+      assertEquals(UnassignedReason.LOWER_GAP_CHOSEN, employee.unassignedReason());
+    }
+  }
 }
