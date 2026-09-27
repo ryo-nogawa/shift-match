@@ -10,8 +10,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Component;
@@ -79,10 +81,66 @@ public class MonthlyFormConverter {
   private EmployeeProfile convertEmployee(EmployeeForm form) {
     String name = form.getName();
     Optional<EmploymentType> employmentType = EmploymentType.parse(form.getEmploymentType());
-
+    Map<DayOfWeek, DailyWish> baseShifts = convertDays(form.getDays());
     Set<DayOfWeek> offDays = convertOffDays(form.getOffDays());
 
-    return new EmployeeProfile(name, employmentType.orElse(null), offDays);
+    return new EmployeeProfile(name, employmentType.orElse(null), baseShifts, offDays);
+  }
+
+  private static final DayOfWeek[] WEEKDAYS = {
+    DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY
+  };
+
+  /**
+   * 曜日フォームのリストを基本シフトのマップに変換します。
+   *
+   * <p>{@code dayForms} の d 番目（0＝月）が存在し {@code null} でない曜日だけをマップに含めます。5 件より多い分は無視します。
+   *
+   * @param dayForms 曜日フォームのリスト
+   * @return 基本シフトのマップ（キー: {@link DayOfWeek}、値: {@link DailyWish}）
+   */
+  private Map<DayOfWeek, DailyWish> convertDays(List<DayForm> dayForms) {
+    Map<DayOfWeek, DailyWish> baseShifts = new EnumMap<>(DayOfWeek.class);
+    if (dayForms == null) {
+      return baseShifts;
+    }
+    for (int i = 0; i < WEEKDAYS.length; i++) {
+      if (i < dayForms.size() && dayForms.get(i) != null) {
+        baseShifts.put(WEEKDAYS[i], convertDay(dayForms.get(i)));
+      }
+    }
+    return baseShifts;
+  }
+
+  /**
+   * 単一の曜日フォームを {@link DailyWish} に変換します。
+   *
+   * @param form 曜日フォーム
+   * @return 変換後の希望
+   */
+  private DailyWish convertDay(DayForm form) {
+    LocalTime start = parseTime(form.getStart());
+    LocalTime end = parseTime(form.getEnd());
+    return new DailyWish(false, start, end);
+  }
+
+  /**
+   * 個別変更フォームを {@link DailyWish} に変換します。
+   *
+   * <p>このメソッドは {@link AdjustmentForm} の `off`、`start`、`end` フィールドから
+   * 希望を構築します。
+   *
+   * @param form 個別変更フォーム
+   * @return 変換後の希望
+   */
+  private DailyWish convertDay(AdjustmentForm form) {
+    if (form.isOff()) {
+      return new DailyWish(true, null, null);
+    }
+
+    LocalTime start = parseTime(form.getStart());
+    LocalTime end = parseTime(form.getEnd());
+    return new DailyWish(false, start, end);
   }
 
   /**
@@ -104,25 +162,6 @@ public class MonthlyFormConverter {
       }
     }
     return offDays;
-  }
-
-  /**
-   * 個別変更フォームを {@link DailyWish} に変換します。
-   *
-   * <p>このメソッドは {@link AdjustmentForm} の `off`、`start`、`end` フィールドから
-   * 希望を構築します。
-   *
-   * @param form 個別変更フォーム
-   * @return 変換後の希望
-   */
-  private DailyWish convertDay(AdjustmentForm form) {
-    if (form.isOff()) {
-      return new DailyWish(true, null, null);
-    }
-
-    LocalTime start = parseTime(form.getStart());
-    LocalTime end = parseTime(form.getEnd());
-    return new DailyWish(false, start, end);
   }
 
   /**

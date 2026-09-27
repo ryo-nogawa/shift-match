@@ -113,9 +113,11 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 .employee-row { cursor: pointer }
 .employee-row.selected td { background: var(--ring) }
 .employee-table td { padding: 4px }
+.summary { font-size: 13px; white-space: nowrap }
 .off-days-cell { white-space: nowrap }
 .off-day { display: inline-block; margin-right: 8px; font-size: 13px }
-.delete-btn { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--sub); cursor: pointer; white-space: nowrap }
+.day-row td { padding: 4px }
+.delete-btn, .copy-to-all-btn { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--sub); cursor: pointer; white-space: nowrap }
 .delete-btn:disabled, #add-employee-btn:disabled, #prev-btn:disabled { opacity: .3; cursor: not-allowed }
 #add-employee-btn { margin-top: 8px; padding: 8px 16px; border: 1px dashed var(--sub); border-radius: 8px; background: transparent; cursor: pointer }
 .calendar-header div { text-align: center; font-size: 12px; color: var(--sub) }

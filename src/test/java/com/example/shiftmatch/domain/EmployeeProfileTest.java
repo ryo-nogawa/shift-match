@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -80,6 +81,85 @@ class EmployeeProfileTest {
       assertFalse(employee.off());
       assertEquals(LocalTime.of(7, 30), employee.start());
       assertEquals(LocalTime.of(18, 30), employee.end());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 水曜日の基本シフトが 9:00〜16:30, When: 水曜日で toEmployee を実行すると, Then: その時間帯で出勤の Employee"
+            + " になる")
+    void toEmployeeUsesBaseShiftTimeRange() {
+      EmployeeProfile profile =
+          new EmployeeProfile(
+              "Taro",
+              EmploymentType.FULL_TIME,
+              Map.of(
+                  DayOfWeek.WEDNESDAY,
+                  new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(16, 30))),
+              Set.of());
+
+      Employee employee = profile.toEmployee(DayOfWeek.WEDNESDAY);
+
+      assertFalse(employee.off());
+      assertEquals(LocalTime.of(9, 0), employee.start());
+      assertEquals(LocalTime.of(16, 30), employee.end());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: パートの曜日休みの曜日に基本シフトがある, When: EmployeeProfile を作成すると, Then: その曜日は休みになり"
+            + " baseShifts からも除かれる")
+    void partTimeOffDayOverridesBaseShiftAndIsRemoved() {
+      EmployeeProfile profile =
+          new EmployeeProfile(
+              "Taro",
+              EmploymentType.PART_TIME,
+              Map.of(
+                  DayOfWeek.MONDAY, new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(16, 30))),
+              Set.of(DayOfWeek.MONDAY));
+
+      Employee employee = profile.toEmployee(DayOfWeek.MONDAY);
+
+      assertTrue(employee.off());
+      assertFalse(profile.baseShifts().containsKey(DayOfWeek.MONDAY));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 常勤の曜日休み指定と基本シフト, When: EmployeeProfile を作成すると, Then: 曜日休みは無視され基本シフトが使われる")
+    void nonPartTimeOffDayIsIgnoredAndBaseShiftIsUsed() {
+      EmployeeProfile profile =
+          new EmployeeProfile(
+              "Taro",
+              EmploymentType.FULL_TIME,
+              Map.of(
+                  DayOfWeek.MONDAY, new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(16, 30))),
+              Set.of(DayOfWeek.MONDAY));
+
+      Employee employee = profile.toEmployee(DayOfWeek.MONDAY);
+
+      assertFalse(employee.off());
+      assertEquals(LocalTime.of(9, 0), employee.start());
+      assertEquals(LocalTime.of(16, 30), employee.end());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 3 引数コンストラクター, When: EmployeeProfile を作成すると, Then: 全曜日の基本シフトが 7:30〜18:30 になる")
+    void threeArgConstructorCreatesDefaultBaseShiftsForAllWeekdays() {
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Set.of());
+
+      for (DayOfWeek day :
+          Set.of(
+              DayOfWeek.MONDAY,
+              DayOfWeek.TUESDAY,
+              DayOfWeek.WEDNESDAY,
+              DayOfWeek.THURSDAY,
+              DayOfWeek.FRIDAY)) {
+        DailyWish wish = profile.baseShifts().get(day);
+        assertFalse(wish.off());
+        assertEquals(LocalTime.of(7, 30), wish.start());
+        assertEquals(LocalTime.of(18, 30), wish.end());
+      }
     }
   }
 }

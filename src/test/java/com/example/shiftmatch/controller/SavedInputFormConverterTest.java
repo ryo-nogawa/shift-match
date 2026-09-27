@@ -16,7 +16,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -28,23 +30,24 @@ class SavedInputFormConverterTest {
 
   private static final YearMonth DEFAULT_MONTH = YearMonth.of(2026, 9);
 
-  /** デモ用 12 名の氏名・区分・曜日休み（0＝月〜4＝金）。 */
-  private record DemoRow(String name, String type, List<Integer> offDays) {}
+  /** デモ用 12 名の氏名・区分・曜日休み（0＝月〜4＝金）・月〜金共通の基本シフト。 */
+  private record DemoRow(
+      String name, String type, List<Integer> offDays, String start, String end) {}
 
   private static final List<DemoRow> DEMO_EMPLOYEES =
       List.of(
-          new DemoRow("佐藤太郎", "FULL_TIME", List.of()),
-          new DemoRow("鈴木花子", "FULL_TIME", List.of()),
-          new DemoRow("高橋健一", "FULL_TIME", List.of()),
-          new DemoRow("田中美咲", "FULL_TIME", List.of()),
-          new DemoRow("伊藤大輔", "FULL_TIME", List.of()),
-          new DemoRow("渡辺陽子", "PART_TIME", List.of(0, 2)),
-          new DemoRow("山本翔太", "PART_TIME", List.of(1, 3)),
-          new DemoRow("中村由美", "PART_TIME", List.of(4)),
-          new DemoRow("小林誠", "MANAGER", List.of()),
-          new DemoRow("加藤恵", "FULL_TIME", List.of()),
-          new DemoRow("吉田拓也", "PART_TIME", List.of(0, 3)),
-          new DemoRow("山田彩香", "MANAGER", List.of()));
+          new DemoRow("佐藤太郎", "FULL_TIME", List.of(), "07:30", "18:30"),
+          new DemoRow("鈴木花子", "FULL_TIME", List.of(), "07:30", "18:30"),
+          new DemoRow("高橋健一", "FULL_TIME", List.of(), "07:30", "16:30"),
+          new DemoRow("田中美咲", "FULL_TIME", List.of(), "09:00", "18:30"),
+          new DemoRow("伊藤大輔", "FULL_TIME", List.of(), "09:00", "18:30"),
+          new DemoRow("渡辺陽子", "PART_TIME", List.of(0, 2), "07:30", "14:30"),
+          new DemoRow("山本翔太", "PART_TIME", List.of(1, 3), "08:00", "16:30"),
+          new DemoRow("中村由美", "PART_TIME", List.of(4), "09:00", "18:00"),
+          new DemoRow("小林誠", "MANAGER", List.of(), "08:30", "18:30"),
+          new DemoRow("加藤恵", "FULL_TIME", List.of(), "07:30", "15:30"),
+          new DemoRow("吉田拓也", "PART_TIME", List.of(0, 3), "09:00", "16:30"),
+          new DemoRow("山田彩香", "MANAGER", List.of(), "09:00", "18:30"));
 
   private final SavedInputFormConverter converter = new SavedInputFormConverter();
 
@@ -54,6 +57,11 @@ class SavedInputFormConverterTest {
 
   private static EmployeeProfile partTimeWithOffDays(String name, Set<DayOfWeek> offDays) {
     return new EmployeeProfile(name, EmploymentType.PART_TIME, offDays);
+  }
+
+  private static EmployeeProfile weekdayShiftProfile(
+      String name, EmploymentType type, Map<DayOfWeek, DailyWish> baseShifts) {
+    return new EmployeeProfile(name, type, baseShifts, Set.of());
   }
 
   private static SavedInput savedOf(
@@ -67,6 +75,11 @@ class SavedInputFormConverterTest {
     assertEquals("", row.getName());
     assertEquals("FULL_TIME", row.getEmploymentType());
     assertTrue(row.getOffDays().isEmpty());
+    assertEquals(5, row.getDays().size());
+    for (DayForm day : row.getDays()) {
+      assertEquals("07:30", day.getStart());
+      assertEquals("18:30", day.getEnd());
+    }
   }
 
   @Nested
@@ -136,6 +149,11 @@ class SavedInputFormConverterTest {
         assertEquals(expected.name(), row.getName());
         assertEquals(expected.type(), row.getEmploymentType());
         assertEquals(expected.offDays(), row.getOffDays());
+        assertEquals(5, row.getDays().size());
+        for (DayForm day : row.getDays()) {
+          assertEquals(expected.start(), day.getStart());
+          assertEquals(expected.end(), day.getEnd());
+        }
       }
       assertTrue(form.getAdjustments().isEmpty());
     }
@@ -187,16 +205,63 @@ class SavedInputFormConverterTest {
         List<Employee> employees = new ArrayList<>();
         for (EmployeeForm row : form.getEmployees()) {
           if (!row.getOffDays().contains(dayIndex)) {
+            DayForm day = row.getDays().get(dayIndex);
             employees.add(
                 Employee.working(
                     row.getName(),
                     EmploymentType.valueOf(row.getEmploymentType()),
-                    LocalTime.of(7, 30),
-                    LocalTime.of(18, 30)));
+                    LocalTime.parse(day.getStart()),
+                    LocalTime.parse(day.getEnd())));
           }
         }
         assertTrue(service.assign(employees).isPresent(), "曜日インデックス " + dayIndex);
       }
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: 曜日ごとに異なる基本シフトが保存済み, When: フォームに変換すると, Then: 曜日ごとの開始・終了に復元される")
+    void restoresSavedBaseShiftsPerWeekday() {
+      Map<DayOfWeek, DailyWish> baseShifts = new EnumMap<>(DayOfWeek.class);
+      baseShifts.put(
+          DayOfWeek.MONDAY, new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(17, 0)));
+      baseShifts.put(
+          DayOfWeek.TUESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(16, 0)));
+      baseShifts.put(
+          DayOfWeek.WEDNESDAY, new DailyWish(false, LocalTime.of(7, 30), LocalTime.of(18, 30)));
+      baseShifts.put(
+          DayOfWeek.THURSDAY, new DailyWish(false, LocalTime.of(9, 30), LocalTime.of(17, 30)));
+      baseShifts.put(
+          DayOfWeek.FRIDAY, new DailyWish(false, LocalTime.of(8, 30), LocalTime.of(16, 30)));
+      SavedInput saved =
+          savedOf(
+              List.of(weekdayShiftProfile("佐藤", EmploymentType.FULL_TIME, baseShifts)),
+              List.of(),
+              Optional.empty());
+
+      List<DayForm> days = converter.toForm(saved, DEFAULT_MONTH).getEmployees().get(0).getDays();
+
+      assertEquals(5, days.size());
+      assertEquals("09:00", days.get(0).getStart());
+      assertEquals("17:00", days.get(0).getEnd());
+      assertEquals("08:00", days.get(1).getStart());
+      assertEquals("16:00", days.get(1).getEnd());
+      assertEquals("07:30", days.get(2).getStart());
+      assertEquals("18:30", days.get(2).getEnd());
+      assertEquals("09:30", days.get(3).getStart());
+      assertEquals("17:30", days.get(3).getEnd());
+      assertEquals("08:30", days.get(4).getStart());
+      assertEquals("16:30", days.get(4).getEnd());
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: 空の行, When: フォームに変換すると, Then: 5 曜日とも 07:30〜18:30 になる")
+    void emptyRowHasDefaultBaseShiftForAllWeekdays() {
+      SavedInput saved =
+          savedOf(List.of(profile("佐藤", EmploymentType.FULL_TIME)), List.of(), Optional.empty());
+
+      EmployeeForm emptyRow = converter.toForm(saved, DEFAULT_MONTH).getEmployees().get(1);
+
+      assertEmptyRow(emptyRow);
     }
 
     @Test

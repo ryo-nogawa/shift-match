@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,7 @@ public class MonthlyShiftRepository {
   @Transactional
   public void saveInput(List<EmployeeProfile> employees, YearMonth month) {
     jdbcClient.sql("DELETE FROM saved_input_off_day").update();
+    jdbcClient.sql("DELETE FROM saved_input_weekday_shift").update();
     jdbcClient.sql("DELETE FROM saved_input_employee").update();
     int rowIndex = 0;
     for (EmployeeProfile employee : employees) {
@@ -74,6 +76,17 @@ public class MonthlyShiftRepository {
             .params(rowIndex, day.ordinal())
             .update();
       }
+      for (Map.Entry<DayOfWeek, DailyWish> entry : employee.baseShifts().entrySet()) {
+        DailyWish wish = entry.getValue();
+        if (wish.start() != null && wish.end() != null) {
+          jdbcClient
+              .sql(
+                  "INSERT INTO saved_input_weekday_shift (row_index, day_index, start_time,"
+                      + " end_time) VALUES (?, ?, ?, ?)")
+              .params(rowIndex, entry.getKey().ordinal(), wish.start(), wish.end())
+              .update();
+        }
+      }
       rowIndex++;
     }
     jdbcClient.sql("DELETE FROM saved_input_meta").update();
@@ -82,6 +95,14 @@ public class MonthlyShiftRepository {
         .params(month.toString())
         .update();
   }
+
+  private static final LocalTime DEFAULT_START = LocalTime.of(7, 30);
+
+  private static final LocalTime DEFAULT_END = LocalTime.of(18, 30);
+
+  private static final DayOfWeek[] WEEKDAYS = {
+    DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY
+  };
 
   /**
    * 保存済みの従業員入力を保存順に復元します。
@@ -110,14 +131,43 @@ public class MonthlyShiftRepository {
                   .params(row.rowIndex())
                   .query((rs, rowNum) -> DayOfWeek.of(rs.getInt("day_index") + 1))
                   .list());
-      employees.add(new EmployeeProfile(row.name(), row.employmentType(), offDays));
+      Map<DayOfWeek, DailyWish> baseShifts = findBaseShifts(row.rowIndex());
+      employees.add(new EmployeeProfile(row.name(), row.employmentType(), baseShifts, offDays));
     }
     return employees;
+  }
+
+  private Map<DayOfWeek, DailyWish> findBaseShifts(int rowIndex) {
+    Map<DayOfWeek, DailyWish> baseShifts = new EnumMap<>(DayOfWeek.class);
+    List<DayRow> dayRows =
+        jdbcClient
+            .sql(
+                "SELECT day_index, start_time, end_time FROM saved_input_weekday_shift"
+                    + " WHERE row_index = ?")
+            .params(rowIndex)
+            .query(
+                (rs, rowNum) ->
+                    new DayRow(
+                        DayOfWeek.of(rs.getInt("day_index") + 1),
+                        new DailyWish(
+                            false,
+                            rs.getObject("start_time", LocalTime.class),
+                            rs.getObject("end_time", LocalTime.class))))
+            .list();
+    for (DayRow dayRow : dayRows) {
+      baseShifts.put(dayRow.day(), dayRow.wish());
+    }
+    for (DayOfWeek day : WEEKDAYS) {
+      baseShifts.putIfAbsent(day, new DailyWish(false, DEFAULT_START, DEFAULT_END));
+    }
+    return baseShifts;
   }
 
   private record AdjustmentKey(LocalDate date, String employeeName) {}
 
   private record EmployeeRow(int rowIndex, String name, EmploymentType employmentType) {}
+
+  private record DayRow(DayOfWeek day, DailyWish wish) {}
 
   /**
    * 保存済みの最後の対象月を返します。

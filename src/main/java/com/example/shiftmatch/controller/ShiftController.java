@@ -23,7 +23,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -117,6 +119,51 @@ public class ShiftController {
   }
 
   /**
+   * バインドを許可する従業員の添字の上限（{@code employees[0]}〜{@code employees[MAX_BOUND_EMPLOYEES - 1]}）。
+   *
+   * <p>V-5（有効な従業員が 13 名以上のときエラー）の判定・表示ができるよう、上限の 12 名より 1 名多い
+   * 13 名分まで受け付けます。これを超える添字（例：{@code employees[255]}）はワイルドカードで許可すると、
+   * バインド前の自動拡張（既定の上限 256）により大量の {@link DayForm} と HTML が生成されるため、
+   * 個別に列挙して範囲を限定します。
+   */
+  private static final int MAX_BOUND_EMPLOYEES = 13;
+
+  /**
+   * {@code shiftForm} へバインドできるフィールドを制限します。
+   *
+   * <p>従業員の添字は {@code 0}〜{@link #MAX_BOUND_EMPLOYEES} 未満に限定して列挙します。範囲外の添字を含む
+   * パラメーターはバインド前に除外されるだけで、400 エラーにはしません（V-5 は従来どおり、13 名分が
+   * バインドされたうえで入力チェックにより判定します）。{@code employees[*].days} も月〜金の 5 件
+   * （{@code days[0]}〜{@code days[4]}）だけを許可します。
+   *
+   * @param binder 対象の {@link WebDataBinder}
+   */
+  @InitBinder("shiftForm")
+  public void initShiftFormBinder(WebDataBinder binder) {
+    binder.setAllowedFields(allowedShiftFormFields());
+  }
+
+  private static String[] allowedShiftFormFields() {
+    List<String> fields = new ArrayList<>();
+    fields.add("targetMonth");
+    for (int i = 0; i < MAX_BOUND_EMPLOYEES; i++) {
+      fields.add("employees[" + i + "].name");
+      fields.add("employees[" + i + "].employmentType");
+      fields.add("employees[" + i + "].offDays");
+      for (int d = 0; d < WEEKDAY_COUNT; d++) {
+        fields.add("employees[" + i + "].days[" + d + "].start");
+        fields.add("employees[" + i + "].days[" + d + "].end");
+      }
+    }
+    fields.add("adjustments[*].date");
+    fields.add("adjustments[*].employeeName");
+    fields.add("adjustments[*].off");
+    fields.add("adjustments[*].start");
+    fields.add("adjustments[*].end");
+    return fields.toArray(new String[0]);
+  }
+
+  /**
    * 月間シフト作成フォームを初期表示します。
    *
    * @param model モデルオブジェクト
@@ -205,6 +252,9 @@ public class ShiftController {
     // フォームをドメインモデルに変換
     MonthlyShiftInput input = monthlyFormConverter.toInput(shiftForm);
 
+    // 再表示のために、各従業員の基本シフトを月〜金の 5 件にそろえる（変換より後に行い、V-3 の判定に影響させない）
+    normalizeDays(shiftForm.getEmployees());
+
     try {
       // シフト作成サービスを呼び出す
       var result = monthlyShiftService.create(input);
@@ -236,6 +286,59 @@ public class ShiftController {
       LOGGER.error("シフトの保存に失敗しました", e);
       model.addAttribute("saveError", SAVE_ERROR_MESSAGE);
     }
+  }
+
+  /** 基本シフトの曜日数（月〜金）。 */
+  private static final int WEEKDAY_COUNT = 5;
+
+  /**
+   * 再表示のために、各従業員の基本シフト（{@code days}）を月〜金の 5 件にそろえます。
+   *
+   * <p>5 件未満の従業員は末尾を補い、途中の {@code null} 要素も置き換えます。補う・置き換える曜日は、
+   * その従業員の {@code offDays} に含まれていれば開始 {@code 07:30}・終了 {@code 18:30}、
+   * 含まれていなければ開始・終了とも {@code null} にします。既存の要素の値は変えません。
+   * 5 件より多い場合は 5 件に切り詰めます。
+   *
+   * @param employees 従業員フォームのリスト
+   */
+  private void normalizeDays(List<EmployeeForm> employees) {
+    for (EmployeeForm employee : employees) {
+      normalizeDays(employee);
+    }
+  }
+
+  private void normalizeDays(EmployeeForm employee) {
+    List<DayForm> days = employee.getDays();
+    if (days == null) {
+      days = new ArrayList<>();
+      employee.setDays(days);
+    }
+    List<Integer> offDays = employee.getOffDays();
+    if (offDays == null) {
+      offDays = List.of();
+    }
+
+    for (int i = 0; i < WEEKDAY_COUNT; i++) {
+      boolean isOffDay = offDays.contains(i);
+      if (i >= days.size()) {
+        days.add(defaultDay(isOffDay));
+      } else if (days.get(i) == null) {
+        days.set(i, defaultDay(isOffDay));
+      }
+    }
+
+    if (days.size() > WEEKDAY_COUNT) {
+      days.subList(WEEKDAY_COUNT, days.size()).clear();
+    }
+  }
+
+  private static DayForm defaultDay(boolean isOffDay) {
+    DayForm day = new DayForm();
+    if (isOffDay) {
+      day.setStart(TimeOptions.VALUES.get(0));
+      day.setEnd(TimeOptions.VALUES.get(TimeOptions.VALUES.size() - 1));
+    }
+    return day;
   }
 
   private static List<MonthEmployee> monthEmployeesOf(MonthlyShiftInput input) {

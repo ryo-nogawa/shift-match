@@ -6,6 +6,7 @@ import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.ShiftAdjustment;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
@@ -127,6 +128,13 @@ public class MonthlyInputValidator {
       List<ValidEmployeeInfo> validEmployees, MonthlyShiftInput input) {
     List<InputError> errors = new ArrayList<>();
 
+    // 基本シフトの検証
+    for (ValidEmployeeInfo info : validEmployees) {
+      List<InputError> baseShiftErrors =
+          validateBaseShifts(info.profile(), info.originalIndex() + 1);
+      errors.addAll(baseShiftErrors);
+    }
+
     // 有効な従業員名の集合を作成
     Set<String> validNames = new HashSet<>();
     for (ValidEmployeeInfo info : validEmployees) {
@@ -139,6 +147,55 @@ public class MonthlyInputValidator {
     errors.addAll(adjustmentErrors);
 
     return errors;
+  }
+
+  private static final DayOfWeek[] WEEKDAYS = {
+    DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY
+  };
+
+  private List<InputError> validateBaseShifts(EmployeeProfile profile, int lineNumber) {
+    List<InputError> errors = new ArrayList<>();
+    for (DayOfWeek day : WEEKDAYS) {
+      if (profile.offDays().contains(day)) {
+        continue;
+      }
+      DailyWish wish = profile.baseShifts().get(day);
+      errors.addAll(validateBaseShiftTimeRange(wish, day, profile.name(), lineNumber));
+    }
+    return errors;
+  }
+
+  private List<InputError> validateBaseShiftTimeRange(
+      DailyWish wish, DayOfWeek day, String name, int lineNumber) {
+    List<InputError> errors = new ArrayList<>();
+    String dayName = getDayName(day);
+
+    if (wish == null || wish.start() == null || wish.end() == null) {
+      String message = String.format("基本シフト：%s が未選択です（%s、%d 行目）", dayName, name, lineNumber);
+      errors.add(new InputError("V-3", message));
+    } else if (!isValidTime(wish.start()) || !isValidTime(wish.end())) {
+      String message =
+          String.format(
+              "基本シフト：%s の時間帯が 7:30〜18:30 の 30 分単位ではありません（%s、%d 行目）", dayName, name, lineNumber);
+      errors.add(new InputError("V-3", message));
+    } else if (!wish.start().isBefore(wish.end())) {
+      String message =
+          String.format("基本シフト：%s の開始時刻が終了時刻以上です（%s、%d 行目）", dayName, name, lineNumber);
+      errors.add(new InputError("V-3", message));
+    }
+
+    return errors;
+  }
+
+  private String getDayName(DayOfWeek day) {
+    return switch (day) {
+      case MONDAY -> "月曜日";
+      case TUESDAY -> "火曜日";
+      case WEDNESDAY -> "水曜日";
+      case THURSDAY -> "木曜日";
+      case FRIDAY -> "金曜日";
+      default -> day.toString();
+    };
   }
 
   private boolean isValidTime(LocalTime time) {
