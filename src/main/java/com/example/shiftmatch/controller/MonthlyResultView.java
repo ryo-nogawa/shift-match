@@ -75,7 +75,48 @@ public record MonthlyResultView(
    * @param totalMinutes 合計の実労働時間（分）
    */
   public record MonthlyHours(
-      String name, String employmentTypeLabel, int workDays, int totalMinutes) {}
+      String name, String employmentTypeLabel, int workDays, int totalMinutes) {
+
+    /**
+     * 合計の実労働時間を {@code (hh:mm)} 形式で返します。
+     *
+     * @return 例：{@code (14:45)}
+     */
+    public String durationLabel() {
+      return formatDuration(totalMinutes);
+    }
+  }
+
+  /**
+   * 全員分の出勤日数の合計を返します。
+   *
+   * @return 出勤日数の合計
+   */
+  public int totalWorkDays() {
+    return monthlyHoursRows.stream().mapToInt(row -> row.workDays()).sum();
+  }
+
+  /**
+   * 全員分の合計実労働時間（分）を返します。
+   *
+   * @return 合計分
+   */
+  public int totalMinutes() {
+    return monthlyHoursRows.stream().mapToInt(row -> row.totalMinutes()).sum();
+  }
+
+  /**
+   * 全員分の合計実労働時間を {@code (hh:mm)} 形式で返します。
+   *
+   * @return 例：{@code (126:45)}
+   */
+  public String totalDurationLabel() {
+    return formatDuration(totalMinutes());
+  }
+
+  private static String formatDuration(int minutes) {
+    return String.format("(%02d:%02d)", minutes / 60, minutes % 60);
+  }
 
   /**
    * カレンダーの 1 マスです。営業日・祝日・空きのいずれか 1 つだけが設定されます。
