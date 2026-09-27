@@ -477,7 +477,7 @@ class ShiftControllerTest {
       assertTrue(panel.contains("class=\"work-days\">1<"));
     }
 
-    private MockHttpServletRequestBuilder monthlyHoursRequest() {
+    private MockHttpServletRequestBuilder totalTimeRequest() {
       return post("/shift")
           .param("targetMonth", "2026-10")
           .param("employees[0].name", "e1")
@@ -502,7 +502,7 @@ class ShiftControllerTest {
                           List.of(Employee.onLeave("休みさん", EmploymentType.PART_TIME))),
                       new DailyShiftResult(LocalDate.of(2026, 10, 2), 5, Optional.empty()))));
 
-      String html = bodyOf(perform(monthlyHoursRequest()));
+      String html = bodyOf(perform(totalTimeRequest()));
 
       assertFalse(html.contains("月間勤務時間"));
       assertEquals(3, html.split("class=\"tab-btn", -1).length - 1);
@@ -525,7 +525,7 @@ class ShiftControllerTest {
               new MonthlyShiftResult(
                   YearMonth.of(2026, 10), List.of(feasibleDay(LocalDate.of(2026, 10, 1), "e1"))));
 
-      String html = bodyOf(perform(monthlyHoursRequest()));
+      String html = bodyOf(perform(totalTimeRequest()));
 
       assertFalse(html.contains("不成立の日が"));
       assertFalse(html.contains("class=\"monthly-hours-note\""));
@@ -922,7 +922,7 @@ class ShiftControllerTest {
     @DisplayName(
         "[F-4][F-7][7.1節] Given: 指定した月の保存済みシフトがある, When: GET /shift/saved を呼ぶと,"
             + " Then: 月間勤務時間のタブはなく、従業員別表示に合計時間（(hh:mm)）が含まれる")
-    void returnsMonthlyHoursTabForSaved() throws Exception {
+    void returnsTotalTimeInEmployeesTabForSaved() throws Exception {
       MonthlyShiftResult monthly =
           new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
       when(shiftStorageService.load(MONTH))

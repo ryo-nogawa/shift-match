@@ -14,7 +14,6 @@ import java.util.List;
  * @param days 営業日ごとのカレンダー用の表示（営業日順）
  * @param holidayCells カレンダーに表示する祝日（月〜金のものだけ）
  * @param employeeRows 従業員別表示の行（入力順）
- * @param monthlyHoursRows 月間勤務時間の行（入力順）
  */
 public record MonthlyResultView(
     int businessDayCount,
