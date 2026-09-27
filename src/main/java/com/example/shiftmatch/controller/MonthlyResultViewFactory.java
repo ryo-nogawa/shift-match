@@ -8,6 +8,7 @@ import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
@@ -38,12 +39,12 @@ public class MonthlyResultViewFactory {
    * 表示モデルを作ります。
    *
    * @param result 月間シフトの結果
-   * @param employeeNames 従業員名（入力順）
+   * @param employees 従業員（氏名と区分。入力順）
    * @param holidays 対象月の祝日（日付から祝日名）
    * @return 表示モデル
    */
   public MonthlyResultView create(
-      MonthlyShiftResult result, List<String> employeeNames, Map<LocalDate, String> holidays) {
+      MonthlyShiftResult result, List<MonthEmployee> employees, Map<LocalDate, String> holidays) {
     List<DailyShiftResult> dailyResults = result.days();
     int failureCount = 0;
     List<CalendarDay> days = new ArrayList<>();
@@ -54,8 +55,8 @@ public class MonthlyResultViewFactory {
       days.add(toCalendarDay(daily, holidays.get(daily.date())));
     }
     List<EmployeeRow> rows = new ArrayList<>();
-    for (String name : employeeNames) {
-      rows.add(toEmployeeRow(name, dailyResults));
+    for (MonthEmployee employee : employees) {
+      rows.add(toEmployeeRow(employee, dailyResults));
     }
     return new MonthlyResultView(
         dailyResults.size(),
@@ -89,24 +90,32 @@ public class MonthlyResultViewFactory {
     return new CalendarDay(daily.date(), holidayName, false, null, daily.availableCount(), groups);
   }
 
-  private static EmployeeRow toEmployeeRow(String name, List<DailyShiftResult> dailyResults) {
+  private static EmployeeRow toEmployeeRow(
+      MonthEmployee employee, List<DailyShiftResult> dailyResults) {
+    String name = employee.name();
     List<String> cells = new ArrayList<>();
     int workDays = 0;
+    int totalMinutes = 0;
     for (DailyShiftResult daily : dailyResults) {
       String cell = cellOf(name, daily);
       if (!cell.equals(ON_LEAVE_CELL)
           && !cell.equals(NOT_ASSIGNED_CELL)
           && !cell.equals(FAILED_CELL)) {
         workDays++;
+        totalMinutes += actualWorkMinutesOf(name, daily);
       }
       cells.add(cell);
     }
-    return new EmployeeRow(name, cells, workDays, weeklyTotalsOf(name, dailyResults));
+    return new EmployeeRow(
+        name, cells, workDays, totalMinutes, weeklyTotalsOf(employee, dailyResults));
   }
 
   // H-4 の週は対象月の営業日だけで数えるため、結果にある日を月曜始まりでまとめる
-  private static List<String> weeklyTotalsOf(String name, List<DailyShiftResult> dailyResults) {
-    if (!isPart(name, dailyResults)) {
+  private static List<String> weeklyTotalsOf(
+      MonthEmployee employee, List<DailyShiftResult> dailyResults) {
+    String name = employee.name();
+    // パートかどうかは、成立日の割り当てではなく作成時点の区分で判定する（全日不成立でも出す）
+    if (!employee.employmentType().hasWeeklyLimit()) {
       return List.of();
     }
     Map<LocalDate, Integer> minutesByWeek = new LinkedHashMap<>();
@@ -134,24 +143,14 @@ public class MonthlyResultViewFactory {
     return totals;
   }
 
-  private static boolean isPart(String name, List<DailyShiftResult> dailyResults) {
-    for (DailyShiftResult daily : dailyResults) {
-      if (daily.assignment().isEmpty()) {
-        continue;
-      }
-      AssignmentResult assignment = daily.assignment().get();
-      for (ShiftAssignment shiftAssignment : assignment.assignments()) {
-        if (shiftAssignment.employee().name().equals(name)) {
-          return shiftAssignment.employee().employmentType().hasWeeklyLimit();
-        }
-      }
-      for (Employee unassigned : assignment.unassignedEmployees()) {
-        if (unassigned.name().equals(name)) {
-          return unassigned.employmentType().hasWeeklyLimit();
-        }
+  private static int actualWorkMinutesOf(String name, DailyShiftResult daily) {
+    for (ShiftAssignment shiftAssignment : daily.assignment().get().assignments()) {
+      if (shiftAssignment.employee().name().equals(name)) {
+        ShiftSlot slot = shiftAssignment.slot();
+        return slot.workMinutes() - slot.breakDurationMinutes();
       }
     }
-    return false;
+    return 0;
   }
 
   private static String cellOf(String name, DailyShiftResult daily) {

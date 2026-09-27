@@ -44,6 +44,7 @@
                   <th class="sticky-col">従業員</th>
                   <th th:each="day : ${resultView.days()}" th:text="${#temporals.format(day.date(), 'M/d(E)', T(java.util.Locale).JAPAN)}"></th>
                   <th>出勤日数</th>
+                  <th>合計時間</th>
                   <th>週の実働時間（パート）</th>
                 </tr>
               </thead>
@@ -52,10 +53,12 @@
                   <td class="sticky-col" th:text="${row.name()}"></td>
                   <td th:each="cell : ${row.cells()}" th:text="${cell}"></td>
                   <td class="work-days" th:text="${row.workDays()}"></td>
+                  <td class="total-time" th:text="${row.durationLabel()}"></td>
                   <td class="weekly-totals"><div th:each="total : ${row.weeklyTotals()}" th:text="${total}"></div></td>
                 </tr>
               </tbody>
             </table>
+            <p th:if="${resultView.failureCount() > 0}" class="monthly-hours-note" th:text="'不成立の日が ' + ${resultView.failureCount()} + ' 日あります（この日は 0 時間として集計しています）'"></p>
           </div>
           <div id="tab-detail" class="tab-panel" hidden>
             <label>日付

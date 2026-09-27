@@ -7,6 +7,7 @@ import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.FailureReason;
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
@@ -203,16 +204,19 @@ public class MonthlyShiftRepository {
    * 対象月の決定したシフトを置き換えて保存します。
    *
    * @param result 月間シフトの結果
-   * @param employeeNames シフトを作成した時点の従業員名（入力順）
+   * @param employees シフトを作成した時点の従業員（氏名と区分。入力順）
    */
   @Transactional
-  public void saveShift(MonthlyShiftResult result, List<String> employeeNames) {
+  public void saveShift(MonthlyShiftResult result, List<MonthEmployee> employees) {
     String targetMonth = result.month().toString();
     deleteShift(targetMonth);
-    for (int index = 0; index < employeeNames.size(); index++) {
+    for (int index = 0; index < employees.size(); index++) {
+      MonthEmployee employee = employees.get(index);
       jdbcClient
-          .sql("INSERT INTO saved_month_employee (target_month, row_index, name) VALUES (?, ?, ?)")
-          .params(targetMonth, index, employeeNames.get(index))
+          .sql(
+              "INSERT INTO saved_month_employee (target_month, row_index, name, employment_type)"
+                  + " VALUES (?, ?, ?, ?)")
+          .params(targetMonth, index, employee.name(), employee.employmentType().name())
           .update();
     }
     for (DailyShiftResult day : result.days()) {
@@ -305,11 +309,17 @@ public class MonthlyShiftRepository {
    */
   public Optional<SavedMonthlyShift> findShift(YearMonth month) {
     String targetMonth = month.toString();
-    List<String> employeeNames =
+    List<MonthEmployee> employees =
         jdbcClient
-            .sql("SELECT name FROM saved_month_employee WHERE target_month = ? ORDER BY row_index")
+            .sql(
+                "SELECT name, employment_type FROM saved_month_employee WHERE target_month = ?"
+                    + " ORDER BY row_index")
             .param(targetMonth)
-            .query(String.class)
+            .query(
+                (rs, rowNum) ->
+                    new MonthEmployee(
+                        rs.getString("name"),
+                        EmploymentType.valueOf(rs.getString("employment_type"))))
             .list();
     List<DailyShiftResult> days =
         jdbcClient
@@ -337,10 +347,10 @@ public class MonthlyShiftRepository {
                       date, rs.getInt("available_count"), assignment, failureReason);
                 })
             .list();
-    if (days.isEmpty() && employeeNames.isEmpty()) {
+    if (days.isEmpty() && employees.isEmpty()) {
       return Optional.empty();
     }
-    return Optional.of(new SavedMonthlyShift(new MonthlyShiftResult(month, days), employeeNames));
+    return Optional.of(new SavedMonthlyShift(new MonthlyShiftResult(month, days), employees));
   }
 
   private AssignmentResult findAssignment(LocalDate date, int score) {
@@ -386,14 +396,15 @@ public class MonthlyShiftRepository {
    *
    * @param input 月間シフトの入力
    * @param result 月間シフトの結果
-   * @param employeeNames シフトを作成した時点の従業員名（入力順）
+   * @param employees シフトを作成した時点の従業員（氏名と区分。入力順）
    */
   @Transactional
-  public void save(MonthlyShiftInput input, MonthlyShiftResult result, List<String> employeeNames) {
+  public void save(
+      MonthlyShiftInput input, MonthlyShiftResult result, List<MonthEmployee> employees) {
     deleteOtherYears(input.month().getYear());
     saveInput(input.employees(), input.month());
     saveAdjustments(input.month(), input.adjustments());
-    saveShift(result, employeeNames);
+    saveShift(result, employees);
   }
 
   private void deleteOtherYears(int year) {

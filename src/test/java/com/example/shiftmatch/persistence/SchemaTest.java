@@ -87,6 +87,19 @@ class SchemaTest {
     }
 
     @Test
+    @DisplayName("[F-7][8.4節] Given: テスト開始時, When: saved_month_employee の列を確認すると, Then: 区分の列がある")
+    void savedMonthEmployeeHasEmploymentTypeColumn() {
+      Integer count =
+          jdbcClient
+              .sql(
+                  "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME ="
+                      + " 'SAVED_MONTH_EMPLOYEE' AND COLUMN_NAME = 'EMPLOYMENT_TYPE'")
+              .query(Integer.class)
+              .single();
+      assertEquals(1, count);
+    }
+
+    @Test
     @DisplayName("[F-10] Given: テスト開始時, When: holiday テーブルを確認すると, Then: 空である")
     void holidayTableExistsAndIsEmpty() {
       Integer count = jdbcClient.sql("SELECT COUNT(*) FROM holiday").query(Integer.class).single();

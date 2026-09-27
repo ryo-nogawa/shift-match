@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
@@ -74,7 +75,36 @@ class ShiftStorageServiceImplTest {
 
         service.save(input, result);
 
-        verify(repository).save(input, result, List.of("佐藤", "鈴木"));
+        verify(repository)
+            .save(
+                input,
+                result,
+                List.of(
+                    new MonthEmployee("佐藤", EmploymentType.FULL_TIME),
+                    new MonthEmployee("鈴木", EmploymentType.FULL_TIME)));
+      }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 区分の異なる従業員, When: 保存すると, Then: 氏名と区分を入力順でリポジトリへ渡す")
+      void passesEmploymentTypesInOrder() {
+        MonthlyShiftInput input =
+            new MonthlyShiftInput(
+                MONTH,
+                List.of(
+                    new EmployeeProfile("佐藤", EmploymentType.MANAGER, Map.of()),
+                    new EmployeeProfile("鈴木", EmploymentType.PART_TIME, Map.of())),
+                List.of());
+        MonthlyShiftResult result = new MonthlyShiftResult(MONTH, List.of());
+
+        service.save(input, result);
+
+        verify(repository)
+            .save(
+                input,
+                result,
+                List.of(
+                    new MonthEmployee("佐藤", EmploymentType.MANAGER),
+                    new MonthEmployee("鈴木", EmploymentType.PART_TIME)));
       }
 
       @Test
@@ -86,7 +116,13 @@ class ShiftStorageServiceImplTest {
 
         service.save(input, result);
 
-        verify(repository).save(input, result, List.of("佐藤", "鈴木"));
+        verify(repository)
+            .save(
+                input,
+                result,
+                List.of(
+                    new MonthEmployee("佐藤", EmploymentType.FULL_TIME),
+                    new MonthEmployee("鈴木", EmploymentType.FULL_TIME)));
       }
     }
 
@@ -119,7 +155,9 @@ class ShiftStorageServiceImplTest {
     @DisplayName("[F-7][8.3節] Given: 保存済みのシフトがあるとき, When: 月を指定して取得すると, Then: リポジトリの値を返す")
     void returnsSavedShift() {
       SavedMonthlyShift saved =
-          new SavedMonthlyShift(new MonthlyShiftResult(MONTH, List.of()), List.of("佐藤"));
+          new SavedMonthlyShift(
+              new MonthlyShiftResult(MONTH, List.of()),
+              List.of(new MonthEmployee("佐藤", EmploymentType.FULL_TIME)));
       when(repository.findShift(MONTH)).thenReturn(Optional.of(saved));
 
       assertEquals(Optional.of(saved), service.load(MONTH));

@@ -1,7 +1,9 @@
 package com.example.shiftmatch.controller;
 
+import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.HolidayDataUnavailableError;
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftStorageException;
@@ -163,7 +165,7 @@ public class ShiftController {
     model.addAttribute(
         "resultView",
         monthlyResultViewFactory.create(
-            result, saved.get().employeeNames(), holidaysOrEmpty(result.month())));
+            result, saved.get().employees(), holidaysOrEmpty(result.month())));
     model.addAttribute("resultSource", "saved");
   }
 
@@ -210,7 +212,7 @@ public class ShiftController {
       model.addAttribute(
           "resultView",
           monthlyResultViewFactory.create(
-              result, validEmployeeNames(shiftForm), holidayService.holidaysOf(result.month())));
+              result, monthEmployeesOf(input), holidayService.holidaysOf(result.month())));
       model.addAttribute("initialStep", 3);
       model.addAttribute("resultSource", "fresh");
       saveOrReportFailure(input, result, model);
@@ -236,14 +238,13 @@ public class ShiftController {
     }
   }
 
-  private static List<String> validEmployeeNames(ShiftForm shiftForm) {
-    List<String> names = new ArrayList<>();
-    for (EmployeeForm employee : shiftForm.getEmployees()) {
-      String name = employee.getName();
-      if (name != null && !name.isBlank()) {
-        names.add(name);
+  private static List<MonthEmployee> monthEmployeesOf(MonthlyShiftInput input) {
+    List<MonthEmployee> employees = new ArrayList<>();
+    for (EmployeeProfile profile : input.employees()) {
+      if (profile.name() != null && !profile.name().isBlank()) {
+        employees.add(new MonthEmployee(profile.name(), profile.employmentType()));
       }
     }
-    return names;
+    return employees;
   }
 }

@@ -86,10 +86,21 @@ public record MonthlyResultView(
    * @param name 従業員名
    * @param cells 営業日ごとのセル（勤務時間・{@code 休}・{@code –}・{@code ×}）
    * @param workDays 出勤日数
+   * @param totalMinutes 月間の実労働時間の合計（分）
    * @param weeklyTotals パートの週ごとの合計実働時間（例：{@code 1 週 18:30 / 20:00}）。パート以外は空
    */
   public record EmployeeRow(
-      String name, List<String> cells, int workDays, List<String> weeklyTotals) {}
+      String name, List<String> cells, int workDays, int totalMinutes, List<String> weeklyTotals) {
+
+    /**
+     * 合計の実労働時間を {@code (hh:mm)} 形式で返します。
+     *
+     * @return 例：{@code (14:45)}
+     */
+    public String durationLabel() {
+      return String.format("(%02d:%02d)", totalMinutes / 60, totalMinutes % 60);
+    }
+  }
 
   /**
    * カレンダーの 1 マスです。営業日・祝日・空きのいずれか 1 つだけが設定されます。
