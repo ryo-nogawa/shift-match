@@ -93,6 +93,18 @@ public class ShiftController {
   }
 
   /**
+   * 曜日休みのチェックボックスに付ける曜日の表示名（月〜金。値は 0〜4）をモデルに設定します。
+   *
+   * <p>GET と POST の全経路でモデルに含まれるよう、{@code @ModelAttribute} を使用します。
+   *
+   * @return 曜日の表示名のリスト
+   */
+  @ModelAttribute("offDayLabels")
+  public List<String> offDayLabels() {
+    return List.of("月", "火", "水", "木", "金");
+  }
+
+  /**
    * 雇用区分の選択肢（常勤、パート、管理職）をモデルに設定します。
    *
    * <p>GET と POST の全経路でモデルに含まれるよう、{@code @ModelAttribute} を使用します。

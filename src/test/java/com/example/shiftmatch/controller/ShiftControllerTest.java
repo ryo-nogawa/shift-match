@@ -185,6 +185,27 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[F-1] Given: 初めて画面を開くとき, When: GET / の HTML を見ると,"
+            + " Then: 曜日休み列があり、パートの行だけチェックボックスが有効で保存済みの曜日にチェックが付く")
+    void rendersOffDayCheckboxes() throws Exception {
+      String html = bodyOf(perform(get("/")));
+
+      assertTrue(html.contains("<th>曜日休み</th>"));
+      assertFalse(html.contains("base-panel"));
+      // デモ 6 人目（渡辺陽子）はパートで月・水が曜日休み
+      assertEquals(
+          60, html.split("class=\"off-day-checkbox\"", -1).length - 1, "12 行 × 5 曜日のチェックボックス");
+      String partRow = html.substring(html.indexOf("name=\"employees[5].offDays\""));
+      String monday = partRow.substring(0, partRow.indexOf("/>"));
+      assertTrue(monday.contains("value=\"0\""));
+      assertTrue(monday.contains("checked=\"checked\""));
+      assertFalse(monday.contains("disabled"));
+      String fullTimeRow = html.substring(html.indexOf("name=\"employees[0].offDays\""));
+      assertTrue(fullTimeRow.substring(0, fullTimeRow.indexOf("/>")).contains("disabled"));
+    }
+
+    @Test
+    @DisplayName(
         "[F-1][F-9] Given: 初めて画面を開くとき, When: GET / を呼ぶと," + " Then: 時刻の選択肢 23 件と区分の選択肢 3 件がモデルにある")
     void providesOptionsOnGet() throws Exception {
       MvcResult result = perform(get("/"));

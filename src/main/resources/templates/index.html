@@ -48,7 +48,7 @@
                     <th></th>
                     <th>氏名</th>
                     <th>区分</th>
-                    <th>基本シフト</th>
+                    <th>曜日休み</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -68,7 +68,16 @@
                         <option value="MANAGER">管理職</option>
                       </select>
                     </td>
-                    <td class="summary"></td>
+                    <td class="off-days-cell">
+                      <label class="off-day" th:each="label,dayIter : ${offDayLabels}">
+                        <input type="checkbox" class="off-day-checkbox"
+                               th:name="'employees[' + ${iter.index} + '].offDays'"
+                               th:value="${dayIter.index}"
+                               th:checked="${employee.offDays.contains(dayIter.index)}"
+                               th:disabled="${employee.employmentType != 'PART_TIME'}" />
+                        <span th:text="${label}"></span>
+                      </label>
+                    </td>
                     <td>
                       <button type="button" class="delete-btn">削除</button>
                     </td>

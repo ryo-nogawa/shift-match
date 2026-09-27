@@ -230,7 +230,6 @@
     const dayPanel = document.getElementById("day-panel");
     const hiddenContainer = document.getElementById("adjustment-inputs");
     const rowsContainer = document.getElementById("employee-rows");
-    const panelsContainer = document.getElementById("base-panels");
     const timeOptions = (form.getAttribute("data-time-options") || "")
       .split("|")
       .filter(function (value) {
@@ -247,25 +246,16 @@
     // 画面に出している従業員（描画した時点の並び）。入力行の data-employee-index はこの添字
     let shownEmployees = [];
 
-    /** 氏名が空白だけでない行（有効な従業員。V-1）を、並び順に基本シフト付きで読む。 */
+    /** 氏名が空白だけでない行（有効な従業員。V-1）を、並び順に読む。 */
     function readEmployees() {
-      const panels = new Map();
-      panelsContainer.querySelectorAll(".base-panel").forEach(function (panel) {
-        panels.set(panel.getAttribute("data-row-id"), panel);
-      });
       const employees = [];
       rowsContainer.querySelectorAll(".employee-row").forEach(function (row) {
         const name = row.querySelector(".name-input").value;
-        const panel = panels.get(row.getAttribute("data-row-id"));
-        if (name.trim() === "" || !panel) {
+        if (name.trim() === "") {
           return;
         }
-        const days = Array.from(panel.querySelectorAll(".day-row")).map(function (dayRow) {
-          return {
-            off: false,
-            start: dayRow.querySelector(".start-select").value,
-            end: dayRow.querySelector(".end-select").value,
-          };
+        const days = WEEKDAY_LABELS.map(function () {
+          return { off: false, start: DEFAULT_START, end: DEFAULT_END };
         });
         employees.push({ name: name, days: days });
       });

@@ -12,67 +12,65 @@ const stepNav = require("../../main/resources/static/js/step-nav.js");
 const resultTabs = require("../../main/resources/static/js/result-tabs.js");
 
 describe("employee-list.js", () => {
-  test("[8.5節] 並べ替え後の 3 行は、行の入力とパネルの入力が 0,1,2 に振り直される", () => {
+  test("[8.5節] 並べ替え後の 3 行は、行の入力（曜日休みを含む）が 0,1,2 に振り直される", () => {
     const row = (i) => ({
-      rowFields: [{ name: `employees[${i}].name` }, { name: `employees[${i}].employmentType` }],
-      panelFields: [
-        { name: `employees[${i}].days[0].start` },
-        { name: `employees[${i}].days[4].end` },
+      rowFields: [
+        { name: `employees[${i}].name` },
+        { name: `employees[${i}].employmentType` },
+        { name: `employees[${i}].offDays`, value: "0" },
+        { name: `employees[${i}].offDays`, value: "4" },
       ],
     });
     // 画面上で 2 → 0 → 1 の順に並んだ状態（1 を削除した後の欠番 5 も含む）
     const rows = [row(2), row(0), row(5)];
     employeeList.renumber(rows);
     assert.deepEqual(
-      rows.map((r) => r.rowFields.concat(r.panelFields).map((f) => f.name)),
+      rows.map((r) => r.rowFields.map((f) => f.name)),
       [0, 1, 2].map((i) => [
         `employees[${i}].name`,
         `employees[${i}].employmentType`,
-        `employees[${i}].days[0].start`,
-        `employees[${i}].days[4].end`,
+        `employees[${i}].offDays`,
+        `employees[${i}].offDays`,
       ])
     );
-  });
-
-  test("[8.1節] 要約：全曜日同じ時間帯ならその時間帯", () => {
-    const d = { start: "07:30", end: "18:30" };
-    assert.equal(employeeList.summarize([d, d, d, d, d]), "07:30〜18:30");
-  });
-
-  test("[8.1節] 要約：時間帯が異なれば最も早い開始〜最も遅い終了", () => {
-    assert.equal(
-      employeeList.summarize([
-        { start: "09:00", end: "15:00" },
-        { start: "08:00", end: "14:30" },
-        { start: "10:00", end: "18:00" },
-        { start: "09:00", end: "16:00" },
-        { start: "09:30", end: "17:00" },
-      ]),
-      "08:00〜18:00"
+    assert.deepEqual(
+      rows.map((r) => r.rowFields.slice(2).map((f) => f.value)),
+      [0, 1, 2].map(() => ["0", "4"]),
+      "曜日の値 0〜4 はそのまま"
     );
   });
 
-  test("[8.1節] 要約：未選択の曜日は無視し、すべて未選択なら「未選択」", () => {
-    assert.equal(
-      employeeList.summarize([
-        { start: "", end: "" },
-        { start: "09:00", end: "15:00" },
-        { start: "", end: "" },
-        { start: "08:00", end: "17:00" },
-        { start: "", end: "" },
-      ]),
-      "08:00〜17:00"
+  test("[F-1] 区分がパート以外だと曜日休みのチェックが消えて無効になる", () => {
+    const boxes = [
+      { checked: true, disabled: false },
+      { checked: true, disabled: false },
+    ];
+    employeeList.syncOffDays("FULL_TIME", boxes);
+    assert.deepEqual(
+      boxes.map((b) => [b.checked, b.disabled]),
+      [
+        [false, true],
+        [false, true],
+      ]
     );
-    assert.equal(employeeList.summarize([{ start: "", end: "" }]), "未選択");
+    const manager = [{ checked: true, disabled: false }];
+    employeeList.syncOffDays("MANAGER", manager);
+    assert.deepEqual([manager[0].checked, manager[0].disabled], [false, true]);
   });
 
-  test("[F-1][4.1節] 要約：基本シフトに休みはなく、off が渡されても「休：」は出さない", () => {
-    const summary = employeeList.summarize([
-      { off: true, start: "07:30", end: "18:30" },
-      { start: "09:00", end: "17:00" },
-    ]);
-    assert.equal(summary, "07:30〜18:30");
-    assert.ok(!summary.includes("休"));
+  test("[F-1] 区分がパートなら曜日休みは有効になり、チェックはそのまま", () => {
+    const boxes = [
+      { checked: true, disabled: true },
+      { checked: false, disabled: true },
+    ];
+    employeeList.syncOffDays("PART_TIME", boxes);
+    assert.deepEqual(
+      boxes.map((b) => [b.checked, b.disabled]),
+      [
+        [true, false],
+        [false, false],
+      ]
+    );
   });
 
   test("[F-2][F-6][F-8] ボタンの有効・無効（端の▲▼、1 行で削除不可、12 行で追加不可）", () => {
