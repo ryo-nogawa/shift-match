@@ -6,7 +6,7 @@
 (function () {
   "use strict";
 
-  const TABS = ["calendar", "employees", "detail", "monthly"];
+  const TABS = ["calendar", "employees", "detail"];
 
   // 画面 2 の入力カレンダーも calendar-day を使うため、結果カレンダー配下に限定する
   const RESULT_CALENDAR_DAY_SELECTOR = "#tab-calendar .calendar-day";

@@ -152,6 +152,12 @@ class ShiftControllerTest {
         .thenThrow(new InvalidMonthlyInputException(List.of(errors)));
   }
 
+  private static String employeesPanelOf(String html) {
+    int start = html.indexOf("id=\"tab-employees\"");
+    assertTrue(start >= 0, "tab-employees");
+    return html.substring(start, html.indexOf("id=\"tab-detail\""));
+  }
+
   @Nested
   class 正常系 {
 
@@ -471,12 +477,6 @@ class ShiftControllerTest {
       assertTrue(panel.contains("class=\"work-days\">1<"));
     }
 
-    private static String monthlyPanelOf(String html) {
-      int start = html.indexOf("id=\"tab-monthly\"");
-      assertTrue(start >= 0, "tab-monthly");
-      return html.substring(start);
-    }
-
     private MockHttpServletRequestBuilder monthlyHoursRequest() {
       return post("/shift")
           .param("targetMonth", "2026-10")
@@ -489,8 +489,8 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-4][7.1節] Given: 成立 1 日・不成立 1 日の結果, When: POST /shift の HTML を見ると,"
-            + " Then: 月間勤務時間のタブに氏名・区分・出勤日数・(hh:mm)・合計行と不成立の注記が出る")
-    void rendersMonthlyHoursTabWithFailureNote() throws Exception {
+            + " Then: 月間勤務時間のタブはなく、従業員別表示に合計時間の列・(hh:mm)・不成立の注記が出る")
+    void rendersTotalTimeInEmployeesTabWithFailureNote() throws Exception {
       when(monthlyShiftService.create(any()))
           .thenReturn(
               new MonthlyShiftResult(
@@ -504,45 +504,21 @@ class ShiftControllerTest {
 
       String html = bodyOf(perform(monthlyHoursRequest()));
 
-      assertTrue(html.contains("data-tab=\"monthly\""));
-      assertTrue(html.contains(">月間勤務時間<"));
-      assertTrue(html.contains("id=\"tab-monthly\" class=\"tab-panel\" hidden"));
-      String panel = monthlyPanelOf(html);
-      assertTrue(panel.contains("monthly-hours-table"));
-      assertTrue(panel.indexOf(">氏名<") < panel.indexOf(">区分<"));
-      assertTrue(panel.indexOf(">区分<") < panel.indexOf(">出勤日数<"));
+      assertFalse(html.contains("月間勤務時間"));
+      assertEquals(3, html.split("class=\"tab-btn", -1).length - 1);
+      String panel = employeesPanelOf(html);
       assertTrue(panel.indexOf(">出勤日数<") < panel.indexOf(">合計時間<"));
-      assertTrue(panel.indexOf(">e1<") < panel.indexOf(">休みさん<"));
-      assertTrue(panel.contains(">常勤<"));
-      assertTrue(panel.contains(">パート<"));
       assertTrue(panel.contains(">(06:15)<"));
       assertTrue(panel.contains(">(00:00)<"));
-      assertTrue(panel.indexOf(">休みさん<") < panel.indexOf(">合計<"));
-      assertTrue(panel.contains("monthly-hours-note"));
+      assertFalse(panel.contains(">合計<"));
+      assertFalse(panel.contains(">区分<"));
+      assertTrue(panel.indexOf("</table>") < panel.indexOf("monthly-hours-note"));
       assertTrue(panel.contains("不成立の日が 1 日あります（この日は 0 時間として集計しています）"));
     }
 
     @Test
     @DisplayName(
-        "[F-4][7.1節] Given: 全営業日が不成立の結果, When: POST /shift の HTML を見ると,"
-            + " Then: 月間勤務時間のタブに従業員の区分が表示される")
-    void rendersEmploymentTypesWhenAllDaysFailed() throws Exception {
-      when(monthlyShiftService.create(any()))
-          .thenReturn(
-              new MonthlyShiftResult(
-                  YearMonth.of(2026, 10),
-                  List.of(new DailyShiftResult(LocalDate.of(2026, 10, 1), 5, Optional.empty()))));
-
-      String html = bodyOf(perform(monthlyHoursRequest()));
-
-      String panel = monthlyPanelOf(html);
-      assertTrue(panel.indexOf(">常勤<") >= 0);
-      assertTrue(panel.indexOf(">パート<") >= 0);
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4][7.1節] Given: 不成立の日がない結果, When: POST /shift の HTML を見ると," + " Then: 月間勤務時間の注記は出ない")
+        "[F-4][7.1節] Given: 不成立の日がない結果, When: POST /shift の HTML を見ると," + " Then: 不成立の注記は出ない")
     void omitsFailureNoteWhenNoFailedDay() throws Exception {
       when(monthlyShiftService.create(any()))
           .thenReturn(
@@ -945,7 +921,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-4][F-7][7.1節] Given: 指定した月の保存済みシフトがある, When: GET /shift/saved を呼ぶと,"
-            + " Then: 月間勤務時間のタブと集計（氏名・区分・(hh:mm)・合計）が含まれる")
+            + " Then: 月間勤務時間のタブはなく、従業員別表示に合計時間（(hh:mm)）が含まれる")
     void returnsMonthlyHoursTabForSaved() throws Exception {
       MonthlyShiftResult monthly =
           new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
@@ -962,43 +938,12 @@ class ShiftControllerTest {
                   .andExpect(status().isOk())
                   .andReturn());
 
-      assertTrue(html.contains("data-tab=\"monthly\""));
-      int start = html.indexOf("id=\"tab-monthly\"");
-      assertTrue(start >= 0);
-      String panel = html.substring(start);
+      assertFalse(html.contains("月間勤務時間"));
+      assertEquals(3, html.split("class=\"tab-btn", -1).length - 1);
+      String panel = employeesPanelOf(html);
+      assertTrue(panel.contains(">合計時間<"));
       assertTrue(panel.contains(">A<"));
-      assertTrue(panel.contains(">常勤<"));
       assertTrue(panel.contains(">(06:15)<"));
-      assertTrue(panel.contains(">合計<"));
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4][F-7][7.1節] Given: 全営業日が不成立の保存済みシフト, When: GET /shift/saved を呼ぶと,"
-            + " Then: 月間勤務時間のタブに保存した区分が表示される")
-    void returnsEmploymentTypesForSavedWithAllDaysFailed() throws Exception {
-      MonthlyShiftResult monthly =
-          new MonthlyShiftResult(
-              MONTH, List.of(new DailyShiftResult(LocalDate.of(2026, 10, 1), 5, Optional.empty())));
-      when(shiftStorageService.load(MONTH))
-          .thenReturn(
-              Optional.of(
-                  new SavedMonthlyShift(
-                      monthly,
-                      List.of(
-                          new MonthEmployee("A", EmploymentType.MANAGER),
-                          new MonthEmployee("B", EmploymentType.PART_TIME)))));
-
-      String html =
-          bodyOf(
-              mockMvc
-                  .perform(get("/shift/saved").param("month", "2026-10"))
-                  .andExpect(status().isOk())
-                  .andReturn());
-
-      String panel = html.substring(html.indexOf("id=\"tab-monthly\""));
-      assertTrue(panel.contains(">管理職<"));
-      assertTrue(panel.contains(">パート<"));
     }
 
     @Test

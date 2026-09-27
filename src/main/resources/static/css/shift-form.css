@@ -150,11 +150,8 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 /* 従業員別表示 */
 .employee-result-table th, .employee-result-table td { padding: 6px 10px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--line); font-size: 13px }
 .employee-result-table .sticky-col { position: sticky; left: 0; background: var(--card); text-align: left; z-index: 1 }
-.employee-result-table .work-days { font-weight: 600 }
+.employee-result-table .work-days, .employee-result-table .total-time { font-weight: 600 }
 
-/* 月間勤務時間 */
-.monthly-hours-table th, .monthly-hours-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px }
-.monthly-hours-total td { font-weight: 600 }
 .monthly-hours-note { margin: 8px 0 0; font-size: 13px }
 
 /* 日別詳細 */

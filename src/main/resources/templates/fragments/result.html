@@ -12,7 +12,6 @@
           <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="calendar">カレンダー表示</button>
           <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="employees">従業員別表示</button>
           <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="detail">日別詳細</button>
-          <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="monthly">月間勤務時間</button>
         </div>
         <div class="tab-panels">
           <div id="tab-calendar" class="tab-panel">
@@ -45,6 +44,7 @@
                   <th class="sticky-col">従業員</th>
                   <th th:each="day : ${resultView.days()}" th:text="${#temporals.format(day.date(), 'M/d(E)', T(java.util.Locale).JAPAN)}"></th>
                   <th>出勤日数</th>
+                  <th>合計時間</th>
                 </tr>
               </thead>
               <tbody>
@@ -52,9 +52,11 @@
                   <td class="sticky-col" th:text="${row.name()}"></td>
                   <td th:each="cell : ${row.cells()}" th:text="${cell}"></td>
                   <td class="work-days" th:text="${row.workDays()}"></td>
+                  <td class="total-time" th:text="${row.durationLabel()}"></td>
                 </tr>
               </tbody>
             </table>
+            <p th:if="${resultView.failureCount() > 0}" class="monthly-hours-note" th:text="'不成立の日が ' + ${resultView.failureCount()} + ' 日あります（この日は 0 時間として集計しています）'"></p>
           </div>
           <div id="tab-detail" class="tab-panel" hidden>
             <label>日付
@@ -107,33 +109,6 @@
                 </div>
               </th:block>
             </section>
-          </div>
-          <div id="tab-monthly" class="tab-panel" hidden>
-            <table class="monthly-hours-table">
-              <thead>
-                <tr>
-                  <th>氏名</th>
-                  <th>区分</th>
-                  <th>出勤日数</th>
-                  <th>合計時間</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr th:each="row : ${resultView.monthlyHoursRows()}">
-                  <td th:text="${row.name()}"></td>
-                  <td th:text="${row.employmentTypeLabel()}"></td>
-                  <td th:text="${row.workDays()}"></td>
-                  <td th:text="${row.durationLabel()}"></td>
-                </tr>
-                <tr class="monthly-hours-total">
-                  <td>合計</td>
-                  <td></td>
-                  <td th:text="${resultView.totalWorkDays()}"></td>
-                  <td th:text="${resultView.totalDurationLabel()}"></td>
-                </tr>
-              </tbody>
-            </table>
-            <p th:if="${resultView.failureCount() > 0}" class="monthly-hours-note" th:text="'不成立の日が ' + ${resultView.failureCount()} + ' 日あります（この日は 0 時間として集計しています）'"></p>
           </div>
         </div>
       </div>
