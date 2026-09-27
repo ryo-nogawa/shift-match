@@ -395,6 +395,89 @@ class EmployeeTest {
   }
 
   @Nested
+  @DisplayName("[5.6] これまでの出勤日数の保持")
+  class PriorWorkDays {
+
+    @Test
+    @DisplayName(
+        "[5.6] Given: 常勤の従業員, When: withPriorWorkDaysを呼ぶと, Then:" + " priorWorkDaysが設定され他の値は変わらない")
+    void withPriorWorkDaysSetsDaysAndKeepsOtherValues() {
+      Employee employee =
+          Employee.working(
+              "太郎", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30));
+
+      Employee updated = employee.withPriorWorkDays(3);
+
+      assertEquals(3, updated.priorWorkDays());
+      assertEquals(employee.name(), updated.name());
+      assertEquals(employee.employmentType(), updated.employmentType());
+      assertEquals(employee.off(), updated.off());
+      assertEquals(employee.start(), updated.start());
+      assertEquals(employee.end(), updated.end());
+      assertEquals(employee.weeklyRemainingMinutes(), updated.weeklyRemainingMinutes());
+    }
+
+    @Test
+    @DisplayName(
+        "[5.6] Given: withPriorWorkDaysで出勤日数を設定した従業員, When: withWeeklyRemainingMinutesを呼ぶと,"
+            + " Then: 週の残り時間だけが変わり、priorWorkDaysは保たれる")
+    void withWeeklyRemainingMinutesKeepsPriorWorkDays() {
+      Employee employee =
+          Employee.working(
+                  "花子", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30))
+              .withPriorWorkDays(5);
+
+      Employee updated = employee.withWeeklyRemainingMinutes(600);
+
+      assertEquals(5, updated.priorWorkDays());
+      assertEquals(600, updated.weeklyRemainingMinutes());
+    }
+
+    @Test
+    @DisplayName(
+        "[5.6] Given: withPriorWorkDaysで出勤日数を設定した従業員, When: withPriorWorkDaysを再度呼ぶと,"
+            + " Then: 週の残り時間は保たれる")
+    void withPriorWorkDaysKeepsWeeklyRemainingMinutes() {
+      Employee employee =
+          Employee.working(
+                  "次郎", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30))
+              .withWeeklyRemainingMinutes(600);
+
+      Employee updated = employee.withPriorWorkDays(2);
+
+      assertEquals(2, updated.priorWorkDays());
+      assertEquals(600, updated.weeklyRemainingMinutes());
+    }
+
+    @Test
+    @DisplayName("[5.6] Given: 既存のコンストラクタ・ファクトリで作成した従業員, When: priorWorkDaysを確認すると, Then: nullである")
+    void existingConstructorsLeavePriorWorkDaysNull() {
+      Employee viaWorking = Employee.working("A", LocalTime.of(7, 30), LocalTime.of(18, 30));
+      assertNull(viaWorking.priorWorkDays());
+
+      Employee viaWorkingWithType =
+          Employee.working(
+              "B", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30));
+      assertNull(viaWorkingWithType.priorWorkDays());
+
+      Employee viaOnLeave = Employee.onLeave("C");
+      assertNull(viaOnLeave.priorWorkDays());
+
+      Employee viaOnLeaveWithType = Employee.onLeave("D", EmploymentType.PART_TIME);
+      assertNull(viaOnLeaveWithType.priorWorkDays());
+
+      Employee viaFiveArgConstructor =
+          new Employee(
+              "E", EmploymentType.FULL_TIME, false, LocalTime.of(7, 30), LocalTime.of(18, 30));
+      assertNull(viaFiveArgConstructor.priorWorkDays());
+
+      Employee viaFourArgConstructor =
+          new Employee("F", false, LocalTime.of(7, 30), LocalTime.of(18, 30));
+      assertNull(viaFourArgConstructor.priorWorkDays());
+    }
+  }
+
+  @Nested
   @DisplayName("[7.2][H-4] 未出勤の理由の判定順（休み → 入れる枠なし → 週上限超え → その他）")
   class UnassignedReasonOrder {
 
