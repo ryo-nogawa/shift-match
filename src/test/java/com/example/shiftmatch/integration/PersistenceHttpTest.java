@@ -143,6 +143,35 @@ class PersistenceHttpTest {
     }
 
     @Test
+    @DisplayName(
+        "[8.4][7.1] Given: パート 9 名で週上限による不成立の日が出た, When: 作成して GET / を開くと,"
+            + " Then: 不成立の理由（パートの週上限）が保存どおりに表示される")
+    void restoresWeeklyLimitFailureReasonOnGet() throws Exception {
+      String createdHtml =
+          mockMvc
+              .perform(createRequest("2026-10", "P"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
+      assertTrue(createdHtml.contains("不成立（パートの週上限）"));
+      Integer saved =
+          jdbcClient
+              .sql("SELECT COUNT(*) FROM saved_day WHERE failure_reason = 'WEEKLY_LIMIT'")
+              .query(Integer.class)
+              .single();
+      assertTrue(saved > 0);
+
+      String html = mockMvc.perform(get("/")).andReturn().getResponse().getContentAsString();
+
+      assertTrue(html.contains(SAVED_MESSAGE));
+      assertTrue(html.contains("不成立（パートの週上限）"));
+      assertTrue(html.contains("不成立です。理由：パートの週上限。"));
+      assertTrue(html.contains("1 週 "));
+      assertTrue(html.contains(" / 20:00"));
+    }
+
+    @Test
     @DisplayName("[F-7][8.1節] Given: 従業員が保存されていない, When: GET / を開くと, Then: デモ用の 12 名が描画される")
     void rendersDemoEmployeesWhenNothingSaved() throws Exception {
       MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
