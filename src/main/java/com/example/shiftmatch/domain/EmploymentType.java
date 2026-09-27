@@ -16,6 +16,9 @@ public enum EmploymentType {
   /** 管理職。 */
   MANAGER("管理職");
 
+  /** パートの週の実働時間の上限（分）。H-4 の 20 時間に当たります。 */
+  public static final int PART_TIME_WEEKLY_LIMIT_MINUTES = 1200;
+
   private final String label;
 
   EmploymentType(String label) {
@@ -29,6 +32,15 @@ public enum EmploymentType {
    */
   public String label() {
     return label;
+  }
+
+  /**
+   * 週の実働時間の上限（H-4）を適用する区分かを返します。
+   *
+   * @return パートなら true、常勤・管理職なら false
+   */
+  public boolean hasWeeklyLimit() {
+    return this == PART_TIME;
   }
 
   /**

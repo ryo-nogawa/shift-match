@@ -1,6 +1,7 @@
 package com.example.shiftmatch.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
@@ -73,6 +74,30 @@ class EmploymentTypeTest {
     void parseInvalid() {
       Optional<EmploymentType> result = EmploymentType.parse("EXECUTIVE");
       assertTrue(result.isEmpty());
+    }
+  }
+
+  @Nested
+  @DisplayName("[H-4] 週の実働時間の上限")
+  class WeeklyLimit {
+
+    @Test
+    @DisplayName("[H-4] Given: PART_TIME, When: hasWeeklyLimit()を呼ぶと, Then: true を返す")
+    void partTimeHasWeeklyLimit() {
+      assertTrue(EmploymentType.PART_TIME.hasWeeklyLimit());
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: FULL_TIME と MANAGER, When: hasWeeklyLimit()を呼ぶと, Then: false を返す")
+    void fullTimeAndManagerHaveNoWeeklyLimit() {
+      assertFalse(EmploymentType.FULL_TIME.hasWeeklyLimit());
+      assertFalse(EmploymentType.MANAGER.hasWeeklyLimit());
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 上限の定数, When: 参照すると, Then: 1200 分である")
+    void partTimeWeeklyLimitIs1200Minutes() {
+      assertEquals(1200, EmploymentType.PART_TIME_WEEKLY_LIMIT_MINUTES);
     }
   }
 }

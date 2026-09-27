@@ -117,4 +117,15 @@ public enum ShiftSlot {
   public int workMinutes() {
     return (int) ChronoUnit.MINUTES.between(startTime, endTime);
   }
+
+  /**
+   * 枠の実働時間（分）を返します。
+   *
+   * <p>勤務時間から休憩を除いた時間です。パートの週の上限（H-4）はこの時間で数えます。
+   *
+   * @return 勤務時間から休憩を引いた分数
+   */
+  public int netWorkMinutes() {
+    return workMinutes() - breakDurationMinutes;
+  }
 }

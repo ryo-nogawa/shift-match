@@ -238,4 +238,20 @@ class ShiftSlotTest {
       assertEquals(570, ShiftSlot.SLOT_6.workMinutes());
     }
   }
+
+  @Nested
+  @DisplayName("[H-4] 枠の実働時間")
+  class NetWorkMinutes {
+
+    @Test
+    @DisplayName(
+        "[H-4] Given: 枠 1〜6, When: netWorkMinutes()を呼ぶと, Then: 375・405・435・405・480・510 が返る")
+    void returnsWorkMinutesMinusBreak() {
+      int[] expected = {375, 405, 435, 405, 480, 510};
+      ShiftSlot[] slots = ShiftSlot.values();
+      for (int i = 0; i < slots.length; i++) {
+        assertEquals(expected[i], slots[i].netWorkMinutes());
+      }
+    }
+  }
 }
