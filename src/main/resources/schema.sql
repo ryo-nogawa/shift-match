@@ -1,6 +1,8 @@
 DROP TABLE IF EXISTS saved_employee;
 DROP TABLE IF EXISTS saved_assignment;
 DROP TABLE IF EXISTS saved_score;
+-- 旧バージョンの曜日別の時間帯の保存用テーブル（廃止）。使わないため削除する
+DROP TABLE IF EXISTS saved_input_base_shift;
 
 CREATE TABLE IF NOT EXISTS saved_input_employee (
   row_index INT PRIMARY KEY,
@@ -8,12 +10,9 @@ CREATE TABLE IF NOT EXISTS saved_input_employee (
   employment_type VARCHAR(16) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS saved_input_base_shift (
+CREATE TABLE IF NOT EXISTS saved_input_off_day (
   row_index INT NOT NULL,
   day_index INT NOT NULL,
-  off BOOLEAN NOT NULL,
-  start_time TIME NULL,
-  end_time TIME NULL,
   PRIMARY KEY (row_index, day_index)
 );
 

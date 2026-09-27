@@ -2,14 +2,11 @@ package com.example.shiftmatch.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,17 +22,8 @@ class MonthlyShiftInputTest {
         "Given: 従業員リストを与えるとき, When: MonthlyShiftInput を作成してから元のリストを変更すると, Then: MonthlyShiftInput"
             + " に変更が反映されない")
     void employeesAreImmutable() {
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      DailyWish wish = new DailyWish(false, start, end);
-      baseShifts.put(DayOfWeek.MONDAY, wish);
-      baseShifts.put(DayOfWeek.TUESDAY, wish);
-      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-      baseShifts.put(DayOfWeek.THURSDAY, wish);
-      baseShifts.put(DayOfWeek.FRIDAY, wish);
 
-      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Set.of());
       List<EmployeeProfile> employees = new ArrayList<>();
       employees.add(profile);
 

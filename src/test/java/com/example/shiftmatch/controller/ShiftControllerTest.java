@@ -46,11 +46,11 @@ import java.time.Year;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -126,10 +126,7 @@ class ShiftControllerTest {
         .param("targetMonth", "2026-10")
         .param("employees[0].name", "A")
         .param("employees[0].employmentType", "PART_TIME")
-        .param("employees[0].days[0].start", "08:00")
-        .param("employees[0].days[0].end", "17:00")
-        .param("employees[0].days[1].start", "09:00")
-        .param("employees[0].days[1].end", "16:00")
+        .param("employees[0].offDays", "0", "2")
         .param("adjustments[0].date", "2026-10-20")
         .param("adjustments[0].employeeName", "A")
         .param("adjustments[0].off", "true");
@@ -170,7 +167,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-1][F-2] Given: 初めて画面を開くとき, When: GET / を呼ぶと,"
-            + " Then: 対象月が今月で、従業員 12 行がデモ用の 12 名（月〜金の各時間帯が 5 日分）になる")
+            + " Then: 対象月が今月で、従業員 12 行がデモ用の 12 名（パートの曜日休み付き）になる")
     void preparesDefaultFormOnGet() throws Exception {
       MvcResult result = perform(get("/"));
 
@@ -181,14 +178,30 @@ class ShiftControllerTest {
       assertEquals(12, form.getEmployees().size());
       assertEquals("佐藤太郎", form.getEmployees().get(0).getName());
       assertEquals("山田彩香", form.getEmployees().get(11).getName());
-      for (EmployeeForm employee : form.getEmployees()) {
-        assertEquals(5, employee.getDays().size());
-        for (DayForm day : employee.getDays()) {
-          assertEquals(employee.getDays().get(0).getStart(), day.getStart());
-          assertEquals(employee.getDays().get(0).getEnd(), day.getEnd());
-        }
-      }
+      assertEquals(List.of(0, 2), form.getEmployees().get(5).getOffDays());
+      assertTrue(form.getEmployees().get(0).getOffDays().isEmpty());
       assertEquals(1, modelOf(result).get("initialStep"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 初めて画面を開くとき, When: GET / の HTML を見ると,"
+            + " Then: 曜日休み列があり、パートの行だけチェックボックスが有効で保存済みの曜日にチェックが付く")
+    void rendersOffDayCheckboxes() throws Exception {
+      String html = bodyOf(perform(get("/")));
+
+      assertTrue(html.contains("<th>曜日休み</th>"));
+      assertFalse(html.contains("base-panel"));
+      // デモ 6 人目（渡辺陽子）はパートで月・水が曜日休み
+      assertEquals(
+          60, html.split("class=\"off-day-checkbox\"", -1).length - 1, "12 行 × 5 曜日のチェックボックス");
+      String partRow = html.substring(html.indexOf("name=\"employees[5].offDays\""));
+      String monday = partRow.substring(0, partRow.indexOf("/>"));
+      assertTrue(monday.contains("value=\"0\""));
+      assertTrue(monday.contains("checked=\"checked\""));
+      assertFalse(monday.contains("disabled"));
+      String fullTimeRow = html.substring(html.indexOf("name=\"employees[0].offDays\""));
+      assertTrue(fullTimeRow.substring(0, fullTimeRow.indexOf("/>")).contains("disabled"));
     }
 
     @Test
@@ -206,7 +219,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-1][F-2][F-6][F-8] Given: 初めて画面を開くとき, When: GET / の HTML を見ると,"
-            + " Then: 12 行分の入力・並べ替え・削除ボタンと基本シフトパネルがあり、13 行目はない")
+            + " Then: 12 行分の入力・並べ替え・削除ボタンがあり、13 行目はない")
     void rendersTwelveRowsOnGet() throws Exception {
       String html = bodyOf(perform(get("/")));
 
@@ -214,11 +227,7 @@ class ShiftControllerTest {
       assertTrue(html.contains("name=\"employees[0].name\""));
       assertTrue(html.contains("name=\"employees[11].name\""));
       assertTrue(html.contains("name=\"employees[11].employmentType\""));
-      assertFalse(html.contains("name=\"employees[0].days[0].off\""));
-      assertTrue(html.contains("name=\"employees[0].days[0].start\""));
-      assertTrue(html.contains("name=\"employees[11].days[4].end\""));
       assertFalse(html.contains("name=\"employees[12].name\""));
-      assertTrue(html.contains("id=\"base-panels\""));
       assertEquals(12, html.split("class=\"move-up-btn\"", -1).length - 1);
       assertEquals(12, html.split("class=\"move-down-btn\"", -1).length - 1);
       assertEquals(12, html.split("class=\"delete-btn\"", -1).length - 1);
@@ -277,32 +286,10 @@ class ShiftControllerTest {
       assertEquals("A", input.employees().get(0).name());
       assertEquals(EmploymentType.PART_TIME, input.employees().get(0).employmentType());
       assertEquals(
-          LocalTime.of(8, 0), input.employees().get(0).baseShifts().get(DayOfWeek.MONDAY).start());
-      assertEquals(
-          LocalTime.of(17, 0), input.employees().get(0).baseShifts().get(DayOfWeek.MONDAY).end());
-      assertEquals(
-          LocalTime.of(9, 0), input.employees().get(0).baseShifts().get(DayOfWeek.TUESDAY).start());
+          Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY), input.employees().get(0).offDays());
       assertEquals(LocalDate.of(2026, 10, 20), input.adjustments().get(0).date());
       assertEquals("A", input.adjustments().get(0).employeeName());
       assertTrue(input.adjustments().get(0).wish().off());
-    }
-
-    @Test
-    @DisplayName(
-        "[F-1][4.1節] Given: 基本シフトに off=true が送られたとき, When: POST /shift を呼ぶと,"
-            + " Then: 基本シフトの off は無視され、その曜日は開始・終了のまま算出に渡る")
-    void ignoresBaseShiftOff() throws Exception {
-      when(monthlyShiftService.create(any()))
-          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of()));
-
-      perform(validRequest().param("employees[0].days[0].off", "true"));
-
-      ArgumentCaptor<MonthlyShiftInput> captor = ArgumentCaptor.forClass(MonthlyShiftInput.class);
-      verify(monthlyShiftService).create(captor.capture());
-      DailyWish monday = captor.getValue().employees().get(0).baseShifts().get(DayOfWeek.MONDAY);
-      assertFalse(monday.off());
-      assertEquals(LocalTime.of(8, 0), monday.start());
-      assertEquals(LocalTime.of(17, 0), monday.end());
     }
 
     @Test
@@ -600,7 +587,7 @@ class ShiftControllerTest {
       ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
       assertEquals(1, form.getEmployees().size());
       assertEquals("FULL_TIME", form.getEmployees().get(0).getEmploymentType());
-      assertEquals(5, form.getEmployees().get(0).getDays().size());
+      assertTrue(form.getEmployees().get(0).getOffDays().isEmpty());
     }
   }
 
@@ -753,14 +740,7 @@ class ShiftControllerTest {
   class 復元 {
 
     private EmployeeProfile savedProfile(String name) {
-      Map<DayOfWeek, DailyWish> shifts = new EnumMap<>(DayOfWeek.class);
-      shifts.put(DayOfWeek.MONDAY, new DailyWish(true, null, null));
-      shifts.put(DayOfWeek.TUESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
-      shifts.put(
-          DayOfWeek.WEDNESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
-      shifts.put(DayOfWeek.THURSDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
-      shifts.put(DayOfWeek.FRIDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
-      return new EmployeeProfile(name, EmploymentType.PART_TIME, shifts);
+      return new EmployeeProfile(name, EmploymentType.PART_TIME, Set.of(DayOfWeek.MONDAY));
     }
 
     @Test
@@ -785,7 +765,7 @@ class ShiftControllerTest {
       assertEquals("佐藤", form.getEmployees().get(0).getName());
       assertEquals("鈴木", form.getEmployees().get(1).getName());
       assertEquals("PART_TIME", form.getEmployees().get(1).getEmploymentType());
-      assertEquals("07:30", form.getEmployees().get(0).getDays().get(0).getStart());
+      assertEquals(List.of(0), form.getEmployees().get(0).getOffDays());
       assertEquals("", form.getEmployees().get(2).getName());
       assertEquals(1, form.getAdjustments().size());
       assertEquals("2026-11-02", form.getAdjustments().get(0).getDate());

@@ -18,6 +18,6 @@ public class EmployeeForm {
   /** 雇用区分（FULL_TIME, PART_TIME, MANAGER）。 */
   private String employmentType;
 
-  /** 曜日ごとの基本シフト（月〜金）。 */
-  private List<DayForm> days = new ArrayList<>();
+  /** 曜日休みの曜日（0＝月〜4＝金）。パートだけが持てます。 */
+  private List<Integer> offDays = new ArrayList<>();
 }

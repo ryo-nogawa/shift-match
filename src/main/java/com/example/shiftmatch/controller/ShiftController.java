@@ -42,10 +42,6 @@ public class ShiftController {
 
   private static final String SAVE_ERROR_MESSAGE = "保存に失敗しました。もう一度シフトを作成して保存し直してください";
 
-  private static final String DEFAULT_START_TIME = "07:30";
-
-  private static final String DEFAULT_END_TIME = "18:30";
-
   private final MonthlyShiftService monthlyShiftService;
 
   private final MonthlyFormConverter monthlyFormConverter;
@@ -94,6 +90,18 @@ public class ShiftController {
   @ModelAttribute("timeOptions")
   public List<String> timeOptions() {
     return TimeOptions.VALUES;
+  }
+
+  /**
+   * 曜日休みのチェックボックスに付ける曜日の表示名（月〜金。値は 0〜4）をモデルに設定します。
+   *
+   * <p>GET と POST の全経路でモデルに含まれるよう、{@code @ModelAttribute} を使用します。
+   *
+   * @return 曜日の表示名のリスト
+   */
+  @ModelAttribute("offDayLabels")
+  public List<String> offDayLabels() {
+    return List.of("月", "火", "水", "木", "金");
   }
 
   /**
@@ -191,14 +199,6 @@ public class ShiftController {
     if (shiftForm.getEmployees().isEmpty()) {
       EmployeeForm emptyEmployee = new EmployeeForm();
       emptyEmployee.setEmploymentType("FULL_TIME");
-      List<DayForm> days = new ArrayList<>();
-      for (int d = 0; d < 5; d++) {
-        DayForm day = new DayForm();
-        day.setStart(DEFAULT_START_TIME);
-        day.setEnd(DEFAULT_END_TIME);
-        days.add(day);
-      }
-      emptyEmployee.setDays(days);
       shiftForm.getEmployees().add(emptyEmployee);
     }
 

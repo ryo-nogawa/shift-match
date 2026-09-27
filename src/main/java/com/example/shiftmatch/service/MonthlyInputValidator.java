@@ -6,7 +6,6 @@ import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.ShiftAdjustment;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
@@ -53,7 +52,7 @@ public class MonthlyInputValidator {
     List<InputError> v2Errors = validateDuplicateNames(validEmployees);
     errors.addAll(v2Errors);
 
-    // V-3: 基本シフトと個別変更の時間帯チェック
+    // V-3: 個別変更の時間帯チェック
     List<InputError> v3Errors = validateTimeRanges(validEmployees, input);
     errors.addAll(v3Errors);
 
@@ -128,12 +127,6 @@ public class MonthlyInputValidator {
       List<ValidEmployeeInfo> validEmployees, MonthlyShiftInput input) {
     List<InputError> errors = new ArrayList<>();
 
-    // 基本シフトの検証
-    for (ValidEmployeeInfo info : validEmployees) {
-      List<InputError> profileErrors = validateBaseShifts(info.profile(), info.originalIndex() + 1);
-      errors.addAll(profileErrors);
-    }
-
     // 有効な従業員名の集合を作成
     Set<String> validNames = new HashSet<>();
     for (ValidEmployeeInfo info : validEmployees) {
@@ -148,59 +141,6 @@ public class MonthlyInputValidator {
     return errors;
   }
 
-  private List<InputError> validateBaseShifts(EmployeeProfile profile, int lineNumber) {
-    List<InputError> errors = new ArrayList<>();
-
-    // 月〜金の曜日をチェック
-    for (DayOfWeek day :
-        new DayOfWeek[] {
-          DayOfWeek.MONDAY,
-          DayOfWeek.TUESDAY,
-          DayOfWeek.WEDNESDAY,
-          DayOfWeek.THURSDAY,
-          DayOfWeek.FRIDAY
-        }) {
-      DailyWish wish = profile.baseShifts().get(day);
-
-      if (wish == null) {
-        // 曜日が欠けている
-        String dayName = getDayName(day);
-        String message = String.format("基本シフト：%s が未選択です（%d 行目）", dayName, lineNumber);
-        errors.add(new InputError("V-3", message));
-      } else if (!wish.off()) {
-        // 時間帯の妥当性をチェック
-        List<InputError> timeErrors = validateTimeRange(wish, day, profile.name(), lineNumber);
-        errors.addAll(timeErrors);
-      }
-    }
-
-    return errors;
-  }
-
-  private List<InputError> validateTimeRange(
-      DailyWish wish, DayOfWeek day, String name, int lineNumber) {
-    List<InputError> errors = new ArrayList<>();
-
-    if (wish.start() == null || wish.end() == null) {
-      String dayName = getDayName(day);
-      String message = String.format("基本シフト：%s が未選択です（%s、%d 行目）", dayName, name, lineNumber);
-      errors.add(new InputError("V-3", message));
-    } else if (!isValidTime(wish.start()) || !isValidTime(wish.end())) {
-      String dayName = getDayName(day);
-      String message =
-          String.format(
-              "基本シフト：%s の時間帯が 7:30〜18:30 の 30 分単位ではありません（%s、%d 行目）", dayName, name, lineNumber);
-      errors.add(new InputError("V-3", message));
-    } else if (!wish.start().isBefore(wish.end())) {
-      String dayName = getDayName(day);
-      String message =
-          String.format("基本シフト：%s の開始時刻が終了時刻以上です（%s、%d 行目）", dayName, name, lineNumber);
-      errors.add(new InputError("V-3", message));
-    }
-
-    return errors;
-  }
-
   private boolean isValidTime(LocalTime time) {
     LocalTime minTime = LocalTime.of(7, 30);
     LocalTime maxTime = LocalTime.of(18, 30);
@@ -211,17 +151,6 @@ public class MonthlyInputValidator {
 
     // 30 分単位かチェック
     return time.getMinute() == 0 || time.getMinute() == 30;
-  }
-
-  private String getDayName(DayOfWeek day) {
-    return switch (day) {
-      case MONDAY -> "月曜日";
-      case TUESDAY -> "火曜日";
-      case WEDNESDAY -> "水曜日";
-      case THURSDAY -> "木曜日";
-      case FRIDAY -> "金曜日";
-      default -> day.toString();
-    };
   }
 
   private List<InputError> validateEmployeeCount(List<ValidEmployeeInfo> validEmployees) {

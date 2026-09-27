@@ -21,10 +21,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -47,7 +46,7 @@ class MonthlyShiftRepositoryTest {
           "saved_month_employee",
           "saved_adjustment",
           "saved_input_meta",
-          "saved_input_base_shift",
+          "saved_input_off_day",
           "saved_input_employee");
 
   @Autowired private MonthlyShiftRepository repository;
@@ -63,20 +62,12 @@ class MonthlyShiftRepositoryTest {
   }
 
   private static EmployeeProfile profile(String name, EmploymentType type, boolean mondayOff) {
-    Map<DayOfWeek, DailyWish> shifts = new EnumMap<>(DayOfWeek.class);
-    for (DayOfWeek day :
-        List.of(
-            DayOfWeek.MONDAY,
-            DayOfWeek.TUESDAY,
-            DayOfWeek.WEDNESDAY,
-            DayOfWeek.THURSDAY,
-            DayOfWeek.FRIDAY)) {
-      shifts.put(day, new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(17, 30)));
-    }
-    if (mondayOff) {
-      shifts.put(DayOfWeek.MONDAY, new DailyWish(true, null, null));
-    }
-    return new EmployeeProfile(name, type, shifts);
+    return partTimeProfile(name, type, mondayOff ? Set.of(DayOfWeek.MONDAY) : Set.of());
+  }
+
+  private static EmployeeProfile partTimeProfile(
+      String name, EmploymentType type, Set<DayOfWeek> offDays) {
+    return new EmployeeProfile(name, type, offDays);
   }
 
   @Nested
@@ -127,6 +118,46 @@ class MonthlyShiftRepositoryTest {
         repository.saveInput(latest, YearMonth.of(2026, 11));
 
         assertEquals(latest, repository.findEmployees());
+      }
+
+      @Test
+      @DisplayName("[F-7] Given: パートの複数の曜日休みを保存したとき, When: 復元すると, Then: 曜日休みが一致する")
+      void restoresPartTimeOffDays() {
+        Set<DayOfWeek> offDays = Set.of(DayOfWeek.TUESDAY, DayOfWeek.FRIDAY);
+
+        repository.saveInput(
+            List.of(partTimeProfile("佐藤", EmploymentType.PART_TIME, offDays)),
+            YearMonth.of(2026, 10));
+
+        assertEquals(offDays, repository.findEmployees().get(0).offDays());
+      }
+
+      @Test
+      @DisplayName("[F-7] Given: 曜日休みを保存したあと別の曜日休みで保存し直したとき, When: 復元すると, Then: 以前の曜日休みは残らない")
+      void overwritesPreviousOffDays() {
+        repository.saveInput(
+            List.of(
+                partTimeProfile(
+                    "佐藤", EmploymentType.PART_TIME, Set.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY))),
+            YearMonth.of(2026, 10));
+
+        repository.saveInput(
+            List.of(partTimeProfile("佐藤", EmploymentType.PART_TIME, Set.of(DayOfWeek.WEDNESDAY))),
+            YearMonth.of(2026, 10));
+
+        assertEquals(Set.of(DayOfWeek.WEDNESDAY), repository.findEmployees().get(0).offDays());
+      }
+
+      @Test
+      @DisplayName("[F-7] Given: 曜日休みの行がない従業員（旧データ相当）, When: 復元すると, Then: 曜日休みは空になる")
+      void restoresEmptyOffDaysWhenNoRows() {
+        jdbcClient
+            .sql(
+                "INSERT INTO saved_input_employee (row_index, name, employment_type)"
+                    + " VALUES (0, '佐藤', 'PART_TIME')")
+            .update();
+
+        assertTrue(repository.findEmployees().get(0).offDays().isEmpty());
       }
     }
 

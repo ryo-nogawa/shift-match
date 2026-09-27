@@ -21,7 +21,7 @@ class InvalidMonthlyInputExceptionTest {
     void createsWithErrors() {
       List<InputError> errors = new ArrayList<>();
       errors.add(new InputError("V-2", "従業員名が重複しています: 1 行目、2 行目"));
-      errors.add(new InputError("V-3", "基本シフト：月曜日が未選択です（1 行目）"));
+      errors.add(new InputError("V-3", "個別変更：開始・終了が未選択です（Taro、2024-09-02）"));
 
       InvalidMonthlyInputException exception = new InvalidMonthlyInputException(errors);
 

@@ -1,19 +1,18 @@
 package com.example.shiftmatch.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -28,26 +27,10 @@ class MonthlyFormConverterTest {
     converter = new MonthlyFormConverter();
   }
 
-  private static DayForm day(String start, String end) {
-    DayForm day = new DayForm();
-    day.setStart(start);
-    day.setEnd(end);
-    return day;
-  }
-
-  private static List<DayForm> fullWeek() {
-    List<DayForm> days = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
-      days.add(day("07:30", "18:30"));
-    }
-    return days;
-  }
-
-  private static EmployeeForm employee(String name, String type, List<DayForm> days) {
+  private static EmployeeForm employee(String name, String type) {
     EmployeeForm employee = new EmployeeForm();
     employee.setName(name);
     employee.setEmploymentType(type);
-    employee.setDays(days);
     return employee;
   }
 
@@ -68,16 +51,54 @@ class MonthlyFormConverterTest {
     return adjustment;
   }
 
+  private static EmployeeForm employeeWithOffDays(String type, List<Integer> offDays) {
+    EmployeeForm employee = employee("山田太郎", type);
+    employee.setOffDays(offDays);
+    return employee;
+  }
+
+  private Set<DayOfWeek> convertedOffDays(String type, List<Integer> offDays) {
+    ShiftForm form =
+        form("2026-10", List.of(employeeWithOffDays(type, offDays)), new ArrayList<>());
+    return converter.toInput(form).employees().get(0).offDays();
+  }
+
+  @Nested
+  class 曜日休み {
+
+    @Test
+    @DisplayName("[F-1] Given: パートの offDays が 0 と 2 のとき, When: 変換すると, Then: 月曜と水曜が曜日休みになる")
+    void convertsPartTimeOffDays() {
+      Set<DayOfWeek> offDays = convertedOffDays("PART_TIME", List.of(0, 2));
+
+      assertEquals(Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY), offDays);
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: 常勤の offDays が 0 のとき, When: 変換すると, Then: 曜日休みは空になる")
+    void ignoresOffDaysForFullTime() {
+      assertTrue(convertedOffDays("FULL_TIME", List.of(0)).isEmpty());
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: offDays に範囲外の値と null があるとき, When: 変換すると, Then: それらは無視される")
+    void ignoresOutOfRangeOffDays() {
+      List<Integer> offDays = new ArrayList<>(Arrays.asList(5, -1, null, 4));
+
+      Set<DayOfWeek> converted = convertedOffDays("PART_TIME", offDays);
+
+      assertEquals(Set.of(DayOfWeek.FRIDAY), converted);
+    }
+  }
+
   @Nested
   class 正常系 {
 
     @Test
     @DisplayName(
-        "[F-1] Given: 対象月・氏名・区分・基本シフトが正しいフォームのとき, When: 変換すると,"
-            + " Then: 同じ内容の MonthlyShiftInput になる")
+        "[F-1] Given: 対象月・氏名・区分が正しいフォームのとき, When: 変換すると," + " Then: 同じ内容の MonthlyShiftInput になる")
     void convertsValidFormToMonthlyShiftInput() {
-      ShiftForm form =
-          form("2026-10", List.of(employee("山田太郎", "FULL_TIME", fullWeek())), new ArrayList<>());
+      ShiftForm form = form("2026-10", List.of(employee("山田太郎", "FULL_TIME")), new ArrayList<>());
 
       MonthlyShiftInput input = converter.toInput(form);
 
@@ -94,7 +115,7 @@ class MonthlyFormConverterTest {
       ShiftForm form =
           form(
               "2026-10",
-              List.of(employee("山田太郎", "FULL_TIME", fullWeek())),
+              List.of(employee("山田太郎", "FULL_TIME")),
               List.of(adjustment("2026-10-20", "山田太郎", true)));
 
       MonthlyShiftInput input = converter.toInput(form);
@@ -106,29 +127,9 @@ class MonthlyFormConverterTest {
     }
 
     @Test
-    @DisplayName(
-        "[F-1] Given: 月曜だけ 08:00〜17:00 の基本シフトのとき, When: 変換すると,"
-            + " Then: days[0] が月曜、days[1] が火曜に対応する")
-    void mapsDayIndexToDayOfWeek() {
-      List<DayForm> days = fullWeek();
-      days.set(0, day("08:00", "17:00"));
-      ShiftForm form =
-          form("2026-10", List.of(employee("太郎", "FULL_TIME", days)), new ArrayList<>());
-
-      MonthlyShiftInput input = converter.toInput(form);
-
-      DailyWish monday = input.employees().get(0).baseShifts().get(DayOfWeek.MONDAY);
-      assertEquals(LocalTime.of(8, 0), monday.start());
-      assertEquals(LocalTime.of(17, 0), monday.end());
-      DailyWish tuesday = input.employees().get(0).baseShifts().get(DayOfWeek.TUESDAY);
-      assertEquals(LocalTime.of(7, 30), tuesday.start());
-    }
-
-    @Test
     @DisplayName("[V-1] Given: 従業員名が空の行があるとき, When: 変換すると," + " Then: その行は除外されずにそのまま渡される")
     void keepsRowWithEmptyEmployeeName() {
-      ShiftForm form =
-          form("2026-10", List.of(employee("", "FULL_TIME", fullWeek())), new ArrayList<>());
+      ShiftForm form = form("2026-10", List.of(employee("", "FULL_TIME")), new ArrayList<>());
 
       MonthlyShiftInput input = converter.toInput(form);
 
@@ -143,8 +144,7 @@ class MonthlyFormConverterTest {
     @Test
     @DisplayName("[V-8] Given: 対象月が YYYY-MM 形式でないとき, When: 変換すると, Then: 対象月が null になる")
     void returnsNullMonthWhenTargetMonthIsInvalid() {
-      ShiftForm form =
-          form("invalid", List.of(employee("太郎", "FULL_TIME", fullWeek())), new ArrayList<>());
+      ShiftForm form = form("invalid", List.of(employee("太郎", "FULL_TIME")), new ArrayList<>());
 
       MonthlyShiftInput input = converter.toInput(form);
 
@@ -154,8 +154,7 @@ class MonthlyFormConverterTest {
     @Test
     @DisplayName("[V-8] Given: 対象月が空のとき, When: 変換すると, Then: 対象月が null になる")
     void returnsNullMonthWhenTargetMonthIsEmpty() {
-      ShiftForm form =
-          form("", List.of(employee("太郎", "FULL_TIME", fullWeek())), new ArrayList<>());
+      ShiftForm form = form("", List.of(employee("太郎", "FULL_TIME")), new ArrayList<>());
 
       MonthlyShiftInput input = converter.toInput(form);
 
@@ -165,8 +164,7 @@ class MonthlyFormConverterTest {
     @Test
     @DisplayName("[V-7] Given: 区分が 3 択以外のとき, When: 変換すると, Then: 区分が null になる")
     void returnsNullEmploymentTypeWhenTypeIsUnknown() {
-      ShiftForm form =
-          form("2026-10", List.of(employee("太郎", "INVALID", fullWeek())), new ArrayList<>());
+      ShiftForm form = form("2026-10", List.of(employee("太郎", "INVALID")), new ArrayList<>());
 
       MonthlyShiftInput input = converter.toInput(form);
 
@@ -174,36 +172,16 @@ class MonthlyFormConverterTest {
     }
 
     @Test
-    @DisplayName("[V-3] Given: 開始時刻が HH:mm 形式でないとき, When: 変換すると, Then: 開始時刻が null になる")
-    void returnsNullStartWhenTimeIsInvalid() {
-      List<DayForm> days = fullWeek();
-      days.set(0, day("invalid", "18:30"));
-      ShiftForm form =
-          form("2026-10", List.of(employee("太郎", "FULL_TIME", days)), new ArrayList<>());
+    @DisplayName("[V-3] Given: 個別変更の開始時刻が HH:mm 形式でないとき, When: 変換すると, Then: 開始時刻が null になる")
+    void returnsNullStartWhenAdjustmentTimeIsInvalid() {
+      AdjustmentForm adjustment = adjustment("2026-10-20", "太郎", false);
+      adjustment.setStart("invalid");
+      adjustment.setEnd("18:30");
+      ShiftForm form = form("2026-10", List.of(employee("太郎", "FULL_TIME")), List.of(adjustment));
 
       MonthlyShiftInput input = converter.toInput(form);
 
-      assertNull(input.employees().get(0).baseShifts().get(DayOfWeek.MONDAY).start());
-    }
-
-    @Test
-    @DisplayName(
-        "[V-3] Given: 基本シフトが月曜の 1 件しかないとき, When: 変換すると," + " Then: 不足する曜日は休みなし・開始終了 null になる")
-    void fillsMissingDaysWithEmptyWish() {
-      List<DayForm> days = new ArrayList<>();
-      days.add(day("07:30", "18:30"));
-      ShiftForm form =
-          form("2026-10", List.of(employee("太郎", "FULL_TIME", days)), new ArrayList<>());
-
-      MonthlyShiftInput input = converter.toInput(form);
-
-      DailyWish monday = input.employees().get(0).baseShifts().get(DayOfWeek.MONDAY);
-      assertFalse(monday.off());
-      assertEquals(LocalTime.of(7, 30), monday.start());
-      DailyWish tuesday = input.employees().get(0).baseShifts().get(DayOfWeek.TUESDAY);
-      assertFalse(tuesday.off());
-      assertNull(tuesday.start());
-      assertNull(tuesday.end());
+      assertNull(input.adjustments().get(0).wish().start());
     }
 
     @Test
@@ -213,7 +191,7 @@ class MonthlyFormConverterTest {
       ShiftForm form =
           form(
               "2026-10",
-              List.of(employee("太郎", "FULL_TIME", fullWeek())),
+              List.of(employee("太郎", "FULL_TIME")),
               List.of(adjustment("invalid-date", "太郎", true)));
 
       MonthlyShiftInput input = converter.toInput(form);
@@ -228,7 +206,7 @@ class MonthlyFormConverterTest {
       ShiftForm form =
           form(
               "2026-10",
-              List.of(employee("太郎", "FULL_TIME", fullWeek())),
+              List.of(employee("太郎", "FULL_TIME")),
               List.of(adjustment("2026-10-20", null, true)));
 
       MonthlyShiftInput input = converter.toInput(form);

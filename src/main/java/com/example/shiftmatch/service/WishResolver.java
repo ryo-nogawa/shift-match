@@ -4,16 +4,20 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.ShiftAdjustment;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
- * 営業日と従業員から、基本シフトと個別変更の優先順位に基づいて希望を決定します。
+ * 営業日と従業員から、個別変更・曜日休み・既定の時間帯の優先順位に基づいて希望を決定します。
  *
- * <p>優先順位：その日の個別変更 > その曜日の基本シフト
+ * <p>優先順位：その日の個別変更 > パートの曜日休み（休み） > 既定の時間帯（7:30〜18:30）
  *
  * <p>状態を持たない値オブジェクト相当です。
  */
 public class WishResolver {
+
+  private static final LocalTime DEFAULT_START = LocalTime.of(7, 30);
+  private static final LocalTime DEFAULT_END = LocalTime.of(18, 30);
 
   /**
    * 従業員プロファイルと日付から、優先順位に基づいた希望を決定します。
@@ -31,8 +35,11 @@ public class WishResolver {
       return adjustment;
     }
 
-    // 個別変更がなければ基本シフトから該当の曜日を取得
-    return profile.baseShifts().get(date.getDayOfWeek());
+    // 個別変更がなければ、パートの曜日休みなら休み、それ以外は既定の時間帯
+    if (profile.offDays().contains(date.getDayOfWeek())) {
+      return new DailyWish(true, null, null);
+    }
+    return new DailyWish(false, DEFAULT_START, DEFAULT_END);
   }
 
   private DailyWish findMatchingAdjustment(

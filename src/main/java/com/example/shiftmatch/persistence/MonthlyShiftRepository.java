@@ -17,11 +17,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +55,7 @@ public class MonthlyShiftRepository {
    */
   @Transactional
   public void saveInput(List<EmployeeProfile> employees, YearMonth month) {
-    jdbcClient.sql("DELETE FROM saved_input_base_shift").update();
+    jdbcClient.sql("DELETE FROM saved_input_off_day").update();
     jdbcClient.sql("DELETE FROM saved_input_employee").update();
     int rowIndex = 0;
     for (EmployeeProfile employee : employees) {
@@ -68,13 +68,10 @@ public class MonthlyShiftRepository {
                   + " VALUES (?, ?, ?)")
           .params(rowIndex, employee.name(), employee.employmentType().name())
           .update();
-      for (Map.Entry<DayOfWeek, DailyWish> entry : employee.baseShifts().entrySet()) {
-        DailyWish wish = entry.getValue();
+      for (DayOfWeek day : employee.offDays()) {
         jdbcClient
-            .sql(
-                "INSERT INTO saved_input_base_shift (row_index, day_index, off, start_time,"
-                    + " end_time) VALUES (?, ?, ?, ?, ?)")
-            .params(rowIndex, entry.getKey().ordinal(), wish.off(), wish.start(), wish.end())
+            .sql("INSERT INTO saved_input_off_day (row_index, day_index) VALUES (?, ?)")
+            .params(rowIndex, day.ordinal())
             .update();
       }
       rowIndex++;
@@ -106,33 +103,19 @@ public class MonthlyShiftRepository {
             .list();
     List<EmployeeProfile> employees = new ArrayList<>();
     for (EmployeeRow row : rows) {
-      Map<DayOfWeek, DailyWish> shifts = new EnumMap<>(DayOfWeek.class);
-      List<DayRow> dayRows =
-          jdbcClient
-              .sql(
-                  "SELECT day_index, off, start_time, end_time FROM saved_input_base_shift"
-                      + " WHERE row_index = ? ORDER BY day_index")
-              .params(row.rowIndex())
-              .query(
-                  (rs, rowNum) ->
-                      new DayRow(
-                          DayOfWeek.of(rs.getInt("day_index") + 1),
-                          new DailyWish(
-                              rs.getBoolean("off"),
-                              rs.getObject("start_time", LocalTime.class),
-                              rs.getObject("end_time", LocalTime.class))))
-              .list();
-      for (DayRow dayRow : dayRows) {
-        shifts.put(dayRow.day(), dayRow.wish());
-      }
-      employees.add(new EmployeeProfile(row.name(), row.employmentType(), shifts));
+      Set<DayOfWeek> offDays =
+          Set.copyOf(
+              jdbcClient
+                  .sql("SELECT day_index FROM saved_input_off_day WHERE row_index = ?")
+                  .params(row.rowIndex())
+                  .query((rs, rowNum) -> DayOfWeek.of(rs.getInt("day_index") + 1))
+                  .list());
+      employees.add(new EmployeeProfile(row.name(), row.employmentType(), offDays));
     }
     return employees;
   }
 
   private record AdjustmentKey(LocalDate date, String employeeName) {}
-
-  private record DayRow(DayOfWeek day, DailyWish wish) {}
 
   private record EmployeeRow(int rowIndex, String name, EmploymentType employmentType) {}
 
