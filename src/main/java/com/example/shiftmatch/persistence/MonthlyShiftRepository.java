@@ -298,8 +298,8 @@ public class MonthlyShiftRepository {
       jdbcClient
           .sql(
               "INSERT INTO saved_day_assignment (day_date, assignment_index, employee_name,"
-                  + " employment_type, wish_start, wish_end, slot, break_start, break_end)"
-                  + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                  + " employment_type, wish_start, wish_end, slot, break_start, break_end,"
+                  + " prior_work_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
           .params(
               date,
               index,
@@ -309,7 +309,8 @@ public class MonthlyShiftRepository {
               employee.end(),
               assignment.slot().name(),
               assignment.breakStart(),
-              assignment.breakEnd())
+              assignment.breakEnd(),
+              employee.priorWorkDays())
           .update();
     }
   }
@@ -321,7 +322,8 @@ public class MonthlyShiftRepository {
           .sql(
               "INSERT INTO saved_day_unassigned (day_date, unassigned_index, employee_name,"
                   + " employment_type, off, wish_start, wish_end, reason,"
-                  + " weekly_remaining_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                  + " weekly_remaining_minutes, prior_work_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?,"
+                  + " ?, ?)")
           .params(
               date,
               index,
@@ -331,7 +333,8 @@ public class MonthlyShiftRepository {
               employee.start(),
               employee.end(),
               employee.unassignedReason().name(),
-              employee.weeklyRemainingMinutes())
+              employee.weeklyRemainingMinutes(),
+              employee.priorWorkDays())
           .update();
     }
   }
@@ -393,17 +396,20 @@ public class MonthlyShiftRepository {
         jdbcClient
             .sql(
                 "SELECT employee_name, employment_type, wish_start, wish_end, slot, break_start,"
-                    + " break_end FROM saved_day_assignment WHERE day_date = ?"
+                    + " break_end, prior_work_days FROM saved_day_assignment WHERE day_date = ?"
                     + " ORDER BY assignment_index")
             .param(date)
             .query(
                 (rs, rowNum) ->
                     new ShiftAssignment(
-                        Employee.working(
+                        new Employee(
                             rs.getString("employee_name"),
                             EmploymentType.valueOf(rs.getString("employment_type")),
+                            false,
                             rs.getObject("wish_start", LocalTime.class),
-                            rs.getObject("wish_end", LocalTime.class)),
+                            rs.getObject("wish_end", LocalTime.class),
+                            null,
+                            rs.getObject("prior_work_days", Integer.class)),
                         ShiftSlot.valueOf(rs.getString("slot")),
                         rs.getObject("break_start", LocalTime.class),
                         rs.getObject("break_end", LocalTime.class)))
@@ -412,8 +418,8 @@ public class MonthlyShiftRepository {
         jdbcClient
             .sql(
                 "SELECT employee_name, employment_type, off, wish_start, wish_end,"
-                    + " weekly_remaining_minutes FROM saved_day_unassigned WHERE day_date = ?"
-                    + " ORDER BY unassigned_index")
+                    + " weekly_remaining_minutes, prior_work_days FROM saved_day_unassigned"
+                    + " WHERE day_date = ? ORDER BY unassigned_index")
             .param(date)
             .query(
                 (rs, rowNum) ->
@@ -423,7 +429,8 @@ public class MonthlyShiftRepository {
                         rs.getBoolean("off"),
                         rs.getObject("wish_start", LocalTime.class),
                         rs.getObject("wish_end", LocalTime.class),
-                        rs.getObject("weekly_remaining_minutes", Integer.class)))
+                        rs.getObject("weekly_remaining_minutes", Integer.class),
+                        rs.getObject("prior_work_days", Integer.class)))
             .list();
     return new AssignmentResult(assignments, score, unassigned);
   }

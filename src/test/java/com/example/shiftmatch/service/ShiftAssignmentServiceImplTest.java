@@ -687,6 +687,110 @@ class ShiftAssignmentServiceImplTest {
   }
 
   @Nested
+  @DisplayName("[5.3] 同点時：これまでの出勤日数を優先")
+  class TiedScorePriorWorkDaysPreference {
+
+    @Test
+    @DisplayName(
+        "[5.3] Given: 全員が7:30〜18:30の常勤9名で先頭だけ出勤日数が1（他は0）のとき, When: assignを実行すると, Then:"
+            + " 先頭の従業員が割り当てから外れる")
+    void excludesEmployeeWithMorePriorWorkDaysWhenTied() {
+      List<Employee> employees = new ArrayList<>();
+      employees.add(
+          Employee.working("Employee0", LocalTime.of(7, 30), LocalTime.of(18, 30))
+              .withPriorWorkDays(1));
+      for (int i = 1; i < 9; i++) {
+        employees.add(
+            Employee.working("Employee" + i, LocalTime.of(7, 30), LocalTime.of(18, 30))
+                .withPriorWorkDays(0));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+      assertEquals(1380, assignment.score());
+
+      boolean employee0Assigned =
+          assignment.assignments().stream().anyMatch(a -> a.employee().name().equals("Employee0"));
+      assertFalse(employee0Assigned, "出勤日数が多いEmployee0は割り当てられないはず");
+
+      boolean employee0Unassigned =
+          assignment.unassignedEmployees().stream().anyMatch(e -> e.name().equals("Employee0"));
+      assertTrue(employee0Unassigned, "出勤日数が多いEmployee0は未出勤者に含まれるはず");
+    }
+
+    @Test
+    @DisplayName(
+        "[5.3] Given: 狭い時間帯（枠1に完全一致）で出勤日数が多い1名を含む9名のとき, When: assignを実行すると, Then:"
+            + " ずれの合計が小さい案（その人を割り当てた案）が選ばれる")
+    void prefersSmallerScoreOverFewerPriorWorkDays() {
+      List<Employee> employees = new ArrayList<>();
+      // Employee0：枠1（7:30〜14:30）にちょうど一致し、ずれ0。出勤日数は極端に多い
+      employees.add(
+          Employee.working("Employee0", LocalTime.of(7, 30), LocalTime.of(14, 30))
+              .withPriorWorkDays(10));
+      for (int i = 1; i < 9; i++) {
+        employees.add(
+            Employee.working("Employee" + i, LocalTime.of(7, 30), LocalTime.of(18, 30))
+                .withPriorWorkDays(0));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+
+      // Employee0を含む案のほうがずれの合計が小さい（1140 < 1380）ため、出勤日数が多くても選ばれる
+      assertEquals(1140, assignment.score());
+      boolean employee0Assigned =
+          assignment.assignments().stream().anyMatch(a -> a.employee().name().equals("Employee0"));
+      assertTrue(employee0Assigned, "ずれの合計が最小の案にはEmployee0が含まれるはず");
+    }
+
+    @Test
+    @DisplayName(
+        "[5.3] Given: 出勤日数が多い常勤1名と出勤日数が少ないパート1名を含む9名（他7名は常勤・出勤日数0）のとき, When:"
+            + " assignを実行すると, Then: 出勤日数が少ないパートが選ばれ、出勤日数が多い常勤が外れる")
+    void prefersFewerPriorWorkDaysOverPartTimePreference() {
+      List<Employee> employees = new ArrayList<>();
+      employees.add(
+          Employee.working("FullTimeMany", LocalTime.of(7, 30), LocalTime.of(18, 30))
+              .withPriorWorkDays(5));
+      employees.add(
+          Employee.working(
+                  "PartTimeFew",
+                  EmploymentType.PART_TIME,
+                  LocalTime.of(7, 30),
+                  LocalTime.of(18, 30))
+              .withPriorWorkDays(0));
+      for (int i = 0; i < 7; i++) {
+        employees.add(
+            Employee.working("Other" + i, LocalTime.of(7, 30), LocalTime.of(18, 30))
+                .withPriorWorkDays(0));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
+      AssignmentResult assignment = result.get();
+      assertEquals(1380, assignment.score());
+
+      boolean partTimeAssigned =
+          assignment.assignments().stream()
+              .anyMatch(a -> a.employee().name().equals("PartTimeFew"));
+      assertTrue(partTimeAssigned, "出勤日数が少ないパートは割り当てられるはず");
+
+      boolean fullTimeUnassigned =
+          assignment.unassignedEmployees().stream().anyMatch(e -> e.name().equals("FullTimeMany"));
+      assertTrue(fullTimeUnassigned, "出勤日数が多い常勤は割り当てられないはず");
+    }
+  }
+
+  @Nested
   @DisplayName("[F-3] 動的計画法の検証（総当たりとの一致）")
   class DynamicProgrammingVerification {
 

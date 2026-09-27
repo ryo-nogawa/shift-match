@@ -17,19 +17,23 @@ import org.springframework.stereotype.Service;
  * シフト割り当てを行うサービス実装。
  *
  * <p>6 種類の枠に 8 名を割り当てます。動的計画法で最適な案を高速に求め、条件を満たす案の
- * 中でずれの合計が最小かつ入力順で最初の案を返します。
+ * 中でずれの合計が最小、これまでの出勤日数の合計が最小、パートの実労働時間の合計が最小、かつ入力順で最初の案を返します（5.3・5.4 節）。
  */
 @Service
 public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
-  private static final int UNCOMPUTED = -2;
-  private static final int IMPOSSIBLE = -1;
+  private static final long UNCOMPUTED = -2L;
+  private static final long IMPOSSIBLE = -1L;
 
-  // 5.4 節の評価値は「ずれ → パートの実労働時間の合計」の順で比較する。1 人あたりの評価値を
-  // 「ずれ（分） × 評価値の重み + パートなら実労働時間（分）」とすれば、1 日のパートの実労働時間の合計は
-  // 最大 8 × 510 = 4080 分（重みより小さい）なので、評価値の合計を単純な整数比較（< ）で扱っても
-  // 5.3 節の優先順位（ずれの合計が同じならパートの実労働時間の合計が小さい方）が保たれる
-  private static final int EVALUATION_VALUE_WEIGHT = 10_000;
+  // 5.4 節の評価値は「ずれ → これまでの出勤日数の合計 → パートの実労働時間の合計」の順（左が優先）で比較する。
+  // 1 人あたりの評価値を「ずれ（分） × GAP_WEIGHT + 出勤日数 × PRIOR_WORK_DAYS_WEIGHT + パートなら実労働時間（分）」とし、
+  // long で合計する。各レベルの最大合計（8 人分）は、ずれ 8×240=1920 分、出勤日数 8×23=184 日、
+  // パートの実労働時間 8×510=4080 分（要件定義の想定上限）。PRIOR_WORK_DAYS_WEIGHT（10,000）はパートの実労働時間の
+  // 最大合計（4,080）より大きく、GAP_WEIGHT（10,000,000）は出勤日数の合計に PRIOR_WORK_DAYS_WEIGHT
+  // を掛けた最大値（1,840,000）とパートの実労働時間の最大合計を足した値より大きいため、単純な整数比較（<）でも
+  // 5.3 節の優先順位が保たれる
+  private static final long PRIOR_WORK_DAYS_WEIGHT = 10_000L;
+  private static final long GAP_WEIGHT = 10_000_000L;
 
   @Override
   public Optional<AssignmentResult> assign(List<Employee> employees) {
@@ -48,14 +52,14 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     }
 
     int n = candidates.size();
-    int[][] memo = new int[ShiftSlot.values().length + 1][1 << n];
+    long[][] memo = new long[ShiftSlot.values().length + 1][1 << n];
     for (int i = 0; i < ShiftSlot.values().length + 1; i++) {
       for (int j = 0; j < (1 << n); j++) {
         memo[i][j] = UNCOMPUTED;
       }
     }
 
-    int minEvaluationValue = computeMinEvaluationValue(candidates, 0, 0, memo);
+    long minEvaluationValue = computeMinEvaluationValue(candidates, 0, 0, memo);
 
     if (minEvaluationValue == IMPOSSIBLE) {
       return Optional.empty();
@@ -78,8 +82,8 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
    * @param memo メモ化テーブル
    * @return 枠 slotIndex 以降で得られる最小の追加評価値（割り当て不可なら {@code IMPOSSIBLE}）
    */
-  private int computeMinEvaluationValue(
-      List<Employee> candidates, int slotIndex, int usedMask, int[][] memo) {
+  private long computeMinEvaluationValue(
+      List<Employee> candidates, int slotIndex, int usedMask, long[][] memo) {
     if (slotIndex >= ShiftSlot.values().length) {
       return 0;
     }
@@ -90,11 +94,11 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
     ShiftSlot slot = ShiftSlot.values()[slotIndex];
     int requiredCount = slot.numberOfEmployees();
-    int minEvaluationValue = IMPOSSIBLE;
+    long minEvaluationValue = IMPOSSIBLE;
 
     for (int combo : generateCombinations(candidates, slotIndex, usedMask, requiredCount)) {
       int nextMask = usedMask;
-      int comboEvaluationValue = 0;
+      long comboEvaluationValue = 0;
 
       for (int i = 0, bit = 0; i < candidates.size() && i < 32; i++) {
         if ((combo & (1 << i)) != 0) {
@@ -108,10 +112,10 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
         }
       }
 
-      int futureEvaluationValue =
+      long futureEvaluationValue =
           computeMinEvaluationValue(candidates, slotIndex + 1, nextMask, memo);
       if (futureEvaluationValue != IMPOSSIBLE) {
-        int totalEvaluationValue = comboEvaluationValue + futureEvaluationValue;
+        long totalEvaluationValue = comboEvaluationValue + futureEvaluationValue;
         // 同点で更新すると F-3 の同点規則（列挙順で最初の案）に反するため、厳密に小さいときだけ更新する
         if (minEvaluationValue == IMPOSSIBLE || totalEvaluationValue < minEvaluationValue) {
           minEvaluationValue = totalEvaluationValue;
@@ -126,17 +130,22 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
   /**
    * 1 人分の評価値（5.3・5.4 節）を計算します。
    *
-   * <p>評価値 = ずれ（分） × {@link #EVALUATION_VALUE_WEIGHT} ＋ パートならその枠の実労働時間（分）、常勤・管理職なら 0。
-   * ずれの合計が同じ案の中では、この値の合計が小さいほどパートの実労働時間の合計が小さい案として優先されます（5.3 節）。
+   * <p>評価値 = ずれ（分） × {@link #GAP_WEIGHT} ＋ これまでの出勤日数（{@code null} は 0） × {@link
+   * #PRIOR_WORK_DAYS_WEIGHT} ＋ パートならその枠の実労働時間（分）、常勤・管理職なら 0。ずれの合計が同じ案の中では、
+   * この値の合計が小さいほど、これまでの出勤日数の合計が小さく、さらに同じならパートの実労働時間の合計が小さい案として
+   * 優先されます（5.3 節）。
    *
    * @param employee 対象の従業員
    * @param slot 割り当て先の枠
    * @return 評価値
    */
-  private int evaluationValue(Employee employee, ShiftSlot slot) {
-    int partTimeActualWorkMinutes =
+  private long evaluationValue(Employee employee, ShiftSlot slot) {
+    long priorWorkDays = employee.priorWorkDays() == null ? 0 : employee.priorWorkDays();
+    long partTimeActualWorkMinutes =
         employee.employmentType() == EmploymentType.PART_TIME ? slot.actualWorkMinutes() : 0;
-    return employee.gapMinutes(slot) * EVALUATION_VALUE_WEIGHT + partTimeActualWorkMinutes;
+    return employee.gapMinutes(slot) * GAP_WEIGHT
+        + priorWorkDays * PRIOR_WORK_DAYS_WEIGHT
+        + partTimeActualWorkMinutes;
   }
 
   /**
@@ -199,10 +208,10 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       List<Employee> candidates,
       int slotIndex,
       int usedMask,
-      int targetEvaluationValue,
+      long targetEvaluationValue,
       int[] assignment,
       int assignmentIndex,
-      int[][] memo) {
+      long[][] memo) {
     if (slotIndex >= ShiftSlot.values().length) {
       return;
     }
@@ -212,7 +221,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
     for (int combo : generateCombinations(candidates, slotIndex, usedMask, requiredCount)) {
       int nextMask = usedMask;
-      int comboEvaluationValue = 0;
+      long comboEvaluationValue = 0;
 
       int assignedCount = 0;
       for (int i = 0; i < candidates.size() && assignedCount < requiredCount; i++) {
@@ -225,7 +234,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
         }
       }
 
-      int futureEvaluationValue =
+      long futureEvaluationValue =
           computeMinEvaluationValue(candidates, slotIndex + 1, nextMask, memo);
       // 条件を満たす最初の組で確定し、同点の後続の組には切り替えない（F-3）
       if (futureEvaluationValue != IMPOSSIBLE

@@ -1,6 +1,7 @@
 package com.example.shiftmatch.persistence;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,6 +16,8 @@ import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
+import com.example.shiftmatch.domain.ShiftAssignment;
+import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.domain.UnassignedReason;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
@@ -648,6 +651,137 @@ class MonthlyShiftRepositoryTest {
                 .orElseThrow();
         assertEquals(450, restoredB.weeklyRemainingMinutes());
         assertEquals(UnassignedReason.ON_LEAVE, restoredB.unassignedReason());
+      }
+
+      @Test
+      @DisplayName(
+          "[8.4] Given: 割り当てた人と未出勤者にこれまでの出勤日数を設定して保存したとき, When: 復元すると, Then:" + " 同じ出勤日数のまま復元される")
+      void restoresPriorWorkDaysForAssignedAndUnassignedEmployees() {
+        List<Employee> dayEmployees = employees();
+        List<Employee> withPriorWorkDays = new ArrayList<>();
+        int days = 0;
+        for (Employee employee : dayEmployees) {
+          withPriorWorkDays.add(employee.withPriorWorkDays(days));
+          days++;
+        }
+        AssignmentResult original = assign(withPriorWorkDays);
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                new DailyShiftResult(LocalDate.of(2026, 10, 1), 9, Optional.of(original)));
+        List<MonthEmployee> names =
+            List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K").stream()
+                .map(name -> new MonthEmployee(name, EmploymentType.FULL_TIME))
+                .toList();
+
+        repository.saveShift(result, names);
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        AssignmentResult restored = saved.result().days().get(0).assignment().orElseThrow();
+
+        for (ShiftAssignment assignment : original.assignments()) {
+          Employee restoredEmployee =
+              restored.assignments().stream()
+                  .filter(a -> a.employee().name().equals(assignment.employee().name()))
+                  .findFirst()
+                  .orElseThrow()
+                  .employee();
+          assertEquals(assignment.employee().priorWorkDays(), restoredEmployee.priorWorkDays());
+        }
+        for (Employee employee : original.unassignedEmployees()) {
+          Employee restoredEmployee =
+              restored.unassignedEmployees().stream()
+                  .filter(e -> e.name().equals(employee.name()))
+                  .findFirst()
+                  .orElseThrow();
+          assertEquals(employee.priorWorkDays(), restoredEmployee.priorWorkDays());
+        }
+      }
+
+      @Test
+      @DisplayName("[8.4] Given: これまでの出勤日数の文言になる未出勤者を保存したとき, When: 復元すると, Then: 同じ文言のまま復元される")
+      void restoresUnassignedReasonLabelDeterminedByPriorWorkDays() {
+        List<ShiftAssignment> assignments = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+          Employee employee =
+              Employee.working("Employee" + i, LocalTime.of(7, 30), LocalTime.of(18, 30))
+                  .withPriorWorkDays(2);
+          assignments.add(
+              new ShiftAssignment(
+                  employee,
+                  ShiftSlot.values()[Math.min(i, 5)],
+                  LocalTime.of(12, 0),
+                  LocalTime.of(12, 45)));
+        }
+        Employee ito =
+            Employee.working("Ito", LocalTime.of(7, 30), LocalTime.of(18, 30)).withPriorWorkDays(5);
+        AssignmentResult original = new AssignmentResult(assignments, 0, List.of(ito));
+        String expectedLabel = original.unassignedReasonLabel(ito);
+        assertEquals("入れる枠はあったが、同じずれの案があり、これまでの出勤日数が少ない Employee0 が選ばれた", expectedLabel);
+
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                new DailyShiftResult(LocalDate.of(2026, 10, 1), 9, Optional.of(original)));
+        List<MonthEmployee> names = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+          names.add(new MonthEmployee("Employee" + i, EmploymentType.FULL_TIME));
+        }
+        names.add(new MonthEmployee("Ito", EmploymentType.FULL_TIME));
+
+        repository.saveShift(result, names);
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        AssignmentResult restored = saved.result().days().get(0).assignment().orElseThrow();
+        Employee restoredIto =
+            restored.unassignedEmployees().stream()
+                .filter(e -> e.name().equals("Ito"))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(expectedLabel, restored.unassignedReasonLabel(restoredIto));
+      }
+
+      @Test
+      @DisplayName(
+          "[8.4] Given: prior_work_daysがNULLの割り当て・未出勤の行（旧データ相当）, When: 復元すると, Then:"
+              + " priorWorkDaysがnullで復元される")
+      void treatsNullPriorWorkDaysAsUnknown() {
+        jdbcClient
+            .sql(
+                "INSERT INTO saved_day (day_date, target_month, available_count, score) VALUES"
+                    + " ('2026-10-01', '2026-10', 9, 0)")
+            .update();
+        int index = 0;
+        for (ShiftSlot slot : ShiftSlot.values()) {
+          for (int i = 0; i < slot.numberOfEmployees(); i++) {
+            jdbcClient
+                .sql(
+                    "INSERT INTO saved_day_assignment (day_date, assignment_index, employee_name,"
+                        + " employment_type, wish_start, wish_end, slot, break_start, break_end)"
+                        + " VALUES ('2026-10-01', ?, ?, 'FULL_TIME', '07:30', '18:30', ?,"
+                        + " '12:00', '12:45')")
+                .params(index, "Employee" + index, slot.name())
+                .update();
+            index++;
+          }
+        }
+        jdbcClient
+            .sql(
+                "INSERT INTO saved_day_unassigned (day_date, unassigned_index, employee_name,"
+                    + " employment_type, off, wish_start, wish_end, reason) VALUES"
+                    + " ('2026-10-01', 0, 'Extra', 'FULL_TIME', false, '07:30', '18:30',"
+                    + " 'LOWER_GAP_CHOSEN')")
+            .update();
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        AssignmentResult restored = saved.result().days().get(0).assignment().orElseThrow();
+
+        for (ShiftAssignment assignment : restored.assignments()) {
+          assertNull(assignment.employee().priorWorkDays());
+        }
+        Employee extra = restored.unassignedEmployees().get(0);
+        assertNull(extra.priorWorkDays());
       }
     }
 

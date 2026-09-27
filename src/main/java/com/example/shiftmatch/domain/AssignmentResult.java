@@ -44,10 +44,13 @@ public record AssignmentResult(
    * 未出勤者の理由の表示文言を返します。
    *
    * <p>入れる枠があるのに割り当てられなかった人のうち、同じ枠に割り当て済みの人と入れ替えても H-3・H-4
-   * を満たしたままずれの合計が変わらない場合は、5.3 節の同点規則で優先された案を示します（7.2 節）：
+   * を満たしたままずれの合計が変わらない場合は、5.3 節の同点規則で優先された案を、次の順で示します（7.2 節）：
    *
    * <ul>
-   *   <li>未出勤者がパートで、割り当て済みの人がパートでない場合：パートの実労働時間が少ない案が選ばれたと示します
+   *   <li>未出勤者と割り当て済みの人の出勤日数（{@link Employee#priorWorkDays()}）がどちらも {@code null} でなく、
+   *       未出勤者の方が多い場合：出勤日数が少ない割り当て済みの人の氏名を示します
+   *   <li>出勤日数が同じ（どちらかが {@code null} の場合も同じとみなします）で、未出勤者がパート、割り当て済みの人が
+   *       パートでない場合：パートの実労働時間が少ない案が選ばれたと示します
    *   <li>それ以外：入力順で優先度が高い割り当て済みの人の氏名を示します
    * </ul>
    *
@@ -65,7 +68,19 @@ public record AssignmentResult(
       ShiftSlot slot = assignment.slot();
       if (employee.canAssign(slot) && employee.gapMinutes(slot) == assignment.gapMinutes()) {
         Employee assignedEmployee = assignment.employee();
-        if (employee.employmentType() == EmploymentType.PART_TIME
+        Integer unassignedDays = employee.priorWorkDays();
+        Integer assignedDays = assignedEmployee.priorWorkDays();
+        // 出勤日数が不明（null）のデータは、7.2 節のとおり出勤日数が同じものとして扱う
+        int priorWorkDaysComparison =
+            unassignedDays == null || assignedDays == null
+                ? 0
+                : Integer.compare(unassignedDays, assignedDays);
+        if (priorWorkDaysComparison > 0) {
+          return "入れる枠はあったが、同じずれの案があり、これまでの出勤日数が少ない " + assignedEmployee.name() + " が選ばれた";
+        }
+        // パートの実労働時間で決まるのは、出勤日数が同じときだけ（5.3 節の比較順）
+        if (priorWorkDaysComparison == 0
+            && employee.employmentType() == EmploymentType.PART_TIME
             && assignedEmployee.employmentType() != EmploymentType.PART_TIME) {
           return "入れる枠はあったが、同じずれの案があり、パートの実労働時間が少ない案が選ばれた";
         }

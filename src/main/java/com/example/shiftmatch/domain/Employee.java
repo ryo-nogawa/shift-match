@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * 従業員情報を表すレコード。
  *
- * <p>従業員の名前、雇用区分、勤務可能時間帯、休みの有無、週の残り時間（H-4）を保持します。
+ * <p>従業員の名前、雇用区分、勤務可能時間帯、休みの有無、週の残り時間（H-4）、これまでの出勤日数（5.6 節）を保持します。
  */
 public record Employee(
     String name,
@@ -14,10 +14,13 @@ public record Employee(
     boolean off,
     LocalTime start,
     LocalTime end,
-    Integer weeklyRemainingMinutes) {
+    Integer weeklyRemainingMinutes,
+    Integer priorWorkDays) {
 
   /**
    * 旧シグネチャのコンストラクタ（週の残り時間を上限なしで補う）。互換性のために残しています。
+   *
+   * <p>これまでの出勤日数（{@link #priorWorkDays()}）は不明として {@code null} を補います。
    *
    * @param name 従業員名
    * @param employmentType 雇用区分
@@ -27,11 +30,13 @@ public record Employee(
    */
   public Employee(
       String name, EmploymentType employmentType, boolean off, LocalTime start, LocalTime end) {
-    this(name, employmentType, off, start, end, null);
+    this(name, employmentType, off, start, end, null, null);
   }
 
   /**
    * 旧シグネチャのコンストラクタ（常勤・週の残り時間を上限なしで補う）。互換性のために残しています。
+   *
+   * <p>これまでの出勤日数（{@link #priorWorkDays()}）は不明として {@code null} を補います。
    *
    * @param name 従業員名
    * @param off 休みの有無
@@ -39,7 +44,27 @@ public record Employee(
    * @param end 勤務終了時刻
    */
   public Employee(String name, boolean off, LocalTime start, LocalTime end) {
-    this(name, EmploymentType.FULL_TIME, off, start, end, null);
+    this(name, EmploymentType.FULL_TIME, off, start, end, null, null);
+  }
+
+  /**
+   * 旧シグネチャのコンストラクタ（週の残り時間を指定し、これまでの出勤日数を不明で補う）。互換性のために残しています。
+   *
+   * @param name 従業員名
+   * @param employmentType 雇用区分
+   * @param off 休みの有無
+   * @param start 勤務開始時刻
+   * @param end 勤務終了時刻
+   * @param weeklyRemainingMinutes 週の残り時間（分）
+   */
+  public Employee(
+      String name,
+      EmploymentType employmentType,
+      boolean off,
+      LocalTime start,
+      LocalTime end,
+      Integer weeklyRemainingMinutes) {
+    this(name, employmentType, off, start, end, weeklyRemainingMinutes, null);
   }
 
   /**
@@ -51,7 +76,7 @@ public record Employee(
    * @return 新しい従業員インスタンス（常勤）
    */
   public static Employee working(String name, LocalTime start, LocalTime end) {
-    return new Employee(name, EmploymentType.FULL_TIME, false, start, end, null);
+    return new Employee(name, EmploymentType.FULL_TIME, false, start, end, null, null);
   }
 
   /**
@@ -65,7 +90,7 @@ public record Employee(
    */
   public static Employee working(
       String name, EmploymentType employmentType, LocalTime start, LocalTime end) {
-    return new Employee(name, employmentType, false, start, end, null);
+    return new Employee(name, employmentType, false, start, end, null, null);
   }
 
   /**
@@ -75,7 +100,7 @@ public record Employee(
    * @return 新しい従業員インスタンス（常勤、休み）
    */
   public static Employee onLeave(String name) {
-    return new Employee(name, EmploymentType.FULL_TIME, true, null, null, null);
+    return new Employee(name, EmploymentType.FULL_TIME, true, null, null, null, null);
   }
 
   /**
@@ -86,7 +111,7 @@ public record Employee(
    * @return 新しい従業員インスタンス（休み）
    */
   public static Employee onLeave(String name, EmploymentType employmentType) {
-    return new Employee(name, employmentType, true, null, null, null);
+    return new Employee(name, employmentType, true, null, null, null, null);
   }
 
   /**
@@ -107,11 +132,25 @@ public record Employee(
   /**
    * 週の残り時間だけを変えた新しいインスタンスを返します。
    *
+   * <p>これまでの出勤日数（{@link #priorWorkDays()}）は変更前の値を保ちます。
+   *
    * @param minutes 週の残り時間（分）
    * @return 週の残り時間を変えた新しい従業員インスタンス
    */
   public Employee withWeeklyRemainingMinutes(int minutes) {
-    return new Employee(name, employmentType, off, start, end, minutes);
+    return new Employee(name, employmentType, off, start, end, minutes, priorWorkDays);
+  }
+
+  /**
+   * これまでの出勤日数（5.6 節）だけを変えた新しいインスタンスを返します。
+   *
+   * <p>週の残り時間（{@link #weeklyRemainingMinutes()}）は変更前の値を保ちます。
+   *
+   * @param days これまでの出勤日数
+   * @return これまでの出勤日数を変えた新しい従業員インスタンス
+   */
+  public Employee withPriorWorkDays(int days) {
+    return new Employee(name, employmentType, off, start, end, weeklyRemainingMinutes, days);
   }
 
   /**

@@ -84,6 +84,10 @@ CREATE TABLE IF NOT EXISTS saved_day_unassigned (
 
 ALTER TABLE saved_day_unassigned ADD COLUMN IF NOT EXISTS weekly_remaining_minutes INT NULL;
 
+ALTER TABLE saved_day_assignment ADD COLUMN IF NOT EXISTS prior_work_days INT NULL;
+
+ALTER TABLE saved_day_unassigned ADD COLUMN IF NOT EXISTS prior_work_days INT NULL;
+
 CREATE TABLE IF NOT EXISTS holiday (
   holiday_date DATE PRIMARY KEY,
   name VARCHAR(64) NOT NULL

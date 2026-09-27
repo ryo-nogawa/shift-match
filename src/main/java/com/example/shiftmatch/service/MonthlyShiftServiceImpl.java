@@ -68,6 +68,8 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
     // H-4 の週は月〜金の営業日のうち対象月に含まれる日だけなので、営業日を日付順に処理し、
     // 週（月曜日）が変わるたびにパートの週の実労働時間の合計をリセットする（5.5 節）
     Map<String, Integer> partWeeklyActualWorkMinutes = new HashMap<>();
+    // これまでの出勤日数（5.6 節）は対象月単位で 0 から数え、週をまたいでもリセットしない
+    Map<String, Integer> priorWorkDaysByName = new HashMap<>();
     LocalDate currentWeekMonday = null;
     for (LocalDate businessDay : holidayService.businessDays(input.month())) {
       LocalDate weekMonday = businessDay.with(DayOfWeek.MONDAY);
@@ -75,7 +77,8 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
         partWeeklyActualWorkMinutes.clear();
         currentWeekMonday = weekMonday;
       }
-      DailyShiftResult dayResult = createForDay(businessDay, input, partWeeklyActualWorkMinutes);
+      DailyShiftResult dayResult =
+          createForDay(businessDay, input, partWeeklyActualWorkMinutes, priorWorkDaysByName);
       results.add(dayResult);
       rationaleLogger.log(businessDay, dayResult);
     }
@@ -84,7 +87,10 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
   }
 
   private DailyShiftResult createForDay(
-      LocalDate date, MonthlyShiftInput input, Map<String, Integer> partWeeklyActualWorkMinutes) {
+      LocalDate date,
+      MonthlyShiftInput input,
+      Map<String, Integer> partWeeklyActualWorkMinutes,
+      Map<String, Integer> priorWorkDaysByName) {
     // 従業員のうち、名前が空でないものだけを対象
     List<Employee> employees = new ArrayList<>();
     for (EmployeeProfile profile : input.employees()) {
@@ -97,23 +103,42 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
     // 勤務できる人の数（有効な従業員のうち休みでない人）
     int availableCount = (int) employees.stream().filter(e -> !e.off()).count();
 
-    // パートには週の残り時間（H-4）を設定してから割り当てを算出する（5.5 節 2）
+    // これまでの出勤日数（5.6 節）を全員に設定してから、パートには週の残り時間（H-4）を設定する（5.5 節 2）
+    List<Employee> employeesWithPriorWorkDays = applyPriorWorkDays(employees, priorWorkDaysByName);
     List<Employee> employeesWithWeeklyLimit =
-        applyWeeklyRemainingMinutes(employees, partWeeklyActualWorkMinutes);
+        applyWeeklyRemainingMinutes(employeesWithPriorWorkDays, partWeeklyActualWorkMinutes);
     Optional<AssignmentResult> assignment = assignmentService.assign(employeesWithWeeklyLimit);
 
     if (assignment.isPresent()) {
       accumulatePartTimeActualWorkMinutes(assignment.get(), partWeeklyActualWorkMinutes);
+      accumulatePriorWorkDays(assignment.get(), priorWorkDaysByName);
       return new DailyShiftResult(date, availableCount, assignment);
     }
 
     // 不成立の理由（6 章）は、H-4 を除いた従業員（週の残り時間なしの元の候補）でもう一度 assign を呼び、
     // 案があればパートの週上限、なければ人員不足と判定する（枠ごとの可能人数を独立に数えると誤判定するため）
     FailureReason failureReason =
-        assignmentService.assign(employees).isPresent()
+        assignmentService.assign(employeesWithPriorWorkDays).isPresent()
             ? FailureReason.WEEKLY_LIMIT
             : FailureReason.STAFF_SHORTAGE;
     return new DailyShiftResult(date, availableCount, Optional.empty(), failureReason);
+  }
+
+  private List<Employee> applyPriorWorkDays(
+      List<Employee> employees, Map<String, Integer> priorWorkDaysByName) {
+    List<Employee> result = new ArrayList<>();
+    for (Employee employee : employees) {
+      result.add(employee.withPriorWorkDays(priorWorkDaysByName.getOrDefault(employee.name(), 0)));
+    }
+    return result;
+  }
+
+  private void accumulatePriorWorkDays(
+      AssignmentResult assignment, Map<String, Integer> priorWorkDaysByName) {
+    for (ShiftAssignment shiftAssignment : assignment.assignments()) {
+      String name = shiftAssignment.employee().name();
+      priorWorkDaysByName.put(name, priorWorkDaysByName.getOrDefault(name, 0) + 1);
+    }
   }
 
   private List<Employee> applyWeeklyRemainingMinutes(

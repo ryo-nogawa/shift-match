@@ -190,5 +190,76 @@ class SelectionRationaleLoggerTest {
       assertTrue(hasDate1, "日付 1 のログが含まれるべき");
       assertTrue(hasDate2, "日付 2 のログが含まれるべき");
     }
+
+    @Test
+    @DisplayName("[7.2] Given: 割り当てられた従業員の出勤日数が3のとき, When: log を実行すると, Then: 割当行に出勤日数=3が含まれる")
+    void logIncludesPriorWorkDaysForAssignedEmployee() {
+      LocalDate date = LocalDate.of(2024, 9, 2);
+
+      ShiftAssignment mockAssignment = mock(ShiftAssignment.class);
+      Employee mockEmployee = mock(Employee.class);
+      when(mockEmployee.name()).thenReturn("Taro");
+      when(mockEmployee.start()).thenReturn(LocalTime.of(7, 30));
+      when(mockEmployee.end()).thenReturn(LocalTime.of(14, 30));
+      when(mockEmployee.workableSlots()).thenReturn(List.of(ShiftSlot.SLOT_1));
+      when(mockEmployee.priorWorkDays()).thenReturn(3);
+      when(mockAssignment.employee()).thenReturn(mockEmployee);
+      when(mockAssignment.slot()).thenReturn(ShiftSlot.SLOT_1);
+      when(mockAssignment.gapMinutes()).thenReturn(0);
+
+      AssignmentResult mockResult = mock(AssignmentResult.class);
+      when(mockResult.assignments()).thenReturn(List.of(mockAssignment));
+      when(mockResult.unassignedEmployees()).thenReturn(List.of());
+      when(mockResult.gapMinutesList()).thenReturn(List.of(0));
+      when(mockResult.score()).thenReturn(0);
+
+      DailyShiftResult dailyResult = new DailyShiftResult(date, 8, Optional.of(mockResult));
+
+      listAppender.list.clear();
+      logger.log(date, dailyResult);
+
+      boolean containsPriorWorkDays =
+          listAppender.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getFormattedMessage().contains("割当")
+                          && event.getFormattedMessage().contains("出勤日数=3"));
+      assertTrue(containsPriorWorkDays, "割当行に出勤日数=3が含まれるべき");
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2] Given: 未出勤者の出勤日数がnull（不明）で、これまでの出勤日数の文言が理由のとき, When: log を実行すると,"
+            + " Then: 未出勤行に出勤日数=-と出勤日数の文言が含まれる")
+    void logIncludesPriorWorkDaysAndReasonForUnassignedEmployee() {
+      LocalDate date = LocalDate.of(2024, 9, 2);
+
+      Employee unassignedEmployee = mock(Employee.class);
+      when(unassignedEmployee.name()).thenReturn("Hanako");
+      when(unassignedEmployee.workableSlots()).thenReturn(List.of(ShiftSlot.SLOT_1));
+      when(unassignedEmployee.priorWorkDays()).thenReturn(null);
+
+      AssignmentResult mockResult = mock(AssignmentResult.class);
+      when(mockResult.assignments()).thenReturn(List.of());
+      when(mockResult.unassignedEmployees()).thenReturn(List.of(unassignedEmployee));
+      when(mockResult.gapMinutesList()).thenReturn(List.of());
+      when(mockResult.score()).thenReturn(0);
+      when(mockResult.unassignedReasonLabel(unassignedEmployee))
+          .thenReturn("入れる枠はあったが、同じずれの案があり、これまでの出勤日数が少ない Ito が選ばれた");
+
+      DailyShiftResult dailyResult = new DailyShiftResult(date, 8, Optional.of(mockResult));
+
+      listAppender.list.clear();
+      logger.log(date, dailyResult);
+
+      boolean containsUnassignedLine =
+          listAppender.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getFormattedMessage().contains("未出勤")
+                          && event.getFormattedMessage().contains("出勤日数=-")
+                          && event.getFormattedMessage().contains("これまでの出勤日数が少ない Ito が選ばれた"));
+      assertTrue(containsUnassignedLine, "未出勤行に出勤日数=-と理由の文言が含まれるべき");
+    }
   }
 }

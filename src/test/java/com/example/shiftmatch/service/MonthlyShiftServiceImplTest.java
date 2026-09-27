@@ -528,6 +528,235 @@ class MonthlyShiftServiceImplTest {
     }
   }
 
+  @Nested
+  @DisplayName("[5.6] これまでの出勤日数の引き継ぎ")
+  class PriorWorkDaysCarryOver {
+
+    private MonthlyShiftServiceImpl serviceWithRealAssignment(
+        HolidayService holidayService, List<LocalDate> businessDays, YearMonth month) {
+      when(holidayService.businessDays(month)).thenReturn(businessDays);
+      when(holidayService.isSupported(month)).thenReturn(true);
+
+      ShiftAssignmentService assignmentService = new ShiftAssignmentServiceImpl();
+      MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
+      when(inputValidator.validate(any())).thenReturn(new ArrayList<>());
+      SelectionRationaleLogger logger = mock(SelectionRationaleLogger.class);
+
+      return new MonthlyShiftServiceImpl(holidayService, assignmentService, inputValidator, logger);
+    }
+
+    private List<EmployeeProfile> defaultFullTimeEmployees(int count) {
+      List<EmployeeProfile> profiles = new ArrayList<>();
+      for (int i = 0; i < count; i++) {
+        profiles.add(new EmployeeProfile("Employee" + i, EmploymentType.FULL_TIME, Set.of()));
+      }
+      return profiles;
+    }
+
+    private List<LocalDate> businessDaysStartingMonday(int count) {
+      List<LocalDate> days = new ArrayList<>();
+      LocalDate date = LocalDate.of(2024, 9, 2); // Monday
+      while (days.size() < count) {
+        if (date.getDayOfWeek() != DayOfWeek.SATURDAY && date.getDayOfWeek() != DayOfWeek.SUNDAY) {
+          days.add(date);
+        }
+        date = date.plusDays(1);
+      }
+      return days;
+    }
+
+    private int assignedDaysBefore(List<DailyShiftResult> priorDays, String name) {
+      int count = 0;
+      for (DailyShiftResult day : priorDays) {
+        if (day.assignment().isEmpty()) {
+          continue;
+        }
+        boolean assigned =
+            day.assignment().get().assignments().stream()
+                .anyMatch(a -> a.employee().name().equals(name));
+        if (assigned) {
+          count++;
+        }
+      }
+      return count;
+    }
+
+    @Test
+    @DisplayName(
+        "[5.6] Given: 既定時間帯の常勤9名で曜日休み・個別変更なしの10営業日のとき, When: createを実行すると, Then:"
+            + " 各人の出勤日数の最大と最小の差が1日以内である")
+    void keepsMaxMinDifferenceWithinOneDayForNineEmployees() {
+      YearMonth month = YearMonth.of(2024, 9);
+      List<LocalDate> businessDays = businessDaysStartingMonday(10);
+
+      HolidayService holidayService = mock(HolidayService.class);
+      MonthlyShiftServiceImpl service =
+          serviceWithRealAssignment(holidayService, businessDays, month);
+
+      MonthlyShiftInput input =
+          new MonthlyShiftInput(month, defaultFullTimeEmployees(9), new ArrayList<>());
+
+      MonthlyShiftResult result = service.create(input);
+
+      Map<String, Integer> totalDays = countAssignedDays(result.days(), 9);
+
+      int max = maxValue(totalDays);
+      int min = minValue(totalDays);
+      assertTrue(max - min <= 1, "出勤日数の最大と最小の差は1日以内であるはず（実際：max=" + max + " min=" + min + "）");
+    }
+
+    @Test
+    @DisplayName(
+        "[5.6] Given: 既定時間帯の常勤12名で曜日休み・個別変更なしの10営業日のとき, When: createを実行すると, Then:"
+            + " 各人の出勤日数の最大と最小の差が1日以内である")
+    void keepsMaxMinDifferenceWithinOneDayForTwelveEmployees() {
+      YearMonth month = YearMonth.of(2024, 9);
+      List<LocalDate> businessDays = businessDaysStartingMonday(10);
+
+      HolidayService holidayService = mock(HolidayService.class);
+      MonthlyShiftServiceImpl service =
+          serviceWithRealAssignment(holidayService, businessDays, month);
+
+      MonthlyShiftInput input =
+          new MonthlyShiftInput(month, defaultFullTimeEmployees(12), new ArrayList<>());
+
+      MonthlyShiftResult result = service.create(input);
+
+      Map<String, Integer> totalDays = countAssignedDays(result.days(), 12);
+
+      int max = maxValue(totalDays);
+      int min = minValue(totalDays);
+      assertTrue(max - min <= 1, "出勤日数の最大と最小の差は1日以内であるはず（実際：max=" + max + " min=" + min + "）");
+    }
+
+    private Map<String, Integer> countAssignedDays(List<DailyShiftResult> days, int employeeCount) {
+      Map<String, Integer> totalDays = new java.util.HashMap<>();
+      for (DailyShiftResult day : days) {
+        assertTrue(day.assignment().isPresent(), day.date() + " は成立するはず");
+        for (ShiftAssignment assignment : day.assignment().get().assignments()) {
+          String name = assignment.employee().name();
+          totalDays.put(name, totalDays.getOrDefault(name, 0) + 1);
+        }
+      }
+      for (int i = 0; i < employeeCount; i++) {
+        totalDays.putIfAbsent("Employee" + i, 0);
+      }
+      return totalDays;
+    }
+
+    private int maxValue(Map<String, Integer> values) {
+      int max = Integer.MIN_VALUE;
+      for (int value : values.values()) {
+        if (value > max) {
+          max = value;
+        }
+      }
+      return max;
+    }
+
+    private int minValue(Map<String, Integer> values) {
+      int min = Integer.MAX_VALUE;
+      for (int value : values.values()) {
+        if (value < min) {
+          min = value;
+        }
+      }
+      return min;
+    }
+
+    @Test
+    @DisplayName(
+        "[5.6] Given: 既定時間帯の常勤9名で曜日休み・個別変更なしの10営業日のとき, When: createを実行すると, Then:"
+            + " 各営業日のずれの合計は変更前と同じ1380である")
+    void keepsScoreUnchanged() {
+      YearMonth month = YearMonth.of(2024, 9);
+      List<LocalDate> businessDays = businessDaysStartingMonday(10);
+
+      HolidayService holidayService = mock(HolidayService.class);
+      MonthlyShiftServiceImpl service =
+          serviceWithRealAssignment(holidayService, businessDays, month);
+
+      MonthlyShiftInput input =
+          new MonthlyShiftInput(month, defaultFullTimeEmployees(9), new ArrayList<>());
+
+      MonthlyShiftResult result = service.create(input);
+
+      for (DailyShiftResult day : result.days()) {
+        assertTrue(day.assignment().isPresent(), day.date() + " は成立するはず");
+        assertEquals(1380, day.assignment().get().score(), day.date() + " のずれの合計が変わっている");
+      }
+    }
+
+    @Test
+    @DisplayName(
+        "[5.6] Given: 既定時間帯の常勤9名で曜日休み・個別変更なしの10営業日のとき, When: createを実行すると, Then:"
+            + " 各日の割り当てられた従業員のpriorWorkDaysが、その日より前の割り当て日数と一致する")
+    void assignedEmployeePriorWorkDaysMatchesActualCount() {
+      YearMonth month = YearMonth.of(2024, 9);
+      List<LocalDate> businessDays = businessDaysStartingMonday(10);
+
+      HolidayService holidayService = mock(HolidayService.class);
+      MonthlyShiftServiceImpl service =
+          serviceWithRealAssignment(holidayService, businessDays, month);
+
+      MonthlyShiftInput input =
+          new MonthlyShiftInput(month, defaultFullTimeEmployees(9), new ArrayList<>());
+
+      MonthlyShiftResult result = service.create(input);
+      List<DailyShiftResult> days = result.days();
+
+      for (int i = 0; i < days.size(); i++) {
+        DailyShiftResult day = days.get(i);
+        assertTrue(day.assignment().isPresent(), day.date() + " は成立するはず");
+        List<DailyShiftResult> priorDays = days.subList(0, i);
+        for (ShiftAssignment assignment : day.assignment().get().assignments()) {
+          String name = assignment.employee().name();
+          int expected = assignedDaysBefore(priorDays, name);
+          assertEquals(
+              expected,
+              assignment.employee().priorWorkDays(),
+              day.date() + " の " + name + " のpriorWorkDaysが一致しない");
+        }
+      }
+    }
+
+    @Test
+    @DisplayName(
+        "[5.6] Given: 8名ちょうどの常勤で2日目だけ1名を個別変更で休みにして不成立にした3営業日のとき, When: createを実行すると,"
+            + " Then: 3日目の出勤日数は1日目の分だけが数えられ、不成立の2日目は数えられない")
+    void doesNotCountUnsuccessfulDay() {
+      YearMonth month = YearMonth.of(2024, 9);
+      LocalDate day1 = LocalDate.of(2024, 9, 2);
+      LocalDate day2 = LocalDate.of(2024, 9, 3);
+      LocalDate day3 = LocalDate.of(2024, 9, 4);
+      List<LocalDate> businessDays = List.of(day1, day2, day3);
+
+      HolidayService holidayService = mock(HolidayService.class);
+      MonthlyShiftServiceImpl service =
+          serviceWithRealAssignment(holidayService, businessDays, month);
+
+      ShiftAdjustment offOnDay2 =
+          new ShiftAdjustment(day2, "Employee0", new DailyWish(true, null, null));
+      MonthlyShiftInput input =
+          new MonthlyShiftInput(month, defaultFullTimeEmployees(8), List.of(offOnDay2));
+
+      MonthlyShiftResult result = service.create(input);
+      List<DailyShiftResult> days = result.days();
+      assertEquals(3, days.size());
+
+      assertTrue(days.get(0).assignment().isPresent(), "1日目は成立するはず");
+      assertTrue(days.get(1).assignment().isEmpty(), "2日目は不成立のはず（7名しか勤務できない）");
+      assertTrue(days.get(2).assignment().isPresent(), "3日目は成立するはず");
+
+      for (ShiftAssignment assignment : days.get(2).assignment().get().assignments()) {
+        assertEquals(
+            1,
+            assignment.employee().priorWorkDays(),
+            "3日目の" + assignment.employee().name() + "のpriorWorkDaysは1日目の分だけのはず");
+      }
+    }
+  }
+
   private Optional<AssignmentResult> createDummyAssignmentResult() {
     List<ShiftAssignment> assignments = new ArrayList<>();
     com.example.shiftmatch.domain.ShiftSlot[] slots =
