@@ -149,6 +149,14 @@ class ShiftControllerTest {
         .thenThrow(new InvalidMonthlyInputException(List.of(errors)));
   }
 
+  /** name 属性が一致する select の開始タグ（{@code <select ...>}）の文字列を返します。 */
+  private static String selectTagOf(String html, String name) {
+    int nameIndex = html.indexOf("name=\"" + name + "\"");
+    assertTrue(nameIndex >= 0, name + " が描画されていません");
+    int start = html.lastIndexOf("<select", nameIndex);
+    return html.substring(start, html.indexOf(">", nameIndex));
+  }
+
   private static String employeesPanelOf(String html) {
     int start = html.indexOf("id=\"tab-employees\"");
     assertTrue(start >= 0, "tab-employees");
@@ -186,12 +194,13 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-1] Given: 初めて画面を開くとき, When: GET / の HTML を見ると,"
-            + " Then: 曜日休み列があり、パートの行だけチェックボックスが有効で保存済みの曜日にチェックが付く")
+            + " Then: 一覧に基本シフト列（曜日休み列はない）があり、パネルの曜日休みチェックボックスはパートの行だけ有効で保存済みの曜日にチェックが付く")
     void rendersOffDayCheckboxes() throws Exception {
       String html = bodyOf(perform(get("/")));
 
-      assertTrue(html.contains("<th>曜日休み</th>"));
-      assertFalse(html.contains("base-panel"));
+      assertTrue(html.contains("<th>基本シフト</th>"));
+      assertFalse(html.contains("<th>曜日休み</th>"));
+      assertTrue(html.contains("class=\"base-panel\""));
       // デモ 6 人目（渡辺陽子）はパートで月・水が曜日休み
       assertEquals(
           60, html.split("class=\"off-day-checkbox\"", -1).length - 1, "12 行 × 5 曜日のチェックボックス");
@@ -202,6 +211,38 @@ class ShiftControllerTest {
       assertFalse(monday.contains("disabled"));
       String fullTimeRow = html.substring(html.indexOf("name=\"employees[0].offDays\""));
       assertTrue(fullTimeRow.substring(0, fullTimeRow.indexOf("/>")).contains("disabled"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 初めて画面を開くとき, When: GET / の HTML を見ると,"
+            + " Then: 曜日ごとの開始・終了 select があり、パートの曜日休みの曜日は disabled になる")
+    void rendersDayFieldsAndDisablesOffDaySelects() throws Exception {
+      String html = bodyOf(perform(get("/")));
+
+      assertTrue(html.contains("name=\"employees[0].days[0].start\""));
+      assertTrue(html.contains("name=\"employees[0].days[4].end\""));
+      // デモ 6 人目（渡辺陽子）はパートで月（0）・水（2）が曜日休み
+      assertTrue(selectTagOf(html, "employees[5].days[0].start").contains("disabled"));
+      assertTrue(selectTagOf(html, "employees[5].days[2].end").contains("disabled"));
+      assertFalse(selectTagOf(html, "employees[5].days[1].start").contains("disabled"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: 基本シフトを含む POST, When: POST /shift を呼ぶと, Then: 算出まで進み initialStep=3 になる")
+    void acceptsBaseShiftFieldsInPost() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of()));
+
+      MvcResult result =
+          perform(
+              validRequest()
+                  .param("employees[0].days[1].start", "09:00")
+                  .param("employees[0].days[1].end", "17:00"));
+
+      assertEquals(3, modelOf(result).get("initialStep"));
+      assertNull(modelOf(result).get("inputErrors"));
     }
 
     @Test
