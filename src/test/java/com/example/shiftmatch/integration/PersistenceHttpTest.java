@@ -115,6 +115,20 @@ class PersistenceHttpTest {
 
     @Test
     @DisplayName(
+        "[F-4][F-7][7.1節][8.4節] Given: パートの従業員でシフトを作成して保存した, When: GET /shift/saved を呼ぶと,"
+            + " Then: 月間勤務時間のタブに保存した区分が表示される")
+    void showsSavedEmploymentTypesInMonthlyHours() throws Exception {
+      create("2026-10", "E");
+
+      String html = savedHtml("2026-10");
+
+      String panel = html.substring(html.indexOf("id=\"tab-monthly\""));
+      assertTrue(panel.contains(">パート<"));
+      assertFalse(panel.contains(">常勤<"));
+    }
+
+    @Test
+    @DisplayName(
         "[F-7] Given: 従業員と個別変更を送って作成した, When: GET / を開くと," + " Then: 従業員と個別変更が復元され、対象月は最後の月になる")
     void restoresInputAndLastMonthOnGet() throws Exception {
       mockMvc

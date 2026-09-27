@@ -9,6 +9,7 @@ import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
@@ -74,14 +75,16 @@ class MonthlyResultViewFactoryTest {
     return new DailyShiftResult(date, availableCount, Optional.empty());
   }
 
-  private static List<String> names(String... names) {
-    return List.of(names);
+  private static List<MonthEmployee> names(String... names) {
+    return java.util.Arrays.stream(names)
+        .map(name -> new MonthEmployee(name, EmploymentType.FULL_TIME))
+        .toList();
   }
 
   private MonthlyResultView createView(
-      List<DailyShiftResult> days, List<String> employeeNames, Map<LocalDate, String> holidays) {
+      List<DailyShiftResult> days, List<MonthEmployee> employees, Map<LocalDate, String> holidays) {
     return factory.create(
-        new MonthlyShiftResult(YearMonth.of(2026, 10), days), employeeNames, holidays);
+        new MonthlyShiftResult(YearMonth.of(2026, 10), days), employees, holidays);
   }
 
   @Nested
@@ -247,7 +250,11 @@ class MonthlyResultViewFactoryTest {
       DailyShiftResult day1 = dayWith(DAY_1, partTime, ShiftSlot.SLOT_1);
       DailyShiftResult day3 = dayWith(DAY_3, partTime, ShiftSlot.SLOT_6);
 
-      MonthlyResultView view = createView(List.of(day1, day3), names("e1"), Map.of());
+      MonthlyResultView view =
+          createView(
+              List.of(day1, day3),
+              List.of(new MonthEmployee("e1", EmploymentType.PART_TIME)),
+              Map.of());
 
       MonthlyResultView.MonthlyHours row = view.monthlyHoursRows().get(0);
       assertEquals("e1", row.name());
@@ -288,14 +295,23 @@ class MonthlyResultViewFactoryTest {
 
     @Test
     @DisplayName(
-        "[F-4][7.1節] Given: 全日不成立で従業員がどの日にも現れない, When: 表示モデルを作ると," + " Then: 行は出て区分は空文字・0 分になる")
-    void leavesEmploymentTypeEmptyWhenNeverAppears() {
-      MonthlyResultView view = createView(List.of(failedDay(DAY_1, 3)), names("e1"), Map.of());
+        "[F-4][7.1節] Given: 全営業日が不成立で区分の異なる従業員, When: 表示モデルを作ると,"
+            + " Then: 行は出て、区分は従業員の区分で 0 分・出勤日数 0 になる")
+    void showsEmploymentTypeWhenAllDaysFailed() {
+      MonthlyResultView view =
+          createView(
+              List.of(failedDay(DAY_1, 3)),
+              List.of(
+                  new MonthEmployee("e1", EmploymentType.MANAGER),
+                  new MonthEmployee("e2", EmploymentType.PART_TIME),
+                  new MonthEmployee("e3", EmploymentType.FULL_TIME)),
+              Map.of());
 
-      MonthlyResultView.MonthlyHours row = view.monthlyHoursRows().get(0);
-      assertEquals("", row.employmentTypeLabel());
-      assertEquals(0, row.workDays());
-      assertEquals(0, row.totalMinutes());
+      assertEquals(
+          List.of("管理職", "パート", "常勤"),
+          view.monthlyHoursRows().stream().map(r -> r.employmentTypeLabel()).toList());
+      assertEquals(0, view.monthlyHoursRows().get(0).workDays());
+      assertEquals(0, view.monthlyHoursRows().get(0).totalMinutes());
     }
 
     @Test

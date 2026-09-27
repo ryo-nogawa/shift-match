@@ -524,6 +524,24 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[F-4][7.1節] Given: 全営業日が不成立の結果, When: POST /shift の HTML を見ると,"
+            + " Then: 月間勤務時間のタブに従業員の区分が表示される")
+    void rendersEmploymentTypesWhenAllDaysFailed() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10),
+                  List.of(new DailyShiftResult(LocalDate.of(2026, 10, 1), 5, Optional.empty()))));
+
+      String html = bodyOf(perform(monthlyHoursRequest()));
+
+      String panel = monthlyPanelOf(html);
+      assertTrue(panel.indexOf(">常勤<") >= 0);
+      assertTrue(panel.indexOf(">パート<") >= 0);
+    }
+
+    @Test
+    @DisplayName(
         "[F-4][7.1節] Given: 不成立の日がない結果, When: POST /shift の HTML を見ると," + " Then: 月間勤務時間の注記は出ない")
     void omitsFailureNoteWhenNoFailedDay() throws Exception {
       when(monthlyShiftService.create(any()))
@@ -952,6 +970,35 @@ class ShiftControllerTest {
       assertTrue(panel.contains(">常勤<"));
       assertTrue(panel.contains(">(06:15)<"));
       assertTrue(panel.contains(">合計<"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][F-7][7.1節] Given: 全営業日が不成立の保存済みシフト, When: GET /shift/saved を呼ぶと,"
+            + " Then: 月間勤務時間のタブに保存した区分が表示される")
+    void returnsEmploymentTypesForSavedWithAllDaysFailed() throws Exception {
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(
+              MONTH, List.of(new DailyShiftResult(LocalDate.of(2026, 10, 1), 5, Optional.empty())));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly,
+                      List.of(
+                          new MonthEmployee("A", EmploymentType.MANAGER),
+                          new MonthEmployee("B", EmploymentType.PART_TIME)))));
+
+      String html =
+          bodyOf(
+              mockMvc
+                  .perform(get("/shift/saved").param("month", "2026-10"))
+                  .andExpect(status().isOk())
+                  .andReturn());
+
+      String panel = html.substring(html.indexOf("id=\"tab-monthly\""));
+      assertTrue(panel.contains(">管理職<"));
+      assertTrue(panel.contains(">パート<"));
     }
 
     @Test

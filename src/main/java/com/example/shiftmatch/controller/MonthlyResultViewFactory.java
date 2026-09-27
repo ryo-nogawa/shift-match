@@ -8,6 +8,7 @@ import com.example.shiftmatch.controller.MonthlyResultView.WorkGroup;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
@@ -38,12 +39,12 @@ public class MonthlyResultViewFactory {
    * 表示モデルを作ります。
    *
    * @param result 月間シフトの結果
-   * @param employeeNames 従業員名（入力順）
+   * @param employees 従業員（氏名と区分。入力順）
    * @param holidays 対象月の祝日（日付から祝日名）
    * @return 表示モデル
    */
   public MonthlyResultView create(
-      MonthlyShiftResult result, List<String> employeeNames, Map<LocalDate, String> holidays) {
+      MonthlyShiftResult result, List<MonthEmployee> employees, Map<LocalDate, String> holidays) {
     List<DailyShiftResult> dailyResults = result.days();
     int failureCount = 0;
     List<CalendarDay> days = new ArrayList<>();
@@ -54,12 +55,12 @@ public class MonthlyResultViewFactory {
       days.add(toCalendarDay(daily, holidays.get(daily.date())));
     }
     List<EmployeeRow> rows = new ArrayList<>();
-    for (String name : employeeNames) {
-      rows.add(toEmployeeRow(name, dailyResults));
+    for (MonthEmployee employee : employees) {
+      rows.add(toEmployeeRow(employee.name(), dailyResults));
     }
     List<MonthlyHours> monthlyHoursRows = new ArrayList<>();
-    for (String name : employeeNames) {
-      monthlyHoursRows.add(toMonthlyHours(name, dailyResults));
+    for (MonthEmployee employee : employees) {
+      monthlyHoursRows.add(toMonthlyHours(employee, dailyResults));
     }
     return new MonthlyResultView(
         dailyResults.size(),
@@ -71,38 +72,24 @@ public class MonthlyResultViewFactory {
         monthlyHoursRows);
   }
 
-  private static MonthlyHours toMonthlyHours(String name, List<DailyShiftResult> dailyResults) {
-    String label = "";
-    boolean labelFound = false;
+  private static MonthlyHours toMonthlyHours(
+      MonthEmployee employee, List<DailyShiftResult> dailyResults) {
     int workDays = 0;
     int totalMinutes = 0;
     for (DailyShiftResult daily : dailyResults) {
       if (daily.assignment().isEmpty()) {
         continue;
       }
-      AssignmentResult assignment = daily.assignment().get();
-      for (ShiftAssignment shiftAssignment : assignment.assignments()) {
-        if (shiftAssignment.employee().name().equals(name)) {
+      for (ShiftAssignment shiftAssignment : daily.assignment().get().assignments()) {
+        if (shiftAssignment.employee().name().equals(employee.name())) {
           ShiftSlot slot = shiftAssignment.slot();
           workDays++;
           totalMinutes += slot.workMinutes() - slot.breakDurationMinutes();
-          if (!labelFound) {
-            label = shiftAssignment.employee().employmentType().label();
-            labelFound = true;
-          }
-        }
-      }
-      if (!labelFound) {
-        for (Employee unassigned : assignment.unassignedEmployees()) {
-          if (unassigned.name().equals(name)) {
-            label = unassigned.employmentType().label();
-            labelFound = true;
-            break;
-          }
         }
       }
     }
-    return new MonthlyHours(name, label, workDays, totalMinutes);
+    return new MonthlyHours(
+        employee.name(), employee.employmentType().label(), workDays, totalMinutes);
   }
 
   private static CalendarDay toCalendarDay(DailyShiftResult daily, String holidayName) {
