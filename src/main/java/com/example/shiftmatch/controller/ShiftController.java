@@ -241,6 +241,9 @@ public class ShiftController {
     // フォームをドメインモデルに変換
     MonthlyShiftInput input = monthlyFormConverter.toInput(shiftForm);
 
+    // 再表示のために、各従業員の基本シフトを月〜金の 5 件にそろえる（変換より後に行い、V-3 の判定に影響させない）
+    normalizeDays(shiftForm.getEmployees());
+
     try {
       // シフト作成サービスを呼び出す
       var result = monthlyShiftService.create(input);
@@ -272,6 +275,59 @@ public class ShiftController {
       LOGGER.error("シフトの保存に失敗しました", e);
       model.addAttribute("saveError", SAVE_ERROR_MESSAGE);
     }
+  }
+
+  /** 基本シフトの曜日数（月〜金）。 */
+  private static final int WEEKDAY_COUNT = 5;
+
+  /**
+   * 再表示のために、各従業員の基本シフト（{@code days}）を月〜金の 5 件にそろえます。
+   *
+   * <p>5 件未満の従業員は末尾を補い、途中の {@code null} 要素も置き換えます。補う・置き換える曜日は、
+   * その従業員の {@code offDays} に含まれていれば開始 {@code 07:30}・終了 {@code 18:30}、
+   * 含まれていなければ開始・終了とも {@code null} にします。既存の要素の値は変えません。
+   * 5 件より多い場合は 5 件に切り詰めます。
+   *
+   * @param employees 従業員フォームのリスト
+   */
+  private void normalizeDays(List<EmployeeForm> employees) {
+    for (EmployeeForm employee : employees) {
+      normalizeDays(employee);
+    }
+  }
+
+  private void normalizeDays(EmployeeForm employee) {
+    List<DayForm> days = employee.getDays();
+    if (days == null) {
+      days = new ArrayList<>();
+      employee.setDays(days);
+    }
+    List<Integer> offDays = employee.getOffDays();
+    if (offDays == null) {
+      offDays = List.of();
+    }
+
+    for (int i = 0; i < WEEKDAY_COUNT; i++) {
+      boolean isOffDay = offDays.contains(i);
+      if (i >= days.size()) {
+        days.add(defaultDay(isOffDay));
+      } else if (days.get(i) == null) {
+        days.set(i, defaultDay(isOffDay));
+      }
+    }
+
+    if (days.size() > WEEKDAY_COUNT) {
+      days.subList(WEEKDAY_COUNT, days.size()).clear();
+    }
+  }
+
+  private static DayForm defaultDay(boolean isOffDay) {
+    DayForm day = new DayForm();
+    if (isOffDay) {
+      day.setStart(TimeOptions.VALUES.get(0));
+      day.setEnd(TimeOptions.VALUES.get(TimeOptions.VALUES.size() - 1));
+    }
+    return day;
   }
 
   private static List<MonthEmployee> monthEmployeesOf(MonthlyShiftInput input) {

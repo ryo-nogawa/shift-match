@@ -1035,6 +1035,66 @@ class ShiftControllerTest {
   }
 
   @Nested
+  class 基本シフトの再表示 {
+
+    @Test
+    @DisplayName(
+        "[8.1節] Given: パートで金曜だけ曜日休みの POST, When: POST /shift の HTML を見ると,"
+            + " Then: 金曜の開始 select があり disabled になる")
+    void rendersFridayOffDaySelectAsDisabled() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of()));
+
+      String html =
+          bodyOf(
+              perform(
+                  post("/shift")
+                      .param("targetMonth", "2026-10")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].employmentType", "PART_TIME")
+                      .param("employees[0].offDays", "4")));
+
+      assertTrue(selectTagOf(html, "employees[0].days[4].start").contains("disabled"));
+    }
+
+    @Test
+    @DisplayName(
+        "[8.1節] Given: 全曜日が曜日休みのパートの POST, When: POST /shift の HTML を見ると,"
+            + " Then: days[0]〜days[4] の select がすべて描画される")
+    void rendersAllDaySelectsWhenAllDaysAreOff() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of()));
+
+      String html =
+          bodyOf(
+              perform(
+                  post("/shift")
+                      .param("targetMonth", "2026-10")
+                      .param("employees[0].name", "A")
+                      .param("employees[0].employmentType", "PART_TIME")
+                      .param("employees[0].offDays", "0", "1", "2", "3", "4")));
+
+      for (int i = 0; i < 5; i++) {
+        assertTrue(html.contains("name=\"employees[0].days[" + i + "].start\""), "days[" + i + "]");
+      }
+    }
+
+    @Test
+    @DisplayName(
+        "[8.1節] Given: 入力エラーで再表示するとき, When: POST /shift の HTML を見ると,"
+            + " Then: days[0]〜days[4] の select が 5 行そろう")
+    void rendersFiveDayRowsOnInputError() throws Exception {
+      throwInputErrors(new InputError("V-2", "氏名「A」が重複しています"));
+
+      String html = bodyOf(perform(validRequest()));
+
+      for (int i = 0; i < 5; i++) {
+        assertTrue(html.contains("name=\"employees[0].days[" + i + "].start\""), "days[" + i + "]");
+      }
+    }
+  }
+
+  @Nested
   class 結果パネルの属性 {
 
     @Test
