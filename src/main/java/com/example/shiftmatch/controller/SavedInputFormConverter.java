@@ -36,10 +36,29 @@ public class SavedInputFormConverter {
           DayOfWeek.THURSDAY,
           DayOfWeek.FRIDAY);
 
+  /** 画面 1 に表示するデモ用の従業員（氏名・区分・月〜金共通の基本シフト）。 */
+  private record DemoEmployee(String name, String employmentType, String start, String end) {}
+
+  private static final List<DemoEmployee> DEMO_EMPLOYEES =
+      List.of(
+          new DemoEmployee("佐藤太郎", "FULL_TIME", "07:30", "18:30"),
+          new DemoEmployee("鈴木花子", "FULL_TIME", "07:30", "18:30"),
+          new DemoEmployee("高橋健一", "FULL_TIME", "07:30", "16:30"),
+          new DemoEmployee("田中美咲", "FULL_TIME", "09:00", "18:30"),
+          new DemoEmployee("伊藤大輔", "FULL_TIME", "09:00", "18:30"),
+          new DemoEmployee("渡辺陽子", "PART_TIME", "07:30", "14:30"),
+          new DemoEmployee("山本翔太", "PART_TIME", "08:00", "16:30"),
+          new DemoEmployee("中村由美", "PART_TIME", "09:00", "18:00"),
+          new DemoEmployee("小林誠", "MANAGER", "08:30", "18:30"),
+          new DemoEmployee("加藤恵", "FULL_TIME", "07:30", "15:30"),
+          new DemoEmployee("吉田拓也", "PART_TIME", "09:00", "16:30"),
+          new DemoEmployee("山田彩香", "MANAGER", "09:00", "18:30"));
+
   /**
    * 保存済みの入力から画面 1 のフォームを作ります。
    *
-   * <p>保存済みの従業員を先頭の行に復元し、12 行になるまで空の行で埋めます。
+   * <p>保存済みの従業員が 1 名以上あるときは、先頭の行に復元し、12 行になるまで空の行で埋めます。保存済みの従業員が 0
+   * 件のときは、デモ用の従業員 12 名を表示します（保存はしません）。
    *
    * @param saved 保存済みの入力
    * @param defaultMonth 保存済みの最後の対象月がないときに使う対象月
@@ -49,14 +68,11 @@ public class SavedInputFormConverter {
     ShiftForm form = new ShiftForm();
     form.setTargetMonth(saved.lastTargetMonth().orElse(defaultMonth).format(MONTH_FORMATTER));
 
-    List<EmployeeForm> employees = new ArrayList<>();
-    for (EmployeeProfile profile : saved.employees()) {
-      employees.add(toEmployeeForm(profile));
+    if (saved.employees().isEmpty()) {
+      form.setEmployees(demoEmployeeForms());
+    } else {
+      form.setEmployees(restoredEmployeeForms(saved));
     }
-    while (employees.size() < DEFAULT_EMPLOYEE_COUNT) {
-      employees.add(emptyEmployeeForm());
-    }
-    form.setEmployees(employees);
 
     List<AdjustmentForm> adjustments = new ArrayList<>();
     for (ShiftAdjustment adjustment : saved.adjustments()) {
@@ -64,6 +80,36 @@ public class SavedInputFormConverter {
     }
     form.setAdjustments(adjustments);
     return form;
+  }
+
+  private List<EmployeeForm> restoredEmployeeForms(SavedInput saved) {
+    List<EmployeeForm> employees = new ArrayList<>();
+    for (EmployeeProfile profile : saved.employees()) {
+      employees.add(toEmployeeForm(profile));
+    }
+    while (employees.size() < DEFAULT_EMPLOYEE_COUNT) {
+      employees.add(emptyEmployeeForm());
+    }
+    return employees;
+  }
+
+  private List<EmployeeForm> demoEmployeeForms() {
+    List<EmployeeForm> employees = new ArrayList<>();
+    for (DemoEmployee demo : DEMO_EMPLOYEES) {
+      EmployeeForm employee = new EmployeeForm();
+      employee.setName(demo.name());
+      employee.setEmploymentType(demo.employmentType());
+      List<DayForm> days = new ArrayList<>();
+      for (int i = 0; i < WEEKDAYS.size(); i++) {
+        DayForm day = new DayForm();
+        day.setStart(demo.start());
+        day.setEnd(demo.end());
+        days.add(day);
+      }
+      employee.setDays(days);
+      employees.add(employee);
+    }
+    return employees;
   }
 
   private EmployeeForm toEmployeeForm(EmployeeProfile profile) {

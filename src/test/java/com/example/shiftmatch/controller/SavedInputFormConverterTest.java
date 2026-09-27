@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.domain.DailyWish;
+import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.ShiftAdjustment;
 import com.example.shiftmatch.service.SavedInput;
+import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -26,6 +28,22 @@ import org.junit.jupiter.api.Test;
 class SavedInputFormConverterTest {
 
   private static final YearMonth DEFAULT_MONTH = YearMonth.of(2026, 9);
+
+  /** 氏名・区分・開始・終了（月〜金で共通）。 */
+  private static final List<String[]> DEMO_EMPLOYEES =
+      List.of(
+          new String[] {"佐藤太郎", "FULL_TIME", "07:30", "18:30"},
+          new String[] {"鈴木花子", "FULL_TIME", "07:30", "18:30"},
+          new String[] {"高橋健一", "FULL_TIME", "07:30", "16:30"},
+          new String[] {"田中美咲", "FULL_TIME", "09:00", "18:30"},
+          new String[] {"伊藤大輔", "FULL_TIME", "09:00", "18:30"},
+          new String[] {"渡辺陽子", "PART_TIME", "07:30", "14:30"},
+          new String[] {"山本翔太", "PART_TIME", "08:00", "16:30"},
+          new String[] {"中村由美", "PART_TIME", "09:00", "18:00"},
+          new String[] {"小林誠", "MANAGER", "08:30", "18:30"},
+          new String[] {"加藤恵", "FULL_TIME", "07:30", "15:30"},
+          new String[] {"吉田拓也", "PART_TIME", "09:00", "16:30"},
+          new String[] {"山田彩香", "MANAGER", "09:00", "18:30"});
 
   private final SavedInputFormConverter converter = new SavedInputFormConverter();
 
@@ -175,15 +193,67 @@ class SavedInputFormConverterTest {
     }
 
     @Test
-    @DisplayName("[F-7][8.1節] Given: 何も保存していない, When: フォームに変換すると, Then: 空の 12 行と既定の対象月になる")
-    void returnsTwelveEmptyRowsAndDefaultMonthWhenNothingSaved() {
+    @DisplayName(
+        "[F-7][8.1節] Given: 保存済みの従業員が 0 件, When: フォームに変換すると, Then: デモ用 12 名（氏名・区分・時間帯）と既定の対象月になる")
+    void returnsDemoEmployeesAndDefaultMonthWhenNothingSaved() {
       ShiftForm form =
           converter.toForm(savedOf(List.of(), List.of(), Optional.empty()), DEFAULT_MONTH);
 
       assertEquals("2026-09", form.getTargetMonth());
-      assertEquals(12, form.getEmployees().size());
-      form.getEmployees().forEach(row -> assertEmptyRow(row));
+      assertEquals(DEMO_EMPLOYEES.size(), form.getEmployees().size());
+      for (int i = 0; i < DEMO_EMPLOYEES.size(); i++) {
+        String[] expected = DEMO_EMPLOYEES.get(i);
+        EmployeeForm row = form.getEmployees().get(i);
+        assertEquals(expected[0], row.getName());
+        assertEquals(expected[1], row.getEmploymentType());
+        assertEquals(5, row.getDays().size());
+        for (DayForm day : row.getDays()) {
+          assertEquals(expected[2], day.getStart());
+          assertEquals(expected[3], day.getEnd());
+        }
+      }
       assertTrue(form.getAdjustments().isEmpty());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-7][8.1節] Given: 保存済みの従業員が 1 名, When: フォームに変換すると," + " Then: デモ用データは混ざらず、残りは空の行になる")
+    void doesNotMixDemoEmployeesWhenOneSaved() {
+      SavedInput saved =
+          savedOf(List.of(profile("試験花子", EmploymentType.PART_TIME)), List.of(), Optional.empty());
+
+      ShiftForm form = converter.toForm(saved, DEFAULT_MONTH);
+
+      assertEquals(12, form.getEmployees().size());
+      assertEquals("試験花子", form.getEmployees().get(0).getName());
+      assertEquals("PART_TIME", form.getEmployees().get(0).getEmploymentType());
+      for (int i = 1; i < 12; i++) {
+        assertEmptyRow(form.getEmployees().get(i));
+      }
+      List<String> demoNames = DEMO_EMPLOYEES.stream().map(row -> row[0]).toList();
+      form.getEmployees().forEach(row -> assertFalse(demoNames.contains(row.getName())));
+    }
+
+    @Test
+    @DisplayName("[F-7][H-1] Given: デモ用 12 名, When: 月〜金の各曜日で割り当てると, Then: すべての曜日で案が成立する")
+    void demoEmployeesAssignableOnEveryWeekday() {
+      ShiftForm form =
+          converter.toForm(savedOf(List.of(), List.of(), Optional.empty()), DEFAULT_MONTH);
+      ShiftAssignmentServiceImpl service = new ShiftAssignmentServiceImpl();
+
+      for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
+        List<Employee> employees = new ArrayList<>();
+        for (EmployeeForm row : form.getEmployees()) {
+          DayForm day = row.getDays().get(dayIndex);
+          employees.add(
+              Employee.working(
+                  row.getName(),
+                  EmploymentType.valueOf(row.getEmploymentType()),
+                  LocalTime.parse(day.getStart()),
+                  LocalTime.parse(day.getEnd())));
+        }
+        assertTrue(service.assign(employees).isPresent(), "曜日インデックス " + dayIndex);
+      }
     }
 
     @Test

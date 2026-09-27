@@ -163,7 +163,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-1][F-2] Given: 初めて画面を開くとき, When: GET / を呼ぶと,"
-            + " Then: 対象月が今月で、従業員 12 行が常勤・休みなし 07:30〜18:30 になる")
+            + " Then: 対象月が今月で、従業員 12 行がデモ用の 12 名（月〜金の各時間帯が 5 日分）になる")
     void preparesDefaultFormOnGet() throws Exception {
       MvcResult result = perform(get("/"));
 
@@ -172,12 +172,13 @@ class ShiftControllerTest {
       assertEquals(
           YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM")), form.getTargetMonth());
       assertEquals(12, form.getEmployees().size());
+      assertEquals("佐藤太郎", form.getEmployees().get(0).getName());
+      assertEquals("山田彩香", form.getEmployees().get(11).getName());
       for (EmployeeForm employee : form.getEmployees()) {
-        assertEquals("FULL_TIME", employee.getEmploymentType());
         assertEquals(5, employee.getDays().size());
         for (DayForm day : employee.getDays()) {
-          assertEquals("07:30", day.getStart());
-          assertEquals("18:30", day.getEnd());
+          assertEquals(employee.getDays().get(0).getStart(), day.getStart());
+          assertEquals(employee.getDays().get(0).getEnd(), day.getEnd());
         }
       }
       assertEquals(1, modelOf(result).get("initialStep"));
@@ -731,15 +732,15 @@ class ShiftControllerTest {
     }
 
     @Test
-    @DisplayName("[F-7][8.1節] Given: 何も保存していない, When: GET / を呼ぶと, Then: 空の 12 行と今月になる")
-    void returnsEmptyRowsAndCurrentMonthWhenNothingSaved() throws Exception {
+    @DisplayName("[F-7][8.1節] Given: 何も保存していない, When: GET / を呼ぶと, Then: デモ用の 12 名と今月になる")
+    void returnsDemoRowsAndCurrentMonthWhenNothingSaved() throws Exception {
       MvcResult result = perform(get("/"));
 
       ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
       assertEquals(
           YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM")), form.getTargetMonth());
       assertEquals(12, form.getEmployees().size());
-      assertEquals("", form.getEmployees().get(0).getName());
+      assertEquals("佐藤太郎", form.getEmployees().get(0).getName());
       assertTrue(form.getAdjustments().isEmpty());
     }
   }
