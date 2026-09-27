@@ -1,16 +1,24 @@
 package com.example.shiftmatch.service;
 
+import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
+import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.FailureReason;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
+import com.example.shiftmatch.domain.ShiftAssignment;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
@@ -57,9 +65,17 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
 
     List<DailyShiftResult> results = new ArrayList<>();
 
-    // 営業日ごとに独立して割り当てを算出
+    // H-4 の週は月〜金の営業日のうち対象月に含まれる日だけなので、営業日を日付順に処理し、
+    // 週（月曜日）が変わるたびにパートの週の実労働時間の合計をリセットする（5.5 節）
+    Map<String, Integer> partWeeklyActualWorkMinutes = new HashMap<>();
+    LocalDate currentWeekMonday = null;
     for (LocalDate businessDay : holidayService.businessDays(input.month())) {
-      DailyShiftResult dayResult = createForDay(businessDay, input);
+      LocalDate weekMonday = businessDay.with(DayOfWeek.MONDAY);
+      if (!weekMonday.equals(currentWeekMonday)) {
+        partWeeklyActualWorkMinutes.clear();
+        currentWeekMonday = weekMonday;
+      }
+      DailyShiftResult dayResult = createForDay(businessDay, input, partWeeklyActualWorkMinutes);
       results.add(dayResult);
       rationaleLogger.log(businessDay, dayResult);
     }
@@ -67,7 +83,8 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
     return new MonthlyShiftResult(input.month(), results);
   }
 
-  private DailyShiftResult createForDay(LocalDate date, MonthlyShiftInput input) {
+  private DailyShiftResult createForDay(
+      LocalDate date, MonthlyShiftInput input, Map<String, Integer> partWeeklyActualWorkMinutes) {
     // 従業員のうち、名前が空でないものだけを対象
     List<Employee> employees = new ArrayList<>();
     for (EmployeeProfile profile : input.employees()) {
@@ -80,10 +97,50 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
     // 勤務できる人の数（有効な従業員のうち休みでない人）
     int availableCount = (int) employees.stream().filter(e -> !e.off()).count();
 
-    // 割り当てを算出
-    var assignment = assignmentService.assign(employees);
+    // パートには週の残り時間（H-4）を設定してから割り当てを算出する（5.5 節 2）
+    List<Employee> employeesWithWeeklyLimit =
+        applyWeeklyRemainingMinutes(employees, partWeeklyActualWorkMinutes);
+    Optional<AssignmentResult> assignment = assignmentService.assign(employeesWithWeeklyLimit);
 
-    return new DailyShiftResult(date, availableCount, assignment);
+    if (assignment.isPresent()) {
+      accumulatePartTimeActualWorkMinutes(assignment.get(), partWeeklyActualWorkMinutes);
+      return new DailyShiftResult(date, availableCount, assignment);
+    }
+
+    // 不成立の理由（6 章）は、H-4 を除いた従業員（週の残り時間なしの元の候補）でもう一度 assign を呼び、
+    // 案があればパートの週上限、なければ人員不足と判定する（枠ごとの可能人数を独立に数えると誤判定するため）
+    FailureReason failureReason =
+        assignmentService.assign(employees).isPresent()
+            ? FailureReason.WEEKLY_LIMIT
+            : FailureReason.STAFF_SHORTAGE;
+    return new DailyShiftResult(date, availableCount, Optional.empty(), failureReason);
+  }
+
+  private List<Employee> applyWeeklyRemainingMinutes(
+      List<Employee> employees, Map<String, Integer> partWeeklyActualWorkMinutes) {
+    List<Employee> result = new ArrayList<>();
+    for (Employee employee : employees) {
+      if (employee.off() || employee.employmentType() != EmploymentType.PART_TIME) {
+        result.add(employee);
+        continue;
+      }
+      int used = partWeeklyActualWorkMinutes.getOrDefault(employee.name(), 0);
+      result.add(
+          employee.withWeeklyRemainingMinutes(
+              EmploymentType.PART_TIME_WEEKLY_LIMIT_MINUTES - used));
+    }
+    return result;
+  }
+
+  private void accumulatePartTimeActualWorkMinutes(
+      AssignmentResult assignment, Map<String, Integer> partWeeklyActualWorkMinutes) {
+    for (ShiftAssignment shiftAssignment : assignment.assignments()) {
+      Employee employee = shiftAssignment.employee();
+      if (employee.employmentType() == EmploymentType.PART_TIME) {
+        partWeeklyActualWorkMinutes.merge(
+            employee.name(), shiftAssignment.slot().actualWorkMinutes(), (a, b) -> a + b);
+      }
+    }
   }
 
   private Employee convertToEmployee(EmployeeProfile profile, DailyWish wish) {
