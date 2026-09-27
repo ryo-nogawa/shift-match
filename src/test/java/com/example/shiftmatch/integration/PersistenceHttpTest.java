@@ -90,6 +90,26 @@ class PersistenceHttpTest {
         .getContentAsString();
   }
 
+  /** name 属性が一致する開始タグ（{@code <input ...>}）の文字列を返します。 */
+  private static String inputTagOf(String html, String name) {
+    int nameIndex = html.indexOf("name=\"" + name + "\"");
+    assertTrue(nameIndex >= 0, name + " が描画されていません");
+    int start = html.lastIndexOf('<', nameIndex);
+    return html.substring(start, html.indexOf('>', nameIndex) + 1);
+  }
+
+  /** name 属性が一致する select のうち、selected が付いた option のタグを返します。 */
+  private static String selectedOptionOf(String html, String name) {
+    int nameIndex = html.indexOf("name=\"" + name + "\"");
+    assertTrue(nameIndex >= 0, name + " が描画されていません");
+    int selectEnd = html.indexOf("</select>", nameIndex);
+    String select = html.substring(nameIndex, selectEnd);
+    int selected = select.indexOf("selected");
+    assertTrue(selected >= 0, name + " に選択済みの option がありません");
+    int start = select.lastIndexOf('<', selected);
+    return select.substring(start, select.indexOf('>', selected) + 1);
+  }
+
   @Nested
   class 正常系 {
 
@@ -120,6 +140,19 @@ class PersistenceHttpTest {
       assertTrue(form.getAdjustments().get(0).isOff());
       String html = result.getResponse().getContentAsString();
       assertTrue(html.contains(SAVED_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("[F-7][8.1節] Given: 従業員が保存されていない, When: GET / を開くと, Then: デモ用の 12 名が描画される")
+    void rendersDemoEmployeesWhenNothingSaved() throws Exception {
+      MvcResult result = mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn();
+
+      String html = result.getResponse().getContentAsString();
+      assertTrue(inputTagOf(html, "employees[0].name").contains("value=\"佐藤太郎\""));
+      assertTrue(inputTagOf(html, "employees[11].name").contains("value=\"山田彩香\""));
+      assertTrue(selectedOptionOf(html, "employees[0].employmentType").contains("FULL_TIME"));
+      assertTrue(selectedOptionOf(html, "employees[5].employmentType").contains("PART_TIME"));
+      assertTrue(selectedOptionOf(html, "employees[8].employmentType").contains("MANAGER"));
     }
 
     @Test
@@ -204,7 +237,7 @@ class PersistenceHttpTest {
 
     @Test
     @DisplayName(
-        "[F-7] Given: 入力エラーになる POST, When: GET / を開くと," + " Then: 何も保存されず、空の 12 行のまま（保存済みシフトもない）")
+        "[F-7] Given: 入力エラーになる POST, When: GET / を開くと," + " Then: 何も保存されず、デモ用の 12 名のまま（保存済みシフトもない）")
     void savesNothingOnInputError() throws Exception {
       MockHttpServletRequestBuilder invalid =
           post("/shift")
@@ -218,7 +251,8 @@ class PersistenceHttpTest {
 
       ShiftForm form = (ShiftForm) result.getModelAndView().getModel().get("shiftForm");
       assertEquals(12, form.getEmployees().size());
-      form.getEmployees().forEach(employee -> assertEquals("", employee.getName()));
+      assertEquals("佐藤太郎", form.getEmployees().get(0).getName());
+      form.getEmployees().forEach(employee -> assertFalse("E0".equals(employee.getName())));
       assertTrue(form.getAdjustments().isEmpty());
       assertTrue(result.getResponse().getContentAsString().contains(NOT_CREATED_MESSAGE));
     }
