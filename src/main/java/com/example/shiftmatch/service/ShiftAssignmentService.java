@@ -36,6 +36,17 @@ public interface ShiftAssignmentService {
       List<Employee> employees, Map<String, Integer> remainingWeeklyMinutes);
 
   /**
+   * 枠ごとに決まった担当者から、休憩時刻などを含む割り当て結果を組み立てる。
+   *
+   * <p>週全体の最適化（H-4）が担当者を決めた後に、1 日分の結果へ変換するために使う。
+   *
+   * @param employees その日の有効な従業員の一覧（入力順）
+   * @param assigneesInSlotOrder 枠 1（2 名）→ 枠 6（2 名）の順に並べた 8 名。{@code employees} の要素と同一のインスタンス
+   * @return 割り当て結果
+   */
+  AssignmentResult buildAssignment(List<Employee> employees, List<Employee> assigneesInSlotOrder);
+
+  /**
    * 従業員一覧の中から重複する氏名を検出する。
    *
    * <p>氏名が{@code null}または{@code isBlank()}である従業員は除外してから重複判定を行う。

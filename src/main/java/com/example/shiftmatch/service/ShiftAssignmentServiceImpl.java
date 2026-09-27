@@ -70,6 +70,26 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     return Optional.of(buildResult(validEmployees, candidates, assignment));
   }
 
+  @Override
+  public AssignmentResult buildAssignment(
+      List<Employee> employees, List<Employee> assigneesInSlotOrder) {
+    List<Employee> validEmployees =
+        employees.stream().filter(emp -> emp.name() != null && !emp.name().isBlank()).toList();
+    List<Employee> candidates =
+        validEmployees.stream()
+            .filter(emp -> !emp.off() && emp.start() != null && emp.end() != null)
+            .toList();
+    int[] assignment = new int[assigneesInSlotOrder.size()];
+    for (int i = 0; i < assignment.length; i++) {
+      for (int j = 0; j < candidates.size(); j++) {
+        if (candidates.get(j) == assigneesInSlotOrder.get(i)) {
+          assignment[i] = j;
+        }
+      }
+    }
+    return buildResult(validEmployees, candidates, assignment);
+  }
+
   /**
    * 動的計画法で最小スコアを計算します。
    *
