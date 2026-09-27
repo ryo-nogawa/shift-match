@@ -275,6 +275,24 @@ class AssignmentResultTest {
     }
 
     @Test
+    @DisplayName(
+        "[7.2] Given: 未出勤者がパートで出勤日数が割り当て済みの常勤より少ないとき, When: 理由を取得すると, Then:"
+            + " パートの文言ではなく入力順の文言が返る")
+    void fallsBackToInputOrderLabelWhenPartTimeHasFewerPriorWorkDays() {
+      // 7.2 節：パートの文言は出勤日数が同じときだけ使う
+      Employee partA =
+          Employee.working(
+                  "PartA", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30))
+              .withPriorWorkDays(1);
+      List<ShiftAssignment> assignments = createStandardAssignmentsWithPriorWorkDays(2);
+      AssignmentResult result = new AssignmentResult(assignments, 0, List.of(partA));
+
+      String label = result.unassignedReasonLabel(partA);
+
+      assertEquals("入れる枠はあったが、同じずれの案があり、入力順で優先度が高い Employee0 が選ばれた", label);
+    }
+
+    @Test
     @DisplayName("[7.2] Given: 未出勤者と割り当て済みの人の出勤日数が同じとき, When: 理由を取得すると, Then: 既存の入力順の文言が返る")
     void fallsBackToInputOrderLabelWhenPriorWorkDaysAreEqual() {
       Employee ito =

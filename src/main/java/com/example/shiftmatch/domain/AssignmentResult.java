@@ -70,10 +70,17 @@ public record AssignmentResult(
         Employee assignedEmployee = assignment.employee();
         Integer unassignedDays = employee.priorWorkDays();
         Integer assignedDays = assignedEmployee.priorWorkDays();
-        if (unassignedDays != null && assignedDays != null && unassignedDays > assignedDays) {
+        // 出勤日数が不明（null）のデータは、7.2 節のとおり出勤日数が同じものとして扱う
+        int priorWorkDaysComparison =
+            unassignedDays == null || assignedDays == null
+                ? 0
+                : Integer.compare(unassignedDays, assignedDays);
+        if (priorWorkDaysComparison > 0) {
           return "入れる枠はあったが、同じずれの案があり、これまでの出勤日数が少ない " + assignedEmployee.name() + " が選ばれた";
         }
-        if (employee.employmentType() == EmploymentType.PART_TIME
+        // パートの実労働時間で決まるのは、出勤日数が同じときだけ（5.3 節の比較順）
+        if (priorWorkDaysComparison == 0
+            && employee.employmentType() == EmploymentType.PART_TIME
             && assignedEmployee.employmentType() != EmploymentType.PART_TIME) {
           return "入れる枠はあったが、同じずれの案があり、パートの実労働時間が少ない案が選ばれた";
         }
