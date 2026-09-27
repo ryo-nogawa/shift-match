@@ -46,11 +46,11 @@ import java.time.Year;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -170,7 +170,7 @@ class ShiftControllerTest {
     @Test
     @DisplayName(
         "[F-1][F-2] Given: 初めて画面を開くとき, When: GET / を呼ぶと,"
-            + " Then: 対象月が今月で、従業員 12 行がデモ用の 12 名（月〜金の各時間帯が 5 日分）になる")
+            + " Then: 対象月が今月で、従業員 12 行がデモ用の 12 名（パートの曜日休み付き）になる")
     void preparesDefaultFormOnGet() throws Exception {
       MvcResult result = perform(get("/"));
 
@@ -181,13 +181,8 @@ class ShiftControllerTest {
       assertEquals(12, form.getEmployees().size());
       assertEquals("佐藤太郎", form.getEmployees().get(0).getName());
       assertEquals("山田彩香", form.getEmployees().get(11).getName());
-      for (EmployeeForm employee : form.getEmployees()) {
-        assertEquals(5, employee.getDays().size());
-        for (DayForm day : employee.getDays()) {
-          assertEquals(employee.getDays().get(0).getStart(), day.getStart());
-          assertEquals(employee.getDays().get(0).getEnd(), day.getEnd());
-        }
-      }
+      assertEquals(List.of(0, 2), form.getEmployees().get(5).getOffDays());
+      assertTrue(form.getEmployees().get(0).getOffDays().isEmpty());
       assertEquals(1, modelOf(result).get("initialStep"));
     }
 
@@ -214,9 +209,6 @@ class ShiftControllerTest {
       assertTrue(html.contains("name=\"employees[0].name\""));
       assertTrue(html.contains("name=\"employees[11].name\""));
       assertTrue(html.contains("name=\"employees[11].employmentType\""));
-      assertFalse(html.contains("name=\"employees[0].days[0].off\""));
-      assertTrue(html.contains("name=\"employees[0].days[0].start\""));
-      assertTrue(html.contains("name=\"employees[11].days[4].end\""));
       assertFalse(html.contains("name=\"employees[12].name\""));
       assertTrue(html.contains("id=\"base-panels\""));
       assertEquals(12, html.split("class=\"move-up-btn\"", -1).length - 1);
@@ -600,7 +592,7 @@ class ShiftControllerTest {
       ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
       assertEquals(1, form.getEmployees().size());
       assertEquals("FULL_TIME", form.getEmployees().get(0).getEmploymentType());
-      assertEquals(5, form.getEmployees().get(0).getDays().size());
+      assertTrue(form.getEmployees().get(0).getOffDays().isEmpty());
     }
   }
 
@@ -753,14 +745,8 @@ class ShiftControllerTest {
   class 復元 {
 
     private EmployeeProfile savedProfile(String name) {
-      Map<DayOfWeek, DailyWish> shifts = new EnumMap<>(DayOfWeek.class);
-      shifts.put(DayOfWeek.MONDAY, new DailyWish(true, null, null));
-      shifts.put(DayOfWeek.TUESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
-      shifts.put(
-          DayOfWeek.WEDNESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
-      shifts.put(DayOfWeek.THURSDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
-      shifts.put(DayOfWeek.FRIDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(17, 0)));
-      return new EmployeeProfile(name, EmploymentType.PART_TIME, shifts);
+      return new EmployeeProfile(
+          name, EmploymentType.PART_TIME, Map.of(), Set.of(DayOfWeek.MONDAY));
     }
 
     @Test
@@ -785,7 +771,7 @@ class ShiftControllerTest {
       assertEquals("佐藤", form.getEmployees().get(0).getName());
       assertEquals("鈴木", form.getEmployees().get(1).getName());
       assertEquals("PART_TIME", form.getEmployees().get(1).getEmploymentType());
-      assertEquals("07:30", form.getEmployees().get(0).getDays().get(0).getStart());
+      assertEquals(List.of(0), form.getEmployees().get(0).getOffDays());
       assertEquals("", form.getEmployees().get(2).getName());
       assertEquals(1, form.getAdjustments().size());
       assertEquals("2026-11-02", form.getAdjustments().get(0).getDate());
