@@ -234,6 +234,88 @@ class AssignmentResultTest {
     }
   }
 
+  @Nested
+  @DisplayName("[7.2] 未出勤の理由（これまでの出勤日数の優先）")
+  class UnassignedReasonLabelForPriorWorkDays {
+
+    private AssignmentResult resultWithUnassigned(Employee unassigned) {
+      return new AssignmentResult(createStandardAssignments(), 0, List.of(unassigned));
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2] Given: 未出勤者の出勤日数が割り当て済みの人より多いとき, When: 理由を取得すると, Then:" + " 出勤日数が少ない割り当て済みの人の氏名を示す")
+    void namesAssignedEmployeeWithFewerPriorWorkDays() {
+      // Employee0（割り当て済み）は出勤日数2。Itoは同じ660分の時間帯で枠1のずれが同じになるが出勤日数5（多い）
+      Employee ito =
+          Employee.working("Ito", LocalTime.of(7, 30), LocalTime.of(18, 30)).withPriorWorkDays(5);
+      List<ShiftAssignment> assignments = createStandardAssignmentsWithPriorWorkDays(2);
+      AssignmentResult result = new AssignmentResult(assignments, 0, List.of(ito));
+
+      String label = result.unassignedReasonLabel(ito);
+
+      assertEquals("入れる枠はあったが、同じずれの案があり、これまでの出勤日数が少ない Employee0 が選ばれた", label);
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2] Given: 未出勤者がパートで出勤日数が割り当て済みの常勤より多いとき, When: 理由を取得すると, Then:"
+            + " パートの文言ではなく出勤日数の文言が返る")
+    void prefersPriorWorkDaysLabelOverPartTimeLabel() {
+      Employee partA =
+          Employee.working(
+                  "PartA", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30))
+              .withPriorWorkDays(5);
+      List<ShiftAssignment> assignments = createStandardAssignmentsWithPriorWorkDays(2);
+      AssignmentResult result = new AssignmentResult(assignments, 0, List.of(partA));
+
+      String label = result.unassignedReasonLabel(partA);
+
+      assertEquals("入れる枠はあったが、同じずれの案があり、これまでの出勤日数が少ない Employee0 が選ばれた", label);
+    }
+
+    @Test
+    @DisplayName("[7.2] Given: 未出勤者と割り当て済みの人の出勤日数が同じとき, When: 理由を取得すると, Then: 既存の入力順の文言が返る")
+    void fallsBackToInputOrderLabelWhenPriorWorkDaysAreEqual() {
+      Employee ito =
+          Employee.working("Ito", LocalTime.of(7, 30), LocalTime.of(18, 30)).withPriorWorkDays(3);
+      List<ShiftAssignment> assignments = createStandardAssignmentsWithPriorWorkDays(3);
+      AssignmentResult result = new AssignmentResult(assignments, 0, List.of(ito));
+
+      String label = result.unassignedReasonLabel(ito);
+
+      assertEquals("入れる枠はあったが、同じずれの案があり、入力順で優先度が高い Employee0 が選ばれた", label);
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2] Given: 未出勤者・割り当て済みの人の出勤日数がnull（保存済みの古いデータ）のとき, When: 理由を取得すると,"
+            + " Then: 出勤日数が同じものとして既存の入力順の文言が返る")
+    void treatsNullPriorWorkDaysAsEqual() {
+      Employee ito = Employee.working("Ito", LocalTime.of(7, 30), LocalTime.of(18, 30));
+
+      String label = resultWithUnassigned(ito).unassignedReasonLabel(ito);
+
+      assertEquals("入れる枠はあったが、同じずれの案があり、入力順で優先度が高い Employee0 が選ばれた", label);
+    }
+
+    private List<ShiftAssignment> createStandardAssignmentsWithPriorWorkDays(int days) {
+      List<ShiftAssignment> assignments = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        Employee employee =
+            Employee.working("Employee" + i, LocalTime.of(7, 30), LocalTime.of(18, 30))
+                .withPriorWorkDays(days);
+        assignments.add(
+            new ShiftAssignment(
+                employee,
+                ShiftSlot.values()[Math.min(i, 5)],
+                LocalTime.of(12, 0),
+                LocalTime.of(12, 45)));
+      }
+      return assignments;
+    }
+  }
+
   private List<ShiftAssignment> createStandardAssignments() {
     List<ShiftAssignment> assignments = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
