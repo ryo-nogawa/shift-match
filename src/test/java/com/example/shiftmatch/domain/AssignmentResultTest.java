@@ -158,6 +158,82 @@ class AssignmentResultTest {
     }
   }
 
+  @Nested
+  @DisplayName("[7.2] 未出勤の理由（5.3節のパート優先の入れ替え）")
+  class UnassignedReasonLabelForPartTime {
+
+    private AssignmentResult resultWithUnassigned(Employee unassigned) {
+      return new AssignmentResult(createStandardAssignments(), 0, List.of(unassigned));
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2] Given: 未出勤者がパートで、同じずれの割り当て済みの人が常勤のとき, When: 理由を取得すると, Then:"
+            + " パートの実労働時間が少ない案が選ばれたと示す")
+    void namesPartTimePreferenceWhenSwapKeepsTotalGapAndAssignedIsNotPartTime() {
+      // Employee0 は枠1（375分の実労働時間）で660分の時間帯、ずれ240分。
+      // PartA も同じ660分の時間帯（残り時間は上限なし）なので、枠1でずれ240分は同じになる
+      Employee partA =
+          Employee.working(
+              "PartA", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30));
+
+      String label = resultWithUnassigned(partA).unassignedReasonLabel(partA);
+
+      assertEquals("入れる枠はあったが、同じずれの案があり、パートの実労働時間が少ない案が選ばれた", label);
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2] Given: 未出勤者と割り当て済みの人がどちらも常勤で、ずれの合計が変わらないとき, When: 理由を取得すると, Then:"
+            + " 入力順で優先度が高い氏名を示す（パート優先の文言にならない）")
+    void namesTheAssignedEmployeeWhenBothAreNotPartTime() {
+      Employee fullTimeSwap = Employee.working("Ueda", LocalTime.of(7, 30), LocalTime.of(18, 30));
+
+      String label = resultWithUnassigned(fullTimeSwap).unassignedReasonLabel(fullTimeSwap);
+
+      assertEquals("入れる枠はあったが、同じずれの案があり、入力順で優先度が高い Employee0 が選ばれた", label);
+    }
+
+    @Test
+    @DisplayName(
+        "[7.2][H-4] Given: 同じずれの枠があるが、パートの週の残り時間がその枠の実労働時間に足りないとき, When: 理由を取得すると,"
+            + " Then: 氏名入りの文言にならず、より小さいずれの案が選ばれたと示す")
+    void doesNotNameAssignedEmployeeWhenGapMatchesButCanAssignFailsForThatSlot() {
+      List<ShiftAssignment> assignments = new ArrayList<>();
+      assignments.add(exactMatchAssignment("E0", ShiftSlot.SLOT_1));
+      assignments.add(exactMatchAssignment("E1", ShiftSlot.SLOT_1));
+      assignments.add(exactMatchAssignment("E2", ShiftSlot.SLOT_2));
+      // E3 は枠3（実労働時間435分）に8:00〜17:00（540分）で入り、ずれ60分
+      assignments.add(
+          new ShiftAssignment(
+              Employee.working("E3", LocalTime.of(8, 0), LocalTime.of(17, 0)),
+              ShiftSlot.SLOT_3,
+              LocalTime.of(12, 0),
+              LocalTime.of(12, 45)));
+      assignments.add(exactMatchAssignment("E4", ShiftSlot.SLOT_4));
+      assignments.add(exactMatchAssignment("E5", ShiftSlot.SLOT_5));
+      assignments.add(exactMatchAssignment("E6", ShiftSlot.SLOT_6));
+      assignments.add(exactMatchAssignment("E7", ShiftSlot.SLOT_6));
+
+      // PartC は7:30〜16:30（540分）で枠1・2・3・4に入れる。ずれは枠3で60分（E3と同じ）。
+      // 残り時間410分は枠1(375)・2(405)・4(405)には足りるが、枠3(435)には足りない
+      Employee partC =
+          Employee.working(
+                  "PartC", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(16, 30))
+              .withWeeklyRemainingMinutes(410);
+
+      AssignmentResult result = new AssignmentResult(assignments, 0, List.of(partC));
+      String label = result.unassignedReasonLabel(partC);
+
+      assertEquals("入れる枠はあったが、より小さいずれの案が選ばれた", label);
+    }
+
+    private ShiftAssignment exactMatchAssignment(String name, ShiftSlot slot) {
+      Employee employee = Employee.working(name, slot.startTime(), slot.endTime());
+      return new ShiftAssignment(employee, slot, LocalTime.of(12, 0), LocalTime.of(12, 45));
+    }
+  }
+
   private List<ShiftAssignment> createStandardAssignments() {
     List<ShiftAssignment> assignments = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
