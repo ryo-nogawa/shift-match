@@ -23,15 +23,13 @@ import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
 import com.example.shiftmatch.domain.ShiftAssignment;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -61,17 +59,7 @@ class MonthlyShiftServiceImplTest {
       MonthlyShiftServiceImpl service =
           new MonthlyShiftServiceImpl(holidayService, assignmentService, inputValidator, logger);
 
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      DailyWish wish = new DailyWish(false, start, end);
-      baseShifts.put(DayOfWeek.MONDAY, wish);
-      baseShifts.put(DayOfWeek.TUESDAY, wish);
-      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-      baseShifts.put(DayOfWeek.THURSDAY, wish);
-      baseShifts.put(DayOfWeek.FRIDAY, wish);
-
-      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Set.of());
       MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), new ArrayList<>());
 
       MonthlyShiftResult result = service.create(input);
@@ -99,21 +87,9 @@ class MonthlyShiftServiceImplTest {
       MonthlyShiftServiceImpl service =
           new MonthlyShiftServiceImpl(holidayService, assignmentService, inputValidator, logger);
 
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      DailyWish wish = new DailyWish(false, start, end);
-      baseShifts.put(DayOfWeek.MONDAY, wish);
-      baseShifts.put(DayOfWeek.TUESDAY, wish);
-      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-      baseShifts.put(DayOfWeek.THURSDAY, wish);
-      baseShifts.put(DayOfWeek.FRIDAY, wish);
-
-      EmployeeProfile taroProfile =
-          new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
-      Map<DayOfWeek, DailyWish> emptyNameBaseShifts = new HashMap<>(baseShifts);
+      EmployeeProfile taroProfile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Set.of());
       EmployeeProfile emptyNameProfile =
-          new EmployeeProfile("", EmploymentType.FULL_TIME, emptyNameBaseShifts);
+          new EmployeeProfile("", EmploymentType.FULL_TIME, Set.of());
 
       MonthlyShiftInput input =
           new MonthlyShiftInput(month, List.of(taroProfile, emptyNameProfile), new ArrayList<>());
@@ -142,20 +118,10 @@ class MonthlyShiftServiceImplTest {
       when(holidayService.businessDays(month)).thenReturn(List.of(day1, day2));
       when(holidayService.isSupported(month)).thenReturn(true);
 
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      DailyWish wish = new DailyWish(false, start, end);
-      baseShifts.put(DayOfWeek.MONDAY, wish);
-      baseShifts.put(DayOfWeek.TUESDAY, wish);
-      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-      baseShifts.put(DayOfWeek.THURSDAY, wish);
-      baseShifts.put(DayOfWeek.FRIDAY, wish);
-
       // 8 人の従業員
       List<EmployeeProfile> employees = new ArrayList<>();
       for (int i = 0; i < 8; i++) {
-        employees.add(new EmployeeProfile("Employee" + i, EmploymentType.FULL_TIME, baseShifts));
+        employees.add(new EmployeeProfile("Employee" + i, EmploymentType.FULL_TIME, Set.of()));
       }
 
       // 火曜日（day2）だけ従業員 0 が休み（7 名だけ勤務可能）
@@ -198,33 +164,23 @@ class MonthlyShiftServiceImplTest {
 
     @Test
     @DisplayName(
-        "[V-3] Given: 基本シフト検証エラーがあるとき, When: create を実行すると, Then: InvalidMonthlyInputException を投げ"
+        "[V-3] Given: 個別変更の検証エラーがあるとき, When: create を実行すると, Then: InvalidMonthlyInputException を投げ"
             + " assign を呼ばない")
     void validationErrorThrowsException() {
       YearMonth month = YearMonth.of(2024, 9);
       LocalDate businessDay = LocalDate.of(2024, 9, 2);
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
 
       HolidayService holidayService = mock(HolidayService.class);
       when(holidayService.isSupported(month)).thenReturn(true);
       when(holidayService.businessDays(month)).thenReturn(List.of(businessDay));
 
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      DailyWish wish = new DailyWish(false, start, end);
-      baseShifts.put(DayOfWeek.MONDAY, wish);
-      baseShifts.put(DayOfWeek.TUESDAY, wish);
-      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-      baseShifts.put(DayOfWeek.THURSDAY, wish);
-      // FRIDAY missing - V-3 error
-
-      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Set.of());
       MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), new ArrayList<>());
 
       ShiftAssignmentService assignmentService = mock(ShiftAssignmentService.class);
       MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
       // V-3 エラーを返すようにスタブを設定
-      InputError error = new InputError("V-3", "基本シフト：金曜日が未選択です（Taro、1 行目）");
+      InputError error = new InputError("V-3", "個別変更：開始・終了が未選択です（Taro、2024-09-02）");
       when(inputValidator.validate(input)).thenReturn(List.of(error));
 
       SelectionRationaleLogger logger = mock(SelectionRationaleLogger.class);
@@ -251,19 +207,7 @@ class MonthlyShiftServiceImplTest {
       when(holidayService.isSupported(month)).thenReturn(true);
       when(holidayService.businessDays(month)).thenReturn(List.of(businessDay));
 
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      for (DayOfWeek day :
-          new DayOfWeek[] {
-            DayOfWeek.MONDAY,
-            DayOfWeek.TUESDAY,
-            DayOfWeek.WEDNESDAY,
-            DayOfWeek.THURSDAY,
-            DayOfWeek.FRIDAY
-          }) {
-        baseShifts.put(day, wish);
-      }
-
-      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Set.of());
 
       // 営業日外の日付で個別変更 - V-9 error
       ShiftAdjustment adjustment = new ShiftAdjustment(LocalDate.of(2024, 9, 7), "Taro", wish);
@@ -308,16 +252,7 @@ class MonthlyShiftServiceImplTest {
 
       SelectionRationaleLogger rationaleLogger = mock(SelectionRationaleLogger.class);
 
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      baseShifts.put(DayOfWeek.MONDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.TUESDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.WEDNESDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.THURSDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.FRIDAY, new DailyWish(false, start, end));
-
-      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Set.of());
 
       MonthlyShiftInput input = new MonthlyShiftInput(month, List.of(profile), List.of());
 

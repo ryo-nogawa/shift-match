@@ -110,7 +110,7 @@ public class MonthlyShiftRepository {
                   .params(row.rowIndex())
                   .query((rs, rowNum) -> DayOfWeek.of(rs.getInt("day_index") + 1))
                   .list());
-      employees.add(new EmployeeProfile(row.name(), row.employmentType(), Map.of(), offDays));
+      employees.add(new EmployeeProfile(row.name(), row.employmentType(), offDays));
     }
     return employees;
   }

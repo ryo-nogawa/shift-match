@@ -12,7 +12,6 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,7 +26,7 @@ class WishResolverTest {
   private static final LocalDate TUESDAY = LocalDate.of(2024, 9, 3);
 
   private static EmployeeProfile profile(EmploymentType type, Set<DayOfWeek> offDays) {
-    return new EmployeeProfile("Taro", type, Map.of(), offDays);
+    return new EmployeeProfile("Taro", type, offDays);
   }
 
   @Nested

@@ -20,13 +20,12 @@ import com.example.shiftmatch.domain.ShiftAdjustment;
 import com.example.shiftmatch.domain.ShiftStorageException;
 import com.example.shiftmatch.persistence.MonthlyShiftRepository;
 import com.example.shiftmatch.persistence.SavedMonthlyShift;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -48,10 +47,7 @@ class ShiftStorageServiceImplTest {
   }
 
   private static EmployeeProfile profile(String name) {
-    return new EmployeeProfile(
-        name,
-        EmploymentType.FULL_TIME,
-        Map.of(DayOfWeek.MONDAY, new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(17, 0))));
+    return new EmployeeProfile(name, EmploymentType.FULL_TIME, Set.of());
   }
 
   private static MonthlyShiftInput inputOf(String... names) {
@@ -91,8 +87,8 @@ class ShiftStorageServiceImplTest {
             new MonthlyShiftInput(
                 MONTH,
                 List.of(
-                    new EmployeeProfile("佐藤", EmploymentType.MANAGER, Map.of()),
-                    new EmployeeProfile("鈴木", EmploymentType.PART_TIME, Map.of())),
+                    new EmployeeProfile("佐藤", EmploymentType.MANAGER, Set.of()),
+                    new EmployeeProfile("鈴木", EmploymentType.PART_TIME, Set.of())),
                 List.of());
         MonthlyShiftResult result = new MonthlyShiftResult(MONTH, List.of());
 

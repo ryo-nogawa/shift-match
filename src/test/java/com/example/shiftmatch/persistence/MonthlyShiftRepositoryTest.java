@@ -22,7 +22,6 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,7 +67,7 @@ class MonthlyShiftRepositoryTest {
 
   private static EmployeeProfile partTimeProfile(
       String name, EmploymentType type, Set<DayOfWeek> offDays) {
-    return new EmployeeProfile(name, type, Map.of(), offDays);
+    return new EmployeeProfile(name, type, offDays);
   }
 
   @Nested

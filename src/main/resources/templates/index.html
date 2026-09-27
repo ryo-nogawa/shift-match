@@ -77,42 +77,6 @@
               </table>
               <button type="button" id="add-employee-btn">行を追加</button>
             </div>
-
-            <!-- 基本シフトパネル -->
-            <div id="base-panels" class="scroll">
-              <div th:each="employee,iter : ${shiftForm.employees}" class="base-panel" th:attr="data-row-id=${iter.index}" hidden>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>曜日</th>
-                      <th>開始</th>
-                      <th>終了</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr class="day-row" th:each="day,dayIter : ${employee.days}">
-                      <td th:text="${dayIter.index == 0 ? '月' : dayIter.index == 1 ? '火' : dayIter.index == 2 ? '水' : dayIter.index == 3 ? '木' : '金'}"></td>
-                      <td>
-                        <select class="start-select" th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].start}">
-                          <option value="">-- 未選択 --</option>
-                          <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}"></option>
-                        </select>
-                      </td>
-                      <td>
-                        <select class="end-select" th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].end}">
-                          <option value="">-- 未選択 --</option>
-                          <option th:each="time : ${timeOptions}" th:value="${time}" th:text="${time}"></option>
-                        </select>
-                      </td>
-                      <td>
-                        <button type="button" class="copy-to-all-btn">全曜日へ</button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
           </section>
 
           <!-- 画面 2: 日ごとの希望 -->

@@ -2,14 +2,12 @@ package com.example.shiftmatch.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -22,98 +20,33 @@ class EmployeeProfileTest {
   class 正常系 {
 
     @Test
-    @DisplayName(
-        "Given: 基本シフトのマップを与えるとき, When: EmployeeProfile を作成してから元のマップを変更すると, Then: EmployeeProfile"
-            + " に変更が反映されない")
-    void baseShiftsAreImmutable() {
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      baseShifts.put(DayOfWeek.MONDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.TUESDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.WEDNESDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.THURSDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.FRIDAY, new DailyWish(false, start, end));
-
-      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
-
-      // 元のマップを変更
-      baseShifts.put(DayOfWeek.MONDAY, new DailyWish(true, null, null));
-
-      // EmployeeProfile の基本シフトは変わらない
-      DailyWish mondayShift = profile.baseShifts().get(DayOfWeek.MONDAY);
-      assertNotNull(mondayShift);
-      assertFalse(mondayShift.off());
-      assertEquals(start, mondayShift.start());
-      assertEquals(end, mondayShift.end());
-    }
-
-    @Test
-    @DisplayName("Given: 基本シフトが設定されているとき, When: toEmployee を実行すると, Then: 対応する Employee が作成される")
-    void createsEmployeeFromBaseShift() {
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      DailyWish wish = new DailyWish(false, start, end);
-      baseShifts.put(DayOfWeek.MONDAY, wish);
-      baseShifts.put(DayOfWeek.TUESDAY, wish);
-      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-      baseShifts.put(DayOfWeek.THURSDAY, wish);
-      baseShifts.put(DayOfWeek.FRIDAY, wish);
-
-      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.PART_TIME, baseShifts);
-      Employee employee = profile.toEmployee(DayOfWeek.MONDAY);
-
-      assertEquals("Taro", employee.name());
-      assertEquals(EmploymentType.PART_TIME, employee.employmentType());
-      assertFalse(employee.off());
-      assertEquals(start, employee.start());
-      assertEquals(end, employee.end());
-    }
-
-    @Test
-    @DisplayName(
-        "Given: 基本シフトの曜日が休みに設定されているとき, When: toEmployee を実行すると, Then: 休みが反映された Employee が作成される")
-    void createsEmployeeWithOffDayFromBaseShift() {
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      baseShifts.put(DayOfWeek.MONDAY, new DailyWish(true, null, null));
-      baseShifts.put(DayOfWeek.TUESDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.WEDNESDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.THURSDAY, new DailyWish(false, start, end));
-      baseShifts.put(DayOfWeek.FRIDAY, new DailyWish(false, start, end));
-
-      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
-      Employee employee = profile.toEmployee(DayOfWeek.MONDAY);
-
-      assertEquals("Taro", employee.name());
-      assertEquals(EmploymentType.FULL_TIME, employee.employmentType());
-      assertTrue(employee.off());
-      assertNull(employee.start());
-      assertNull(employee.end());
-    }
-
-    @Test
     @DisplayName("[F-1] Given: パートと曜日休み, When: EmployeeProfile を作成すると, Then: offDays が保持される")
     void partTimeKeepsOffDays() {
       EmployeeProfile profile =
           new EmployeeProfile(
-              "Taro",
-              EmploymentType.PART_TIME,
-              Map.of(),
-              Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
+              "Taro", EmploymentType.PART_TIME, Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY));
 
       assertEquals(Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY), profile.offDays());
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: パートの曜日休みのセット, When: 作成後に元のセットを変更すると, Then: EmployeeProfile に反映されない")
+    void offDaysAreImmutable() {
+      Set<DayOfWeek> offDays = new HashSet<>(Set.of(DayOfWeek.MONDAY));
+      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.PART_TIME, offDays);
+
+      offDays.add(DayOfWeek.FRIDAY);
+
+      assertEquals(Set.of(DayOfWeek.MONDAY), profile.offDays());
     }
 
     @Test
     @DisplayName("[F-1] Given: 常勤・管理職に曜日休み, When: EmployeeProfile を作成すると, Then: offDays は空になる")
     void nonPartTimeIgnoresOffDays() {
       EmployeeProfile fullTime =
-          new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Map.of(), Set.of(DayOfWeek.MONDAY));
+          new EmployeeProfile("Taro", EmploymentType.FULL_TIME, Set.of(DayOfWeek.MONDAY));
       EmployeeProfile manager =
-          new EmployeeProfile("Hanako", EmploymentType.MANAGER, Map.of(), Set.of(DayOfWeek.FRIDAY));
+          new EmployeeProfile("Hanako", EmploymentType.MANAGER, Set.of(DayOfWeek.FRIDAY));
 
       assertTrue(fullTime.offDays().isEmpty());
       assertTrue(manager.offDays().isEmpty());
@@ -122,17 +55,31 @@ class EmployeeProfileTest {
     @Test
     @DisplayName("[F-1] Given: パートの曜日休み, When: 曜日休みの曜日で toEmployee を実行すると, Then: 休みの Employee になる")
     void partTimeOffDayBecomesOnLeave() {
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      DailyWish wish = new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(18, 0));
-      for (DayOfWeek day : DayOfWeek.values()) {
-        baseShifts.put(day, wish);
-      }
       EmployeeProfile profile =
-          new EmployeeProfile(
-              "Taro", EmploymentType.PART_TIME, baseShifts, Set.of(DayOfWeek.TUESDAY));
+          new EmployeeProfile("Taro", EmploymentType.PART_TIME, Set.of(DayOfWeek.TUESDAY));
 
-      assertTrue(profile.toEmployee(DayOfWeek.TUESDAY).off());
-      assertFalse(profile.toEmployee(DayOfWeek.MONDAY).off());
+      Employee employee = profile.toEmployee(DayOfWeek.TUESDAY);
+
+      assertEquals("Taro", employee.name());
+      assertEquals(EmploymentType.PART_TIME, employee.employmentType());
+      assertTrue(employee.off());
+      assertNull(employee.start());
+      assertNull(employee.end());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-1] Given: パートの曜日休み, When: 曜日休みでない曜日で toEmployee を実行すると, Then: 7:30〜18:30 で出勤の Employee"
+            + " になる")
+    void nonOffDayBecomesWorkingWithDefaultTimeRange() {
+      EmployeeProfile profile =
+          new EmployeeProfile("Taro", EmploymentType.PART_TIME, Set.of(DayOfWeek.TUESDAY));
+
+      Employee employee = profile.toEmployee(DayOfWeek.MONDAY);
+
+      assertFalse(employee.off());
+      assertEquals(LocalTime.of(7, 30), employee.start());
+      assertEquals(LocalTime.of(18, 30), employee.end());
     }
   }
 }

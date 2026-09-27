@@ -17,7 +17,6 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -50,11 +49,11 @@ class SavedInputFormConverterTest {
   private final SavedInputFormConverter converter = new SavedInputFormConverter();
 
   private static EmployeeProfile profile(String name, EmploymentType type) {
-    return new EmployeeProfile(name, type, Map.of(), Set.of());
+    return new EmployeeProfile(name, type, Set.of());
   }
 
   private static EmployeeProfile partTimeWithOffDays(String name, Set<DayOfWeek> offDays) {
-    return new EmployeeProfile(name, EmploymentType.PART_TIME, Map.of(), offDays);
+    return new EmployeeProfile(name, EmploymentType.PART_TIME, offDays);
   }
 
   private static SavedInput savedOf(

@@ -10,10 +10,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Component;
@@ -81,11 +79,10 @@ public class MonthlyFormConverter {
   private EmployeeProfile convertEmployee(EmployeeForm form) {
     String name = form.getName();
     Optional<EmploymentType> employmentType = EmploymentType.parse(form.getEmploymentType());
-    Map<DayOfWeek, DailyWish> baseShifts = convertDays(form.getDays());
 
     Set<DayOfWeek> offDays = convertOffDays(form.getOffDays());
 
-    return new EmployeeProfile(name, employmentType.orElse(null), baseShifts, offDays);
+    return new EmployeeProfile(name, employmentType.orElse(null), offDays);
   }
 
   /**
@@ -107,50 +104,6 @@ public class MonthlyFormConverter {
       }
     }
     return offDays;
-  }
-
-  /**
-   * 曜日フォームのリストを基本シフトのマップに変換します。
-   *
-   * <p>月〜金（5 曜日）分のマップを返します。提供された曜日が 5 件未満の場合、不足する曜日には
-   * {@code DailyWish(false, null, null)} を設定します。
-   *
-   * @param dayForms 曜日フォームのリスト
-   * @return 基本シフトのマップ（キー: {@link DayOfWeek}、値: {@link DailyWish}）
-   */
-  private Map<DayOfWeek, DailyWish> convertDays(List<DayForm> dayForms) {
-    Map<DayOfWeek, DailyWish> baseShifts = new EnumMap<>(DayOfWeek.class);
-    DayOfWeek[] weekdays = {
-      DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY
-    };
-
-    if (dayForms == null) {
-      dayForms = new ArrayList<>();
-    }
-
-    for (int i = 0; i < weekdays.length; i++) {
-      DailyWish wish;
-      if (i < dayForms.size() && dayForms.get(i) != null) {
-        wish = convertDay(dayForms.get(i));
-      } else {
-        wish = new DailyWish(false, null, null);
-      }
-      baseShifts.put(weekdays[i], wish);
-    }
-
-    return baseShifts;
-  }
-
-  /**
-   * 単一の曜日フォームを {@link DailyWish} に変換します。
-   *
-   * @param form 曜日フォーム
-   * @return 変換後の希望
-   */
-  private DailyWish convertDay(DayForm form) {
-    LocalTime start = parseTime(form.getStart());
-    LocalTime end = parseTime(form.getEnd());
-    return new DailyWish(false, start, end);
   }
 
   /**
