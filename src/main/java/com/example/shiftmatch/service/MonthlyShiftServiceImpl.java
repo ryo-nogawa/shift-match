@@ -120,7 +120,7 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
       List<Employee> employees, Map<String, Integer> partWeeklyActualWorkMinutes) {
     List<Employee> result = new ArrayList<>();
     for (Employee employee : employees) {
-      if (employee.off() || employee.employmentType() != EmploymentType.PART_TIME) {
+      if (employee.employmentType() != EmploymentType.PART_TIME) {
         result.add(employee);
         continue;
       }

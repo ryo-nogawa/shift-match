@@ -610,6 +610,45 @@ class MonthlyShiftRepositoryTest {
         assertEquals(300, restoredB.weeklyRemainingMinutes());
         assertEquals(UnassignedReason.WEEKLY_LIMIT_EXCEEDED, restoredB.unassignedReason());
       }
+
+      @Test
+      @DisplayName(
+          "[8.4] Given: 休み（off=true）で残り時間450のパートの未出勤者を保存したとき, When: 復元すると, Then:"
+              + " weeklyRemainingMinutesが450のまま復元される")
+      void restoresOffPartTimeUnassignedWeeklyRemainingMinutes() {
+        List<Employee> dayEmployees = employees();
+        // B（パート）を休みにし、週の残り時間450分を持たせた状態にする（8.4節）
+        List<Employee> withOffPart = new ArrayList<>();
+        for (Employee employee : dayEmployees) {
+          if (employee.name().equals("B")) {
+            withOffPart.add(
+                Employee.onLeave("B", EmploymentType.PART_TIME).withWeeklyRemainingMinutes(450));
+          } else {
+            withOffPart.add(employee);
+          }
+        }
+        AssignmentResult original = assign(withOffPart);
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                new DailyShiftResult(LocalDate.of(2026, 10, 1), 9, Optional.of(original)));
+        List<MonthEmployee> names =
+            List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K").stream()
+                .map(name -> new MonthEmployee(name, EmploymentType.FULL_TIME))
+                .toList();
+
+        repository.saveShift(result, names);
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        AssignmentResult restored = saved.result().days().get(0).assignment().orElseThrow();
+        Employee restoredB =
+            restored.unassignedEmployees().stream()
+                .filter(e -> e.name().equals("B"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(450, restoredB.weeklyRemainingMinutes());
+        assertEquals(UnassignedReason.ON_LEAVE, restoredB.unassignedReason());
+      }
     }
 
     @Nested

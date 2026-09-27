@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.DailyWish;
+import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.FailureReason;
@@ -24,6 +25,7 @@ import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
 import com.example.shiftmatch.domain.ShiftAssignment;
+import com.example.shiftmatch.domain.UnassignedReason;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -480,6 +482,49 @@ class MonthlyShiftServiceImplTest {
       DailyShiftResult dayResult = result.days().get(0);
       assertTrue(dayResult.assignment().isEmpty(), "7名では不成立のはず");
       assertEquals(FailureReason.STAFF_SHORTAGE, dayResult.failureReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[8.4][H-4] Given: 月・火に枠1（375分）へ割り当てられたパートを個別変更で水曜に休みにしたとき, When: createを実行すると, Then:"
+            + " 水曜の未出勤者のそのパートのweeklyRemainingMinutesが450、unassignedReasonがON_LEAVEである")
+    void offPartTimeKeepsWeeklyRemainingMinutesInUnassignedEmployee() {
+      YearMonth month = YearMonth.of(2024, 9);
+      LocalDate mon = LocalDate.of(2024, 9, 2);
+      LocalDate tue = LocalDate.of(2024, 9, 3);
+      LocalDate wed = LocalDate.of(2024, 9, 4);
+      List<LocalDate> businessDays = List.of(mon, tue, wed);
+
+      HolidayService holidayService = mock(HolidayService.class);
+      MonthlyShiftServiceImpl service =
+          serviceWithRealAssignment(holidayService, businessDays, month);
+
+      List<EmployeeProfile> profiles = new ArrayList<>();
+      for (int i = 0; i < 8; i++) {
+        profiles.add(new EmployeeProfile("Full" + i, EmploymentType.FULL_TIME, Set.of()));
+      }
+      profiles.add(
+          new EmployeeProfile("Part0", EmploymentType.PART_TIME, partTimeShifts(), Set.of()));
+
+      ShiftAdjustment offOnWednesday =
+          new ShiftAdjustment(wed, "Part0", new DailyWish(true, null, null));
+      MonthlyShiftInput input = new MonthlyShiftInput(month, profiles, List.of(offOnWednesday));
+
+      MonthlyShiftResult result = service.create(input);
+
+      List<DailyShiftResult> days = result.days();
+      assertEquals(3, days.size());
+      DailyShiftResult wedResult = days.get(2);
+      assertTrue(wedResult.assignment().isPresent(), "水曜日は成立するはず");
+
+      Employee part0Unassigned =
+          wedResult.assignment().get().unassignedEmployees().stream()
+              .filter(e -> e.name().equals("Part0"))
+              .findFirst()
+              .orElseThrow();
+
+      assertEquals(450, part0Unassigned.weeklyRemainingMinutes());
+      assertEquals(UnassignedReason.ON_LEAVE, part0Unassigned.unassignedReason());
     }
   }
 
