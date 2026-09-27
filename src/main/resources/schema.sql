@@ -38,6 +38,9 @@ CREATE TABLE IF NOT EXISTS saved_month_employee (
   PRIMARY KEY (target_month, row_index)
 );
 
+ALTER TABLE saved_month_employee
+  ADD COLUMN IF NOT EXISTS employment_type VARCHAR(20) NOT NULL DEFAULT 'FULL_TIME';
+
 CREATE TABLE IF NOT EXISTS saved_day (
   day_date DATE PRIMARY KEY,
   target_month VARCHAR(7) NOT NULL,

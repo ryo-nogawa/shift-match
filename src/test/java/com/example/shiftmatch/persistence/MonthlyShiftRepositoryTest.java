@@ -10,6 +10,7 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
@@ -55,6 +56,10 @@ class MonthlyShiftRepositoryTest {
   @BeforeEach
   void clearTables() {
     SAVED_TABLES.forEach(table -> jdbcClient.sql("DELETE FROM " + table).update());
+  }
+
+  private static MonthEmployee fullTime(String name) {
+    return new MonthEmployee(name, EmploymentType.FULL_TIME);
   }
 
   private static EmployeeProfile profile(String name, EmploymentType type, boolean mondayOff) {
@@ -302,13 +307,16 @@ class MonthlyShiftRepositoryTest {
             monthOf(
                 YearMonth.of(2026, 10),
                 new DailyShiftResult(LocalDate.of(2026, 10, 1), 9, Optional.of(original)));
-        List<String> names = List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K");
+        List<MonthEmployee> names =
+            List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K").stream()
+                .map(name -> new MonthEmployee(name, EmploymentType.FULL_TIME))
+                .toList();
 
         repository.saveShift(result, names);
 
         SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
         assertEquals(result, saved.result());
-        assertEquals(names, saved.employeeNames());
+        assertEquals(names, saved.employees());
         AssignmentResult restored = saved.result().days().get(0).assignment().orElseThrow();
         assertEquals(original.assignments(), restored.assignments());
         assertEquals(original.score(), restored.score());
@@ -320,15 +328,48 @@ class MonthlyShiftRepositoryTest {
       }
 
       @Test
+      @DisplayName("[F-7][8.4節] Given: 区分の異なる従業員, When: 保存して復元すると, Then: 氏名と区分が入力順で一致する")
+      void restoresEmployeesWithEmploymentTypeInOrder() {
+        List<MonthEmployee> employees =
+            List.of(
+                new MonthEmployee("A", EmploymentType.MANAGER),
+                new MonthEmployee("B", EmploymentType.PART_TIME),
+                new MonthEmployee("C", EmploymentType.FULL_TIME));
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                new DailyShiftResult(LocalDate.of(2026, 10, 1), 2, Optional.empty()));
+
+        repository.saveShift(result, employees);
+
+        assertEquals(
+            employees, repository.findShift(YearMonth.of(2026, 10)).orElseThrow().employees());
+      }
+
+      @Test
+      @DisplayName("[F-7][8.4節] Given: 区分の列がない既存の行, When: 復元すると, Then: 常勤として扱う")
+      void treatsRowWithoutEmploymentTypeAsFullTime() {
+        jdbcClient
+            .sql(
+                "INSERT INTO saved_month_employee (target_month, row_index, name)"
+                    + " VALUES ('2026-10', 0, 'A')")
+            .update();
+
+        assertEquals(
+            List.of(new MonthEmployee("A", EmploymentType.FULL_TIME)),
+            repository.findShift(YearMonth.of(2026, 10)).orElseThrow().employees());
+      }
+
+      @Test
       @DisplayName("[F-7][8.4節] Given: 他の月の決定シフトがあるとき, When: 対象月を保存すると, Then: 他の月の分が残る")
       void keepsShiftsOfOtherMonths() {
         MonthlyShiftResult september =
             monthOf(YearMonth.of(2026, 9), successDay(LocalDate.of(2026, 9, 1), employees()));
         MonthlyShiftResult october =
             monthOf(YearMonth.of(2026, 10), successDay(LocalDate.of(2026, 10, 1), employees()));
-        repository.saveShift(september, List.of("A"));
+        repository.saveShift(september, List.of(fullTime("A")));
 
-        repository.saveShift(october, List.of("B"));
+        repository.saveShift(october, List.of(fullTime("B")));
 
         assertEquals(september, repository.findShift(YearMonth.of(2026, 9)).orElseThrow().result());
         assertEquals(october, repository.findShift(YearMonth.of(2026, 10)).orElseThrow().result());
@@ -344,13 +385,13 @@ class MonthlyShiftRepositoryTest {
                 successDay(LocalDate.of(2026, 10, 2), employees()));
         MonthlyShiftResult second =
             monthOf(YearMonth.of(2026, 10), successDay(LocalDate.of(2026, 10, 5), employees()));
-        repository.saveShift(first, List.of("A", "B"));
+        repository.saveShift(first, List.of(fullTime("A"), fullTime("B")));
 
-        repository.saveShift(second, List.of("C"));
+        repository.saveShift(second, List.of(fullTime("C")));
 
         SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
         assertEquals(second, saved.result());
-        assertEquals(List.of("C"), saved.employeeNames());
+        assertEquals(List.of(fullTime("C")), saved.employees());
       }
 
       @Test
@@ -364,7 +405,7 @@ class MonthlyShiftRepositoryTest {
                 successDay(LocalDate.of(2026, 10, 5), employees()),
                 new DailyShiftResult(LocalDate.of(2026, 10, 6), 0, Optional.empty()));
 
-        repository.saveShift(result, List.of("A"));
+        repository.saveShift(result, List.of(fullTime("A")));
 
         SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
         assertEquals(result, saved.result());
@@ -415,12 +456,12 @@ class MonthlyShiftRepositoryTest {
         repository.save(
             input(december, "佐藤", LocalDate.of(2026, 12, 1)),
             result(december, LocalDate.of(2026, 12, 1)),
-            List.of("佐藤"));
+            List.of(fullTime("佐藤")));
 
         repository.save(
             input(january, "鈴木", LocalDate.of(2027, 1, 4)),
             result(january, LocalDate.of(2027, 1, 4)),
-            List.of("鈴木"));
+            List.of(fullTime("鈴木")));
 
         assertTrue(repository.findShift(december).isEmpty());
         assertEquals(1, repository.findAdjustments().size());
@@ -437,12 +478,12 @@ class MonthlyShiftRepositoryTest {
         repository.save(
             input(october, "佐藤", LocalDate.of(2026, 10, 1)),
             result(october, LocalDate.of(2026, 10, 1)),
-            List.of("佐藤"));
+            List.of(fullTime("佐藤")));
 
         repository.save(
             input(november, "佐藤", LocalDate.of(2026, 11, 2)),
             result(november, LocalDate.of(2026, 11, 2)),
-            List.of("佐藤"));
+            List.of(fullTime("佐藤")));
 
         assertTrue(repository.findShift(october).isPresent());
         assertTrue(repository.findShift(november).isPresent());
@@ -462,7 +503,7 @@ class MonthlyShiftRepositoryTest {
         repository.save(
             input(december, "佐藤", LocalDate.of(2026, 12, 1)),
             result(december, LocalDate.of(2026, 12, 1)),
-            List.of("佐藤"));
+            List.of(fullTime("佐藤")));
         String tooLongName = "あ".repeat(256);
 
         assertThrows(
@@ -471,7 +512,7 @@ class MonthlyShiftRepositoryTest {
                 repository.save(
                     input(january, tooLongName, LocalDate.of(2027, 1, 4)),
                     result(january, LocalDate.of(2027, 1, 4)),
-                    List.of(tooLongName)));
+                    List.of(fullTime(tooLongName))));
 
         assertTrue(repository.findShift(december).isPresent());
         assertEquals(1, repository.findAdjustments().size());

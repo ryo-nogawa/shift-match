@@ -163,7 +163,9 @@ public class ShiftController {
     model.addAttribute(
         "resultView",
         monthlyResultViewFactory.create(
-            result, saved.get().employeeNames(), holidaysOrEmpty(result.month())));
+            result,
+            saved.get().employees().stream().map(e -> e.name()).toList(),
+            holidaysOrEmpty(result.month())));
     model.addAttribute("resultSource", "saved");
   }
 

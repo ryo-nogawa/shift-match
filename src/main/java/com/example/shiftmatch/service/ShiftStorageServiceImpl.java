@@ -1,5 +1,6 @@
 package com.example.shiftmatch.service;
 
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftStorageException;
@@ -32,13 +33,13 @@ public class ShiftStorageServiceImpl implements ShiftStorageService {
 
   @Override
   public void save(MonthlyShiftInput input, MonthlyShiftResult result) {
-    List<String> employeeNames =
+    List<MonthEmployee> employees =
         input.employees().stream()
-            .map(employee -> employee.name())
-            .filter(name -> name != null && !name.isBlank())
+            .filter(employee -> employee.name() != null && !employee.name().isBlank())
+            .map(employee -> new MonthEmployee(employee.name(), employee.employmentType()))
             .toList();
     try {
-      repository.save(input, result, employeeNames);
+      repository.save(input, result, employees);
     } catch (DataAccessException e) {
       throw new ShiftStorageException("シフトの保存に失敗しました", e);
     }

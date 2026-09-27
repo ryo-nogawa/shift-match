@@ -27,6 +27,7 @@ import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.HolidayDataUnavailableError;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
+import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
@@ -822,7 +823,10 @@ class ShiftControllerTest {
       MonthlyShiftResult monthly =
           new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
       when(shiftStorageService.load(MONTH))
-          .thenReturn(Optional.of(new SavedMonthlyShift(monthly, List.of("A"))));
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee("A", EmploymentType.FULL_TIME)))));
     }
 
     @Test
@@ -901,7 +905,10 @@ class ShiftControllerTest {
       MonthlyShiftResult monthly =
           new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
       when(shiftStorageService.load(MONTH))
-          .thenReturn(Optional.of(new SavedMonthlyShift(monthly, List.of("A"))));
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee("A", EmploymentType.FULL_TIME)))));
 
       MvcResult result =
           mockMvc
@@ -925,7 +932,10 @@ class ShiftControllerTest {
       MonthlyShiftResult monthly =
           new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
       when(shiftStorageService.load(MONTH))
-          .thenReturn(Optional.of(new SavedMonthlyShift(monthly, List.of("A"))));
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee("A", EmploymentType.FULL_TIME)))));
 
       String html =
           bodyOf(
