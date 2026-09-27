@@ -162,6 +162,32 @@ class WeeklyShiftPlannerTest {
   }
 
   @Nested
+  class 複数の週 {
+
+    @Test
+    @DisplayName("[H-4] Given: 同じ希望の 2 つの週, When: planAll すると, Then: それぞれ plan した結果と同じになる")
+    void planAllEqualsPlanPerWeek() {
+      List<Employee> day = identicalParts(8);
+      List<LocalDate> week1 = days(3);
+      List<LocalDate> week2 = new ArrayList<>();
+      for (LocalDate date : week1) {
+        week2.add(date.plusDays(7));
+      }
+
+      List<DailyShiftResult> all = planner.planAll(List.of(week1, week2), date -> day, date -> 8);
+
+      List<DailyShiftResult> single = planner.plan(week1, date -> day, date -> 8);
+      assertEquals(6, all.size());
+      for (int i = 0; i < 3; i++) {
+        assertEquals(single.get(i).assignment(), all.get(i).assignment());
+        assertEquals(single.get(i).assignment(), all.get(i + 3).assignment());
+        assertEquals(single.get(i).failureReason(), all.get(i + 3).failureReason());
+        assertEquals(week2.get(i), all.get(i + 3).date());
+      }
+    }
+  }
+
+  @Nested
   class 上限に届く週 {
 
     @Test

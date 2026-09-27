@@ -87,24 +87,19 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
       throw new InvalidMonthlyInputException(errors);
     }
 
-    List<DailyShiftResult> results = new ArrayList<>();
-
     // H-4 だけが日をまたぐため、営業日を週に分け、週ごとに最適化する
     List<LocalDate> businessDays = holidayService.businessDays(input.month());
-    for (List<LocalDate> week : weekGrouper.group(businessDays)) {
-      Map<LocalDate, List<Employee>> employeesByDate = new HashMap<>();
-      for (LocalDate date : week) {
-        employeesByDate.put(date, employeesOf(date, input));
-      }
-      List<DailyShiftResult> weekResults =
-          weeklyPlanner.plan(
-              week,
-              (date) -> employeesByDate.get(date),
-              (date) -> availableCount(employeesByDate.get(date)));
-      for (DailyShiftResult dayResult : weekResults) {
-        results.add(dayResult);
-        rationaleLogger.log(dayResult.date(), dayResult);
-      }
+    Map<LocalDate, List<Employee>> employeesByDate = new HashMap<>();
+    for (LocalDate date : businessDays) {
+      employeesByDate.put(date, employeesOf(date, input));
+    }
+    List<DailyShiftResult> results =
+        weeklyPlanner.planAll(
+            weekGrouper.group(businessDays),
+            (date) -> employeesByDate.get(date),
+            (date) -> availableCount(employeesByDate.get(date)));
+    for (DailyShiftResult dayResult : results) {
+      rationaleLogger.log(dayResult.date(), dayResult);
     }
 
     return new MonthlyShiftResult(input.month(), results);

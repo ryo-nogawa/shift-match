@@ -50,6 +50,47 @@ public class WeeklyShiftPlanner {
   }
 
   /**
+   * 複数の週について、案または不成立を決める。
+   *
+   * <p>従業員の希望と営業日の並びがまったく同じ週は、同じ結果になるため、最初の 1 回だけ探索して使い回します（9 章の性能のため）。
+   *
+   * @param weeks 週ごとの営業日（昇順）
+   * @param employeesOf 日付から、その日の有効な従業員（入力順）を返す関数
+   * @param availableCountOf 日付から、その日に勤務できる人数を返す関数
+   * @return 日付順の結果
+   */
+  public List<DailyShiftResult> planAll(
+      List<List<LocalDate>> weeks,
+      Function<LocalDate, List<Employee>> employeesOf,
+      Function<LocalDate, Integer> availableCountOf) {
+    Map<String, List<DailyShiftResult>> planned = new HashMap<>();
+    List<DailyShiftResult> all = new ArrayList<>();
+    for (List<LocalDate> week : weeks) {
+      StringBuilder signature = new StringBuilder();
+      for (LocalDate date : week) {
+        signature.append(employeesOf.apply(date)).append(';');
+      }
+      List<DailyShiftResult> cached = planned.get(signature.toString());
+      if (cached == null) {
+        cached = plan(week, employeesOf, availableCountOf);
+        planned.put(signature.toString(), cached);
+        all.addAll(cached);
+        continue;
+      }
+      for (int i = 0; i < week.size(); i++) {
+        DailyShiftResult source = cached.get(i);
+        all.add(
+            new DailyShiftResult(
+                week.get(i),
+                availableCountOf.apply(week.get(i)),
+                source.assignment(),
+                source.failureReason()));
+      }
+    }
+    return all;
+  }
+
+  /**
    * 1 週分の営業日について、案または不成立を決める。
    *
    * <p>各日の従業員リストは、同じ従業員が同じ順序で並んでいることを前提とします。
@@ -130,10 +171,11 @@ public class WeeklyShiftPlanner {
 
   // ---- 探索（5.4 節の週の探索） ----
 
-  private long value(Week w, int d, int[] used) {
+  private long value(Week w, int d, int[] rawUsed) {
     if (d == w.days) {
       return 0;
     }
+    int[] used = normalizeAll(w, d, rawUsed);
     String key = stateKey(w, d, used);
     Long cached = w.memo.get(d).get(key);
     if (cached != null) {
@@ -149,7 +191,8 @@ public class WeeklyShiftPlanner {
   }
 
   /** 成立する案のうち最小の値を返す。{@code collector} があれば、値が {@code target} に等しい案をすべて渡す。 */
-  private long bestSuccess(Week w, int d, int[] used, LeafCollector collector) {
+  private long bestSuccess(Week w, int d, int[] rawUsed, LeafCollector collector) {
+    int[] used = normalizeAll(w, d, rawUsed);
     ClassSet cs = classesOf(w, d, used);
     long[] best = {INF};
     int[][] take = new int[cs.count][SLOT_COUNT];
@@ -423,18 +466,30 @@ public class WeeklyShiftPlanner {
 
   // ---- 状態のまとめ方 ----
 
-  private static int normalize(Week w, int d, int q, int used) {
-    if (!w.alive[d][q]) {
-      return 0;
+  /**
+   * 残り日数で実現できる実働の合計に丸めた、実働分を返す。
+   *
+   * <p>残りの日数で足せる枠の組み合わせの合計が同じなら、残りが違っても以後の結果は変わらない。
+   */
+  private static int[] normalizeAll(Week w, int d, int[] used) {
+    int[] sums = w.futureSums[w.days - d];
+    int[] result = new int[used.length];
+    for (int q = 0; q < used.length; q++) {
+      if (!w.alive[d][q]) {
+        continue;
+      }
+      int remaining = LIMIT - used[q];
+      int index = Arrays.binarySearch(sums, remaining);
+      int rounded = index >= 0 ? sums[index] : sums[-index - 2];
+      result[q] = LIMIT - rounded;
     }
-    // 残りが最小の枠より少ないパートは、実働分が違っても以後の結果が変わらない
-    return LIMIT - used < w.minNet ? LIMIT - w.minNet + 1 : used;
+    return result;
   }
 
   private static String stateKey(Week w, int d, int[] used) {
     int[] composite = new int[w.partCount];
     for (int q = 0; q < w.partCount; q++) {
-      composite[q] = w.sig[d][q] * SIG_RADIX + normalize(w, d, q, used[q]);
+      composite[q] = w.sig[d][q] * SIG_RADIX + used[q];
     }
     Arrays.sort(composite);
     StringBuilder sb = new StringBuilder(composite.length * 2);
@@ -450,7 +505,7 @@ public class WeeklyShiftPlanner {
       if (!w.candidate[d][w.partEmployee[q]]) {
         continue;
       }
-      int key = w.sig[d][q] * SIG_RADIX + normalize(w, d, q, used[q]);
+      int key = w.sig[d][q] * SIG_RADIX + used[q];
       groups.computeIfAbsent(key, (k) -> new ArrayList<>()).add(q);
     }
     ClassSet cs = new ClassSet(groups.size());
@@ -487,7 +542,7 @@ public class WeeklyShiftPlanner {
   private static final class Week {
     final int days;
     final int partCount;
-    final int minNet;
+    final int[][] futureSums;
     final int[] partEmployee;
     final int[] partIndexOf;
     final boolean[][] candidate;
@@ -502,14 +557,12 @@ public class WeeklyShiftPlanner {
 
     Week(List<List<Employee>> emps) {
       days = emps.size();
-      int n = days == 0 ? 0 : emps.get(0).size();
-      int min = Integer.MAX_VALUE;
       int max = 0;
       for (ShiftSlot slot : SLOTS) {
-        min = Math.min(min, slot.netWorkMinutes());
         max = Math.max(max, slot.netWorkMinutes());
       }
-      minNet = min;
+      futureSums = computeFutureSums(days);
+      int n = days == 0 ? 0 : emps.get(0).size();
       candidate = new boolean[days][n];
       can = new boolean[days][n][SLOT_COUNT];
       gap = new int[days][n][SLOT_COUNT];
@@ -576,6 +629,38 @@ public class WeeklyShiftPlanner {
           alive[d][q] = today || alive[d + 1][q];
         }
       }
+    }
+
+    /** 残り k 日で足せる実働の合計（上限以内）を、k ごとに昇順で返す。 */
+    private static int[][] computeFutureSums(int days) {
+      int[][] futureSums = new int[days + 1][];
+      boolean[] reachable = new boolean[LIMIT + 1];
+      reachable[0] = true;
+      for (int k = 0; k <= days; k++) {
+        int count = 0;
+        for (boolean r : reachable) {
+          count += r ? 1 : 0;
+        }
+        futureSums[k] = new int[count];
+        int at = 0;
+        for (int v = 0; v <= LIMIT; v++) {
+          if (reachable[v]) {
+            futureSums[k][at++] = v;
+          }
+        }
+        boolean[] next = reachable.clone();
+        for (int v = 0; v <= LIMIT; v++) {
+          if (reachable[v]) {
+            for (ShiftSlot slot : SLOTS) {
+              if (v + slot.netWorkMinutes() <= LIMIT) {
+                next[v + slot.netWorkMinutes()] = true;
+              }
+            }
+          }
+        }
+        reachable = next;
+      }
+      return futureSums;
     }
   }
 }
