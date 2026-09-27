@@ -444,6 +444,35 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[7.1][6章] Given: WEEKLY_LIMITとSTAFF_SHORTAGEの不成立日がある月, When: POST /shift の HTML を見ると,"
+            + " Then: カレンダーに理由ごとの不成立文言、日別詳細に理由ラベルつきの不成立文言が出る")
+    void rendersFailureReasonInCalendarAndDetail() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10),
+                  List.of(
+                      new DailyShiftResult(
+                          LocalDate.of(2026, 10, 1),
+                          9,
+                          Optional.empty(),
+                          com.example.shiftmatch.domain.FailureReason.WEEKLY_LIMIT),
+                      new DailyShiftResult(
+                          LocalDate.of(2026, 10, 2),
+                          5,
+                          Optional.empty(),
+                          com.example.shiftmatch.domain.FailureReason.STAFF_SHORTAGE))));
+
+      String html = bodyOf(perform(validRequest()));
+
+      assertTrue(html.contains("不成立（パートの週上限）"));
+      assertTrue(html.contains("不成立（勤務可 5 名）"));
+      assertTrue(html.contains("不成立です。理由：パートの週上限。勤務できる人数：9 名"));
+      assertTrue(html.contains("不成立です。理由：人員不足。勤務できる人数：5 名"));
+    }
+
+    @Test
+    @DisplayName(
         "[F-4] Given: 氏名に HTML タグを含む成立の日, When: POST /shift の HTML を見ると,"
             + " Then: カレンダーの氏名はエスケープされる")
     void escapesEmployeeNameInCalendar() throws Exception {
@@ -600,7 +629,7 @@ class ShiftControllerTest {
       assertTrue(panel.contains(">休憩<"));
       assertTrue(panel.contains("休みさん（パート）"));
       assertTrue(panel.contains("休み"));
-      assertTrue(panel.contains("不成立です。勤務できる人数：5 名"));
+      assertTrue(panel.contains("不成立です。理由：人員不足。勤務できる人数：5 名"));
       assertFalse(panel.contains("枠"));
     }
 

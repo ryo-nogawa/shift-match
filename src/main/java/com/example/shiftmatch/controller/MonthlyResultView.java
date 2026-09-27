@@ -1,5 +1,6 @@
 package com.example.shiftmatch.controller;
 
+import com.example.shiftmatch.domain.FailureReason;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -31,13 +32,31 @@ public record MonthlyResultView(
    * @param failed 不成立の日なら true
    * @param availableCount 勤務できる人数
    * @param groups 勤務時間ごとの氏名のまとまり（枠 1 → 6 の順）
+   * @param failureReason 不成立の理由（6 章。成立した日は {@code null}）
    */
   public record CalendarDay(
       LocalDate date,
       String holidayName,
       boolean failed,
       int availableCount,
-      List<WorkGroup> groups) {}
+      List<WorkGroup> groups,
+      FailureReason failureReason) {
+
+    /**
+     * カレンダーに表示する不成立の文言を返します。
+     *
+     * <p>{@link FailureReason#STAFF_SHORTAGE} なら {@code 不成立（勤務可 n 名）}、{@link
+     * FailureReason#WEEKLY_LIMIT} なら {@code 不成立（パートの週上限）} を返します。
+     *
+     * @return 不成立の文言
+     */
+    public String failureText() {
+      if (failureReason == FailureReason.WEEKLY_LIMIT) {
+        return "不成立（パートの週上限）";
+      }
+      return "不成立（勤務可 " + availableCount + " 名）";
+    }
+  }
 
   /**
    * 同じ勤務時間の従業員のまとまりです。

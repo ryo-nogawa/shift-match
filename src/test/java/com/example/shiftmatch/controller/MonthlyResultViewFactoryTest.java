@@ -9,6 +9,7 @@ import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.FailureReason;
 import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAssignment;
@@ -73,6 +74,11 @@ class MonthlyResultViewFactoryTest {
 
   private static DailyShiftResult failedDay(LocalDate date, int availableCount) {
     return new DailyShiftResult(date, availableCount, Optional.empty());
+  }
+
+  private static DailyShiftResult failedDay(
+      LocalDate date, int availableCount, FailureReason failureReason) {
+    return new DailyShiftResult(date, availableCount, Optional.empty(), failureReason);
   }
 
   private static List<MonthEmployee> names(String... names) {
@@ -140,6 +146,20 @@ class MonthlyResultViewFactoryTest {
       assertTrue(day.failed());
       assertEquals(5, day.availableCount());
       assertTrue(day.groups().isEmpty());
+      assertEquals(FailureReason.STAFF_SHORTAGE, day.failureReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[7.1] Given: WEEKLY_LIMITの不成立の日, When: 表示モデルを作ると, Then: CalendarDayにfailureReasonが引き継がれる")
+    void carriesWeeklyLimitFailureReason() {
+      MonthlyResultView view =
+          createView(
+              List.of(failedDay(DAY_2, 9, FailureReason.WEEKLY_LIMIT)), names("e1"), Map.of());
+
+      MonthlyResultView.CalendarDay day = view.days().get(0);
+      assertEquals(FailureReason.WEEKLY_LIMIT, day.failureReason());
+      assertEquals("不成立（パートの週上限）", day.failureText());
     }
 
     @Test
