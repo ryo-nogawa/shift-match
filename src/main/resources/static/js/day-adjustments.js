@@ -87,13 +87,17 @@
   }
 
   /**
-   * 個別変更がないときの希望（初期値）。パートの曜日休みの曜日は休み、それ以外は 07:30〜18:30。
-   * 休みの日も時刻欄には 07:30〜18:30 を残す。employee は {employmentType, offDays（0＝月〜4＝金）}。
+   * 個別変更がないときの希望（初期値）。パートの曜日休みの曜日は休み、それ以外はその曜日の基本シフト。
+   * 休みの日も時刻欄にはその曜日の基本シフト（なければ 07:30〜18:30）を残す。
+   * employee は {employmentType, offDays（0＝月〜4＝金）, days（[{start, end}]、0＝月〜4＝金）}。
    */
   function initialWishOf(employee, date) {
-    const isOff =
-      employee.employmentType === "PART_TIME" && employee.offDays.indexOf(weekdayIndex(date)) >= 0;
-    return { off: isOff, start: DEFAULT_START, end: DEFAULT_END };
+    const dayIndex = weekdayIndex(date);
+    const day = (employee.days && employee.days[dayIndex]) || {};
+    const start = day.start || DEFAULT_START;
+    const end = day.end || DEFAULT_END;
+    const isOff = employee.employmentType === "PART_TIME" && employee.offDays.indexOf(dayIndex) >= 0;
+    return { off: isOff, start: start, end: end };
   }
 
   /** 選択日の入力を Map に反映する。初期値と同じ内容なら個別変更を消す（8.2 節）。 */
@@ -264,6 +268,7 @@
     const dayPanel = document.getElementById("day-panel");
     const hiddenContainer = document.getElementById("adjustment-inputs");
     const rowsContainer = document.getElementById("employee-rows");
+    const panelsContainer = document.getElementById("base-panels");
     const timeOptions = (form.getAttribute("data-time-options") || "")
       .split("|")
       .filter(function (value) {
@@ -280,7 +285,16 @@
     // 画面に出している従業員（描画した時点の並び）。入力行の data-employee-index はこの添字
     let shownEmployees = [];
 
-    /** 氏名が空白だけでない行（有効な従業員。V-1）を、並び順に区分・曜日休み付きで読む。 */
+    /** data-row-id が一致する基本シフトパネル（.base-panel）を返す。なければ null。 */
+    function panelOf(rowId) {
+      return (
+        Array.from(panelsContainer.querySelectorAll(".base-panel")).find(function (panel) {
+          return panel.getAttribute("data-row-id") === rowId;
+        }) || null
+      );
+    }
+
+    /** 氏名が空白だけでない行（有効な従業員。V-1）を、並び順に区分・曜日休み・基本シフト付きで読む。 */
     function readEmployees() {
       const employees = [];
       rowsContainer.querySelectorAll(".employee-row").forEach(function (row) {
@@ -288,15 +302,26 @@
         if (name.trim() === "") {
           return;
         }
-        const offDays = Array.from(row.querySelectorAll(".off-day-checkbox:checked")).map(
-          function (checkbox) {
-            return Number(checkbox.value);
-          }
-        );
+        const panel = panelOf(row.getAttribute("data-row-id"));
+        const offDays = [];
+        const days = [];
+        if (panel) {
+          Array.from(panel.querySelectorAll(".day-row")).forEach(function (dayRow, index) {
+            const checkbox = dayRow.querySelector(".off-day-checkbox");
+            if (checkbox && checkbox.checked) {
+              offDays.push(index);
+            }
+            days.push({
+              start: dayRow.querySelector(".start-select").value,
+              end: dayRow.querySelector(".end-select").value,
+            });
+          });
+        }
         employees.push({
           name: name,
           employmentType: row.querySelector(".type-select").value,
           offDays: offDays,
+          days: days,
         });
       });
       return employees;

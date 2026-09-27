@@ -158,6 +158,92 @@ describe("day-adjustments.js", () => {
     assert.deepEqual(dayAdjustments.initialWishOf(fullTime, "2026-10-20"), base);
   });
 
+  test("[F-11] 初期値：曜日ごとの基本シフトを返す", () => {
+    const employee = {
+      name: "C",
+      employmentType: "FULL_TIME",
+      offDays: [],
+      days: [
+        { start: "09:00", end: "17:00" }, // 月
+        { start: "08:00", end: "16:00" }, // 火
+        { start: "07:30", end: "18:30" }, // 水
+        { start: "09:30", end: "17:30" }, // 木
+        { start: "08:30", end: "16:30" }, // 金
+      ],
+    };
+    // 2026-10-19 は月曜、2026-10-21 は水曜
+    assert.deepEqual(dayAdjustments.initialWishOf(employee, "2026-10-19"), {
+      off: false,
+      start: "09:00",
+      end: "17:00",
+    });
+    assert.deepEqual(dayAdjustments.initialWishOf(employee, "2026-10-21"), {
+      off: false,
+      start: "07:30",
+      end: "18:30",
+    });
+  });
+
+  test("[F-11] 初期値：パートの曜日休みは休みになり、時刻欄はその曜日の基本シフトになる", () => {
+    const employee = {
+      name: "D",
+      employmentType: "PART_TIME",
+      offDays: [1], // 火曜が曜日休み
+      days: [
+        { start: "09:00", end: "17:00" },
+        { start: "08:00", end: "16:00" },
+        { start: "07:30", end: "18:30" },
+        { start: "09:30", end: "17:30" },
+        { start: "08:30", end: "16:30" },
+      ],
+    };
+    // 2026-10-20 は火曜
+    assert.deepEqual(dayAdjustments.initialWishOf(employee, "2026-10-20"), {
+      off: true,
+      start: "08:00",
+      end: "16:00",
+    });
+  });
+
+  test("[F-11] 初期値：基本シフトの開始・終了が空の曜日は 07:30〜18:30 になる", () => {
+    const employee = {
+      name: "E",
+      employmentType: "FULL_TIME",
+      offDays: [],
+      days: [
+        { start: "", end: "" },
+        { start: "08:00", end: "16:00" },
+        { start: "07:30", end: "18:30" },
+        { start: "09:30", end: "17:30" },
+        { start: "08:30", end: "16:30" },
+      ],
+    };
+    // 2026-10-19 は月曜
+    assert.deepEqual(dayAdjustments.initialWishOf(employee, "2026-10-19"), base);
+  });
+
+  test("[F-11] 基本シフトを変えたあと、新しい初期値と同じになった個別変更は pruneRedundantAdjustments で消える", () => {
+    const employee = {
+      name: "F",
+      employmentType: "FULL_TIME",
+      offDays: [],
+      days: [
+        { start: "09:00", end: "17:00" }, // 月曜の基本シフトを変更した
+        { start: "07:30", end: "18:30" },
+        { start: "07:30", end: "18:30" },
+        { start: "07:30", end: "18:30" },
+        { start: "07:30", end: "18:30" },
+      ],
+    };
+    // 旧基本シフト（07:30〜18:30）のときに残した月曜日の個別変更
+    const map = new Map([["2026-10-19|F", { off: false, start: "09:00", end: "17:00" }]]);
+
+    const removed = dayAdjustments.pruneRedundantAdjustments(map, [employee], ["2026-10-19"]);
+
+    assert.equal(removed, true);
+    assert.equal(map.size, 0);
+  });
+
   test("[F-11][8.2節] 曜日休みの日に出勤へ変えると個別変更として残り、休みに戻すと消える", () => {
     const map = new Map();
     const initial = dayAdjustments.initialWishOf(part, "2026-10-20");
