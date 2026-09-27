@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.ShiftSlot;
 import java.time.Duration;
 import java.time.LocalTime;
@@ -449,13 +450,16 @@ class ShiftAssignmentServiceImplTest {
 
     @Test
     @DisplayName(
-        "[H-4] Given: 全員が7:30〜18:30の9名のうち先頭の残り時間が400分のとき, When: assignを実行すると, Then:"
+        "[H-4] Given: 全員が7:30〜18:30の9名のうち先頭のパートの残り時間が400分のとき, When: assignを実行すると, Then:"
             + " その従業員は枠1（375分）以外に割り当てられない")
     void excludesPartTimeFromSlotExceedingWeeklyRemainingMinutes() {
       List<Employee> employees = new ArrayList<>();
       employees.add(
           Employee.working(
-                  "Employee0", java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30))
+                  "Employee0",
+                  EmploymentType.PART_TIME,
+                  java.time.LocalTime.of(7, 30),
+                  java.time.LocalTime.of(18, 30))
               .withWeeklyRemainingMinutes(400));
       for (int i = 1; i < 9; i++) {
         employees.add(
@@ -477,13 +481,16 @@ class ShiftAssignmentServiceImplTest {
 
     @Test
     @DisplayName(
-        "[H-4] Given: 8名ちょうどで1名の残り時間がどの枠の実労働時間にも足りない（300分）とき, When: assignを実行すると, Then:"
+        "[H-4] Given: 8名ちょうどで1名のパートの残り時間がどの枠の実労働時間にも足りない（300分）とき, When: assignを実行すると, Then:"
             + " Optional.emptyになる")
     void returnsEmptyWhenRemainingMinutesIsInsufficientForAnySlot() {
       List<Employee> employees = new ArrayList<>();
       employees.add(
           Employee.working(
-                  "Employee0", java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30))
+                  "Employee0",
+                  EmploymentType.PART_TIME,
+                  java.time.LocalTime.of(7, 30),
+                  java.time.LocalTime.of(18, 30))
               .withWeeklyRemainingMinutes(300));
       for (int i = 1; i < 8; i++) {
         employees.add(
@@ -495,6 +502,31 @@ class ShiftAssignmentServiceImplTest {
       Optional<AssignmentResult> result = service.assign(employees);
 
       assertFalse(result.isPresent());
+    }
+
+    @Test
+    @DisplayName(
+        "[H-4] Given: 8名ちょうどで常勤1名の残り時間がどの枠の実労働時間にも足りない（300分）とき, When: assignを実行すると, Then:"
+            + " H-4は常勤に適用されないため成立する")
+    void doesNotApplyWeeklyLimitToFullTimeEmployee() {
+      List<Employee> employees = new ArrayList<>();
+      employees.add(
+          Employee.working(
+                  "Employee0",
+                  EmploymentType.FULL_TIME,
+                  java.time.LocalTime.of(7, 30),
+                  java.time.LocalTime.of(18, 30))
+              .withWeeklyRemainingMinutes(300));
+      for (int i = 1; i < 8; i++) {
+        employees.add(
+            Employee.working(
+                "Employee" + i, java.time.LocalTime.of(7, 30), java.time.LocalTime.of(18, 30)));
+      }
+
+      ShiftAssignmentService service = new ShiftAssignmentServiceImpl();
+      Optional<AssignmentResult> result = service.assign(employees);
+
+      assertTrue(result.isPresent());
     }
   }
 

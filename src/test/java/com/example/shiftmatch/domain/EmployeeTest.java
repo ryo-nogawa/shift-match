@@ -339,20 +339,23 @@ class EmployeeTest {
     }
 
     @Test
-    @DisplayName("[H-4] Given: 週の残り時間が405分の従業員のとき, When: 枠2（405分）でcanAssignを呼ぶと, Then: trueである")
+    @DisplayName("[H-4] Given: パートで週の残り時間が405分の従業員のとき, When: 枠2（405分）でcanAssignを呼ぶと, Then: trueである")
     void canAssignReturnsTrueWhenRemainingMinutesEqualsSlotActualWorkMinutes() {
       Employee employee =
-          Employee.working("太郎", LocalTime.of(7, 30), LocalTime.of(18, 30))
+          Employee.working(
+                  "太郎", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30))
               .withWeeklyRemainingMinutes(405);
 
       assertEquals(true, employee.canAssign(ShiftSlot.SLOT_2));
     }
 
     @Test
-    @DisplayName("[H-4] Given: 週の残り時間が405分の従業員のとき, When: 枠3（435分）でcanAssignを呼ぶと, Then: falseである")
+    @DisplayName(
+        "[H-4] Given: パートで週の残り時間が405分の従業員のとき, When: 枠3（435分）でcanAssignを呼ぶと, Then: falseである")
     void canAssignReturnsFalseWhenRemainingMinutesIsLessThanSlotActualWorkMinutes() {
       Employee employee =
-          Employee.working("太郎", LocalTime.of(7, 30), LocalTime.of(18, 30))
+          Employee.working(
+                  "太郎", EmploymentType.PART_TIME, LocalTime.of(7, 30), LocalTime.of(18, 30))
               .withWeeklyRemainingMinutes(405);
 
       assertEquals(false, employee.canAssign(ShiftSlot.SLOT_3));
@@ -360,13 +363,34 @@ class EmployeeTest {
 
     @Test
     @DisplayName(
-        "[H-3][H-4] Given: H-3を満たさない枠で、週の残り時間が十分な従業員のとき, When: canAssignを呼ぶと, Then:" + " falseである")
+        "[H-3][H-4] Given: H-3を満たさない枠で、週の残り時間が十分なパートのとき, When: canAssignを呼ぶと, Then:" + " falseである")
     void canAssignReturnsFalseWhenCanWorkIsFalseEvenWithEnoughRemainingMinutes() {
       Employee employee =
-          Employee.working("太郎", LocalTime.of(8, 0), LocalTime.of(17, 0))
+          Employee.working("太郎", EmploymentType.PART_TIME, LocalTime.of(8, 0), LocalTime.of(17, 0))
               .withWeeklyRemainingMinutes(1200);
 
       assertEquals(false, employee.canAssign(ShiftSlot.SLOT_1));
+    }
+  }
+
+  @Nested
+  @DisplayName("[H-4] 週の残り時間の判定はパートだけに適用する")
+  class CanAssignAppliesOnlyToPartTime {
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(
+        value = EmploymentType.class,
+        names = {"FULL_TIME", "MANAGER"})
+    @DisplayName(
+        "[H-4] Given: 常勤・管理職に週の残り時間300分（枠1の実労働時間375分未満）を設定したとき, When:"
+            + " H-3を満たす枠1でcanAssignを呼ぶと, Then: trueであり、unassignedReasonがWEEKLY_LIMIT_EXCEEDEDにならない")
+    void doesNotLimitFullTimeOrManager(EmploymentType employmentType) {
+      Employee employee =
+          Employee.working("太郎", employmentType, LocalTime.of(7, 30), LocalTime.of(14, 30))
+              .withWeeklyRemainingMinutes(300);
+
+      assertEquals(true, employee.canAssign(ShiftSlot.SLOT_1));
+      assertEquals(UnassignedReason.LOWER_GAP_CHOSEN, employee.unassignedReason());
     }
   }
 

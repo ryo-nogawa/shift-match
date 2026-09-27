@@ -117,8 +117,10 @@ public record Employee(
   /**
    * 枠にこの従業員を割り当てられるかを判定します。
    *
-   * <p>{@link #canWork(ShiftSlot)} が true で、かつ週の残り時間（{@link #weeklyRemainingMinutes()}）が {@code
-   * null}（上限なし）であるか、枠の実労働時間（{@link ShiftSlot#actualWorkMinutes()}）以上であるときに true を返します（H-4）。
+   * <p>{@link #canWork(ShiftSlot)} が false の場合は false を返します。雇用区分がパート（{@link
+   * EmploymentType#PART_TIME}）でない場合（常勤・管理職）は、週の残り時間にかかわらず true を返します（H-4 は常勤・管理職に適用しません）。パートの場合は、
+   * 週の残り時間（{@link #weeklyRemainingMinutes()}）が {@code null}（上限なし）であるか、枠の実労働時間（{@link
+   * ShiftSlot#actualWorkMinutes()}）以上であるときに true を返します（H-4）。
    *
    * @param slot 判定対象の枠
    * @return 割り当てられる場合は true、そうでなければ false
@@ -126,6 +128,9 @@ public record Employee(
   public boolean canAssign(ShiftSlot slot) {
     if (!canWork(slot)) {
       return false;
+    }
+    if (employmentType != EmploymentType.PART_TIME) {
+      return true;
     }
     return weeklyRemainingMinutes == null || slot.actualWorkMinutes() <= weeklyRemainingMinutes;
   }
