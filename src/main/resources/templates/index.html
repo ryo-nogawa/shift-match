@@ -85,7 +85,6 @@
                   <thead>
                     <tr>
                       <th>曜日</th>
-                      <th>休み</th>
                       <th>開始</th>
                       <th>終了</th>
                       <th></th>
@@ -94,9 +93,6 @@
                   <tbody>
                     <tr class="day-row" th:each="day,dayIter : ${employee.days}">
                       <td th:text="${dayIter.index == 0 ? '月' : dayIter.index == 1 ? '火' : dayIter.index == 2 ? '水' : dayIter.index == 3 ? '木' : '金'}"></td>
-                      <td>
-                        <input type="checkbox" class="off-input" th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].off}" />
-                      </td>
                       <td>
                         <select class="start-select" th:field="*{employees[__${iter.index}__].days[__${dayIter.index}__].start}">
                           <option value="">-- 未選択 --</option>

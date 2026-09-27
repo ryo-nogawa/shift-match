@@ -192,7 +192,6 @@ public class ShiftController {
       List<DayForm> days = new ArrayList<>();
       for (int d = 0; d < 5; d++) {
         DayForm day = new DayForm();
-        day.setOff(false);
         day.setStart(DEFAULT_START_TIME);
         day.setEnd(DEFAULT_END_TIME);
         days.add(day);

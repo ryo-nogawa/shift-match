@@ -10,9 +10,6 @@ import lombok.Setter;
 @Setter
 public class DayForm {
 
-  /** 休みのチェック。true の場合は休み。 */
-  private boolean off;
-
   /** 勤務開始時刻（HH:mm 形式）。 */
   private String start;
 
