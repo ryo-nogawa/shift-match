@@ -10,7 +10,10 @@ import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -22,10 +25,11 @@ import org.springframework.stereotype.Service;
 public class MonthlyShiftServiceImpl implements MonthlyShiftService {
 
   private final HolidayService holidayService;
-  private final ShiftAssignmentService assignmentService;
   private final WishResolver wishResolver;
   private final MonthlyInputValidator inputValidator;
   private final SelectionRationaleLogger rationaleLogger;
+  private final WeekGrouper weekGrouper;
+  private final WeeklyShiftPlanner weeklyPlanner;
 
   /**
    * 月間シフト作成サービスを初期化します。
@@ -40,11 +44,39 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
       ShiftAssignmentService assignmentService,
       MonthlyInputValidator inputValidator,
       SelectionRationaleLogger rationaleLogger) {
+    this(
+        holidayService,
+        assignmentService,
+        inputValidator,
+        rationaleLogger,
+        new WeekGrouper(),
+        new WeeklyShiftPlanner(assignmentService));
+  }
+
+  /**
+   * 月間シフト作成サービスを初期化します。
+   *
+   * @param holidayService 祝日サービス
+   * @param assignmentService 割り当てサービス
+   * @param inputValidator 入力検証サービス
+   * @param rationaleLogger 選定根拠ログサービス
+   * @param weekGrouper 営業日を週にまとめるクラス
+   * @param weeklyPlanner 週全体の最適化を行うクラス
+   */
+  @Autowired
+  public MonthlyShiftServiceImpl(
+      HolidayService holidayService,
+      ShiftAssignmentService assignmentService,
+      MonthlyInputValidator inputValidator,
+      SelectionRationaleLogger rationaleLogger,
+      WeekGrouper weekGrouper,
+      WeeklyShiftPlanner weeklyPlanner) {
     this.holidayService = holidayService;
-    this.assignmentService = assignmentService;
     this.wishResolver = new WishResolver();
     this.inputValidator = inputValidator;
     this.rationaleLogger = rationaleLogger;
+    this.weekGrouper = weekGrouper;
+    this.weeklyPlanner = weeklyPlanner;
   }
 
   @Override
@@ -57,17 +89,28 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
 
     List<DailyShiftResult> results = new ArrayList<>();
 
-    // 営業日ごとに独立して割り当てを算出
-    for (LocalDate businessDay : holidayService.businessDays(input.month())) {
-      DailyShiftResult dayResult = createForDay(businessDay, input);
-      results.add(dayResult);
-      rationaleLogger.log(businessDay, dayResult);
+    // H-4 だけが日をまたぐため、営業日を週に分け、週ごとに最適化する
+    List<LocalDate> businessDays = holidayService.businessDays(input.month());
+    for (List<LocalDate> week : weekGrouper.group(businessDays)) {
+      Map<LocalDate, List<Employee>> employeesByDate = new HashMap<>();
+      for (LocalDate date : week) {
+        employeesByDate.put(date, employeesOf(date, input));
+      }
+      List<DailyShiftResult> weekResults =
+          weeklyPlanner.plan(
+              week,
+              (date) -> employeesByDate.get(date),
+              (date) -> availableCount(employeesByDate.get(date)));
+      for (DailyShiftResult dayResult : weekResults) {
+        results.add(dayResult);
+        rationaleLogger.log(dayResult.date(), dayResult);
+      }
     }
 
     return new MonthlyShiftResult(input.month(), results);
   }
 
-  private DailyShiftResult createForDay(LocalDate date, MonthlyShiftInput input) {
+  private List<Employee> employeesOf(LocalDate date, MonthlyShiftInput input) {
     // 従業員のうち、名前が空でないものだけを対象
     List<Employee> employees = new ArrayList<>();
     for (EmployeeProfile profile : input.employees()) {
@@ -76,14 +119,12 @@ public class MonthlyShiftServiceImpl implements MonthlyShiftService {
         employees.add(convertToEmployee(profile, wish));
       }
     }
+    return employees;
+  }
 
-    // 勤務できる人の数（有効な従業員のうち休みでない人）
-    int availableCount = (int) employees.stream().filter(e -> !e.off()).count();
-
-    // 割り当てを算出
-    var assignment = assignmentService.assign(employees);
-
-    return new DailyShiftResult(date, availableCount, assignment);
+  // 勤務できる人の数（有効な従業員のうち休みでない人）
+  private int availableCount(List<Employee> employees) {
+    return (int) employees.stream().filter(e -> !e.off()).count();
   }
 
   private Employee convertToEmployee(EmployeeProfile profile, DailyWish wish) {

@@ -15,8 +15,10 @@ import static org.mockito.Mockito.when;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.DailyWish;
+import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.FailureReason;
 import com.example.shiftmatch.domain.InputError;
 import com.example.shiftmatch.domain.InvalidMonthlyInputException;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
@@ -329,6 +331,153 @@ class MonthlyShiftServiceImplTest {
       // verify logger.log was called for each business day
       verify(rationaleLogger).log(eq(day1), any());
       verify(rationaleLogger).log(eq(day2), any());
+    }
+  }
+
+  @Nested
+  class パートの週上限 {
+
+    private final YearMonth october = YearMonth.of(2026, 10);
+
+    private List<LocalDate> octoberBusinessDays() {
+      List<LocalDate> days = new ArrayList<>();
+      for (int d = 1; d <= 31; d++) {
+        LocalDate date = LocalDate.of(2026, 10, d);
+        boolean weekend =
+            date.getDayOfWeek() == DayOfWeek.SATURDAY || date.getDayOfWeek() == DayOfWeek.SUNDAY;
+        if (!weekend && d != 12) {
+          days.add(date);
+        }
+      }
+      return days;
+    }
+
+    private MonthlyShiftServiceImpl realService() {
+      HolidayService holidayService = mock(HolidayService.class);
+      when(holidayService.businessDays(october)).thenReturn(octoberBusinessDays());
+      MonthlyInputValidator inputValidator = mock(MonthlyInputValidator.class);
+      when(inputValidator.validate(any())).thenReturn(new ArrayList<>());
+      return new MonthlyShiftServiceImpl(
+          holidayService,
+          new ShiftAssignmentServiceImpl(),
+          inputValidator,
+          mock(SelectionRationaleLogger.class));
+    }
+
+    private List<EmployeeProfile> profiles(EmploymentType type, String prefix, int count) {
+      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
+      for (DayOfWeek day :
+          List.of(
+              DayOfWeek.MONDAY,
+              DayOfWeek.TUESDAY,
+              DayOfWeek.WEDNESDAY,
+              DayOfWeek.THURSDAY,
+              DayOfWeek.FRIDAY)) {
+        baseShifts.put(day, new DailyWish(false, LocalTime.of(7, 30), LocalTime.of(18, 30)));
+      }
+      List<EmployeeProfile> list = new ArrayList<>();
+      for (int i = 0; i < count; i++) {
+        list.add(new EmployeeProfile(prefix + i, type, baseShifts));
+      }
+      return list;
+    }
+
+    private int netMinutes(DailyShiftResult day, String name) {
+      return day.assignment().stream()
+          .flatMap(a -> a.assignments().stream())
+          .filter(a -> a.employee().name().equals(name))
+          .mapToInt(a -> a.slot().netWorkMinutes())
+          .sum();
+    }
+
+    private static LocalDate mondayOf(LocalDate date) {
+      return date.with(DayOfWeek.MONDAY);
+    }
+
+    @Test
+    @DisplayName(
+        "[H-4] Given: 2026 年 10 月にパートを含む入力, When: create を実行すると, Then: 各週のパートの実働合計が 1200 分以内")
+    void weeklyTotalOfPartsIsWithinLimit() {
+      List<EmployeeProfile> all = new ArrayList<>(profiles(EmploymentType.PART_TIME, "P", 9));
+      MonthlyShiftResult result =
+          realService().create(new MonthlyShiftInput(october, all, List.of()));
+
+      Map<String, Integer> totals = new HashMap<>();
+      for (DailyShiftResult day : result.days()) {
+        for (EmployeeProfile profile : all) {
+          totals.merge(
+              profile.name() + mondayOf(day.date()),
+              netMinutes(day, profile.name()),
+              (a, b) -> a + b);
+        }
+      }
+      assertTrue(totals.values().stream().allMatch(v -> v <= 1200));
+      assertEquals(21, result.days().size());
+    }
+
+    @Test
+    @DisplayName("[H-4][6章] Given: 8 名のパートだけの入力, When: create を実行すると, Then: 上限で不成立の日の理由が週上限になる")
+    void weeklyLimitFailureHasWeeklyLimitReason() {
+      MonthlyShiftResult result =
+          realService()
+              .create(
+                  new MonthlyShiftInput(
+                      october, profiles(EmploymentType.PART_TIME, "P", 8), List.of()));
+
+      List<DailyShiftResult> failed =
+          result.days().stream().filter(d -> d.assignment().isEmpty()).toList();
+      assertTrue(!failed.isEmpty());
+      assertTrue(
+          failed.stream()
+              .allMatch(d -> d.failureReason().equals(Optional.of(FailureReason.WEEKLY_LIMIT))));
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: 月初の 2 日だけの週と 5 日の週, When: create を実行すると, Then: 週は対象月の営業日だけで数えられる")
+    void weeksAreCountedWithinTheMonth() {
+      MonthlyShiftResult result =
+          realService()
+              .create(
+                  new MonthlyShiftInput(
+                      october, profiles(EmploymentType.PART_TIME, "P", 8), List.of()));
+
+      long firstWeek =
+          result.days().stream()
+              .filter(
+                  d -> d.date().isBefore(LocalDate.of(2026, 10, 5)) && d.assignment().isPresent())
+              .count();
+      long secondWeek =
+          result.days().stream()
+              .filter(
+                  d ->
+                      !d.date().isBefore(LocalDate.of(2026, 10, 5))
+                          && d.date().isBefore(LocalDate.of(2026, 10, 12))
+                          && d.assignment().isPresent())
+              .count();
+      assertEquals(2, firstWeek);
+      assertEquals(2, secondWeek);
+    }
+
+    @Test
+    @DisplayName("[H-4] Given: パートがいない入力, When: create を実行すると, Then: 各日の従来の assign と同じ結果になる")
+    void sameAsPlainAssignWithoutParts() {
+      List<EmployeeProfile> all = profiles(EmploymentType.FULL_TIME, "F", 9);
+      MonthlyShiftResult result =
+          realService().create(new MonthlyShiftInput(october, all, List.of()));
+
+      ShiftAssignmentService plain = new ShiftAssignmentServiceImpl();
+      List<Employee> employees = new ArrayList<>();
+      for (EmployeeProfile profile : all) {
+        employees.add(
+            Employee.working(
+                profile.name(),
+                profile.employmentType(),
+                LocalTime.of(7, 30),
+                LocalTime.of(18, 30)));
+      }
+      for (DailyShiftResult day : result.days()) {
+        assertEquals(plain.assign(employees), day.assignment());
+      }
     }
   }
 
