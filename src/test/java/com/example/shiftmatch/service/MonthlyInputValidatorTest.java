@@ -288,8 +288,8 @@ class MonthlyInputValidatorTest {
   class V3異常系_時間帯チェック {
 
     @Test
-    @DisplayName("[V-3] Given: 基本シフトで曜日が未選択のとき, When: 入力チェックを実行すると, Then: エラーが返される")
-    void baseShiftMissingTime() {
+    @DisplayName("[V-3] Given: 基本シフトに不正値があるとき, When: 入力チェックを実行すると, Then: 基本シフトは検証されずエラーにならない")
+    void baseShiftIsNotValidated() {
       HolidayService holidayService = mock(HolidayService.class);
       when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
       MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
@@ -297,12 +297,9 @@ class MonthlyInputValidatorTest {
       Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
       LocalTime start = LocalTime.of(9, 0);
       LocalTime end = LocalTime.of(18, 0);
-      DailyWish wish = new DailyWish(false, start, end);
-      baseShifts.put(DayOfWeek.MONDAY, wish);
-      baseShifts.put(DayOfWeek.TUESDAY, wish);
-      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-      baseShifts.put(DayOfWeek.THURSDAY, wish);
-      // FRIDAY が missing
+      baseShifts.put(DayOfWeek.MONDAY, new DailyWish(false, end, start)); // 開始 >= 終了
+      baseShifts.put(DayOfWeek.TUESDAY, new DailyWish(false, null, null)); // 未選択
+      // 水〜金は欠けている
 
       EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
 
@@ -311,37 +308,7 @@ class MonthlyInputValidatorTest {
 
       List<InputError> errors = validator.validate(input);
 
-      assertEquals(1, errors.size());
-      assertEquals("V-3", errors.get(0).code());
-      assertTrue(errors.get(0).message().contains("金曜日"));
-    }
-
-    @Test
-    @DisplayName("[V-3] Given: 基本シフトで開始 >= 終了のとき, When: 入力チェックを実行すると, Then: エラーが返される")
-    void baseShiftInvalidTimeRange() {
-      HolidayService holidayService = mock(HolidayService.class);
-      when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
-      MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
-
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      DailyWish wish = new DailyWish(false, start, end);
-      baseShifts.put(DayOfWeek.MONDAY, wish);
-      baseShifts.put(DayOfWeek.TUESDAY, wish);
-      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-      baseShifts.put(DayOfWeek.THURSDAY, wish);
-      baseShifts.put(DayOfWeek.FRIDAY, new DailyWish(false, end, start)); // invalid
-
-      EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
-
-      MonthlyShiftInput input =
-          new MonthlyShiftInput(YearMonth.of(2024, 9), List.of(profile), new ArrayList<>());
-
-      List<InputError> errors = validator.validate(input);
-
-      assertEquals(1, errors.size());
-      assertEquals("V-3", errors.get(0).code());
+      assertEquals(0, errors.size());
     }
 
     @Test
@@ -509,45 +476,6 @@ class MonthlyInputValidatorTest {
       assertEquals(1, errors.size());
       assertEquals("V-3", errors.get(0).code());
       assertTrue(errors.get(0).message().contains("Taro"));
-    }
-
-    @Test
-    @DisplayName(
-        "[V-3] Given: 1 行目が空で 2 行目が基本シフト不正のとき, When: 入力チェックを実行すると, Then: エラーメッセージが 2 行目を示す")
-    void lineNumberWithEmptyFirstRow() {
-      HolidayService holidayService = mock(HolidayService.class);
-      when(holidayService.isSupported(YearMonth.of(2024, 9))).thenReturn(true);
-      MonthlyInputValidator validator = new MonthlyInputValidator(holidayService);
-
-      Map<DayOfWeek, DailyWish> baseShifts = new HashMap<>();
-      LocalTime start = LocalTime.of(9, 0);
-      LocalTime end = LocalTime.of(18, 0);
-      DailyWish wish = new DailyWish(false, start, end);
-      baseShifts.put(DayOfWeek.MONDAY, wish);
-      baseShifts.put(DayOfWeek.TUESDAY, wish);
-      baseShifts.put(DayOfWeek.WEDNESDAY, wish);
-      baseShifts.put(DayOfWeek.THURSDAY, wish);
-      // FRIDAY が missing
-
-      EmployeeProfile emptyProfile = new EmployeeProfile("", EmploymentType.FULL_TIME, baseShifts);
-      EmployeeProfile taroProfile =
-          new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
-
-      MonthlyShiftInput input =
-          new MonthlyShiftInput(
-              YearMonth.of(2024, 9), List.of(emptyProfile, taroProfile), new ArrayList<>());
-
-      List<InputError> errors = validator.validate(input);
-
-      // V-3 エラーのメッセージに「2 行目」が含まれていることを確認
-      boolean hasLineTwo = false;
-      for (InputError error : errors) {
-        if ("V-3".equals(error.code()) && error.message().contains("2")) {
-          hasLineTwo = true;
-          break;
-        }
-      }
-      assertTrue(hasLineTwo, "V-3 エラーのメッセージが 2 行目を示していません");
     }
   }
 
@@ -1115,17 +1043,19 @@ class MonthlyInputValidatorTest {
       baseShifts.put(DayOfWeek.TUESDAY, wish);
       baseShifts.put(DayOfWeek.WEDNESDAY, wish);
       baseShifts.put(DayOfWeek.THURSDAY, wish);
-      // FRIDAY が missing (V-3)
 
       EmployeeProfile profile = new EmployeeProfile("Taro", EmploymentType.FULL_TIME, baseShifts);
       EmployeeProfile duplicate = new EmployeeProfile("Taro", EmploymentType.PART_TIME, baseShifts);
+      // 個別変更の開始が null (V-3)
+      ShiftAdjustment invalidAdjustment =
+          new ShiftAdjustment(LocalDate.of(2025, 1, 6), "Taro", new DailyWish(false, start, null));
 
       MonthlyShiftInput input =
-          new MonthlyShiftInput(month, List.of(profile, duplicate), new ArrayList<>());
+          new MonthlyShiftInput(month, List.of(profile, duplicate), List.of(invalidAdjustment));
 
       List<InputError> errors = validator.validate(input);
 
-      // V-2: duplicate name, V-3: missing FRIDAY, V-8: unsupported month
+      // V-2: duplicate name, V-3: adjustment without end, V-8: unsupported month
       assertTrue(errors.size() >= 2);
       assertTrue(errors.get(0).code().equals("V-2"));
       assertTrue(errors.get(1).code().equals("V-3"));
