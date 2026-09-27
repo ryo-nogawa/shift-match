@@ -10,6 +10,7 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.FailureReason;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
@@ -370,6 +371,54 @@ class MonthlyShiftRepositoryTest {
         assertEquals(result, saved.result());
         assertEquals(5, saved.result().days().get(1).availableCount());
         assertTrue(saved.result().days().get(1).assignment().isEmpty());
+      }
+    }
+
+    @Nested
+    class 不成立の理由 {
+
+      @Test
+      @DisplayName("[8.4] Given: 週上限と人員不足の不成立の日と成立した日, When: 保存して復元すると, Then: 理由が同じになる")
+      void restoresFailureReasons() {
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                successDay(LocalDate.of(2026, 10, 1), employees()),
+                new DailyShiftResult(
+                    LocalDate.of(2026, 10, 2),
+                    9,
+                    Optional.empty(),
+                    Optional.of(FailureReason.WEEKLY_LIMIT)),
+                new DailyShiftResult(
+                    LocalDate.of(2026, 10, 5),
+                    3,
+                    Optional.empty(),
+                    Optional.of(FailureReason.SHORTAGE)));
+
+        repository.saveShift(result, List.of("A"));
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals(result, saved.result());
+        assertEquals(
+            Optional.of(FailureReason.WEEKLY_LIMIT), saved.result().days().get(1).failureReason());
+        assertEquals(
+            Optional.of(FailureReason.SHORTAGE), saved.result().days().get(2).failureReason());
+        assertTrue(saved.result().days().get(0).failureReason().isEmpty());
+      }
+
+      @Test
+      @DisplayName("[8.4] Given: 理由が NULL の既存形式の不成立の日, When: 復元すると, Then: 人員不足になる")
+      void nullReasonIsRestoredAsShortage() {
+        jdbcClient
+            .sql(
+                "INSERT INTO saved_day (day_date, target_month, available_count, score)"
+                    + " VALUES ('2026-10-02', '2026-10', 4, NULL)")
+            .update();
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+
+        assertEquals(
+            Optional.of(FailureReason.SHORTAGE), saved.result().days().get(0).failureReason());
       }
     }
 

@@ -6,6 +6,7 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.FailureReason;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
@@ -218,13 +219,14 @@ public class MonthlyShiftRepository {
       Optional<AssignmentResult> assignment = day.assignment();
       jdbcClient
           .sql(
-              "INSERT INTO saved_day (day_date, target_month, available_count, score)"
-                  + " VALUES (?, ?, ?, ?)")
+              "INSERT INTO saved_day (day_date, target_month, available_count, score,"
+                  + " failure_reason) VALUES (?, ?, ?, ?, ?)")
           .params(
               day.date(),
               targetMonth,
               day.availableCount(),
-              assignment.map(value -> value.score()).orElse(null))
+              assignment.map(value -> value.score()).orElse(null),
+              day.failureReason().map(value -> value.name()).orElse(null))
           .update();
       assignment.ifPresent(
           value -> {
@@ -312,7 +314,8 @@ public class MonthlyShiftRepository {
     List<DailyShiftResult> days =
         jdbcClient
             .sql(
-                "SELECT day_date, available_count, score FROM saved_day WHERE target_month = ?"
+                "SELECT day_date, available_count, score, failure_reason FROM saved_day"
+                    + " WHERE target_month = ?"
                     + " ORDER BY day_date")
             .param(targetMonth)
             .query(
@@ -321,7 +324,17 @@ public class MonthlyShiftRepository {
                   Integer score = rs.getObject("score", Integer.class);
                   Optional<AssignmentResult> assignment =
                       score == null ? Optional.empty() : Optional.of(findAssignment(date, score));
-                  return new DailyShiftResult(date, rs.getInt("available_count"), assignment);
+                  // 理由の列がない時期に保存された不成立の日は、人員不足として復元する（8.4 節）
+                  String reason = rs.getString("failure_reason");
+                  Optional<FailureReason> failureReason =
+                      assignment.isPresent()
+                          ? Optional.empty()
+                          : Optional.of(
+                              reason == null
+                                  ? FailureReason.SHORTAGE
+                                  : FailureReason.valueOf(reason));
+                  return new DailyShiftResult(
+                      date, rs.getInt("available_count"), assignment, failureReason);
                 })
             .list();
     if (days.isEmpty() && employeeNames.isEmpty()) {

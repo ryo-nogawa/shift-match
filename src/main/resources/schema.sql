@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS saved_day (
   score INT NULL
 );
 
+-- 既存の H2 ファイルにも列が追加されるよう、CREATE とは別に ALTER で追加する
+ALTER TABLE saved_day ADD COLUMN IF NOT EXISTS failure_reason VARCHAR(16) NULL;
+
 CREATE TABLE IF NOT EXISTS saved_day_assignment (
   day_date DATE NOT NULL,
   assignment_index INT NOT NULL,

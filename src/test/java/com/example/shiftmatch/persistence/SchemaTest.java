@@ -74,6 +74,19 @@ class SchemaTest {
     }
 
     @Test
+    @DisplayName("[8.4] Given: 起動後, When: saved_day の列を確認すると, Then: failure_reason 列が存在する")
+    void savedDayHasFailureReasonColumn() {
+      Integer count =
+          jdbcClient
+              .sql(
+                  "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS"
+                      + " WHERE TABLE_NAME = 'SAVED_DAY' AND COLUMN_NAME = 'FAILURE_REASON'")
+              .query(Integer.class)
+              .single();
+      assertEquals(1, count);
+    }
+
+    @Test
     @DisplayName("[F-10] Given: テスト開始時, When: holiday テーブルを確認すると, Then: 空である")
     void holidayTableExistsAndIsEmpty() {
       Integer count = jdbcClient.sql("SELECT COUNT(*) FROM holiday").query(Integer.class).single();
