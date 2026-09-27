@@ -83,7 +83,7 @@ public class CalendarController {
    * @param month 対象月
    * @return 範囲内なら true
    */
-  private static boolean isWithinHolidayDataRange(YearMonth month) {
+  static boolean isWithinHolidayDataRange(YearMonth month) {
     int year = month.getYear();
     return year >= FIRST_HOLIDAY_YEAR && year <= Year.now().getValue() + 1;
   }

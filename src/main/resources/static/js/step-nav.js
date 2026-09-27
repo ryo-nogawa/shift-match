@@ -7,6 +7,7 @@
   "use strict";
 
   const UNAVAILABLE_MESSAGE = "対象月を判定できません。祝日データにない月です。";
+  const SAVED_FETCH_ERROR_MESSAGE = "保存済みのシフトを取得できませんでした";
 
   /** YYYY-MM に月数を足した YYYY-MM を返す。 */
   function shiftMonth(yearMonth, delta) {
@@ -33,8 +34,16 @@
     };
   }
 
+  /**
+   * 画面 3 を開くとき、保存済みシフトの取得が必要かを返す（8.3 節）。
+   * 今回作成した結果（fresh）で対象月も同じときだけ、取得せずにそのまま表示する。
+   */
+  function needsSavedRefetch(resultSource, resultMonth, currentMonth) {
+    return !(resultSource === "fresh" && resultMonth === currentMonth);
+  }
+
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { shiftMonth, monthLabel, navState };
+    module.exports = { shiftMonth, monthLabel, navState, needsSavedRefetch };
   }
 
   if (typeof document === "undefined") {
@@ -51,6 +60,7 @@
     const monthInput = form.querySelector("input[name='targetMonth']");
     const monthLabelElement = document.getElementById("month-label");
     const monthSummary = document.getElementById("month-summary");
+    const resultScreen = document.getElementById("screen-3");
     let currentStep = 1;
 
     function showStep(step) {
@@ -73,6 +83,60 @@
       // 画面 1→2→1 と戻ったときに submit のまま残らないよう、画面ごとに毎回設定する
       nextButton.type = state.nextType;
       nextButton.textContent = state.nextLabel;
+      if (step === 3) {
+        refreshResult();
+      }
+    }
+
+    /** 画面 3 の中身を差し替え、タブなどの初期化をやり直させる。 */
+    function replaceResult(node) {
+      resultScreen.replaceChildren(node);
+      document.dispatchEvent(new CustomEvent("result-replaced"));
+    }
+
+    /** 取得に失敗したことを画面 3 に表示する。次に画面 3 を開いたときは再取得する。 */
+    function showSavedFetchError() {
+      const panel = document.createElement("div");
+      panel.id = "result-panel";
+      panel.setAttribute("data-result-source", "error");
+      const message = document.createElement("p");
+      message.className = "alert";
+      message.setAttribute("role", "alert");
+      message.textContent = SAVED_FETCH_ERROR_MESSAGE;
+      panel.appendChild(message);
+      replaceResult(panel);
+    }
+
+    /** 今回作成した結果でなければ、対象月の保存済みシフトを取得して画面 3 に表示する（8.3 節）。 */
+    function refreshResult() {
+      const panel = document.getElementById("result-panel");
+      const month = monthInput.value;
+      const source = panel ? panel.getAttribute("data-result-source") : null;
+      const resultMonth = panel ? panel.getAttribute("data-result-month") : null;
+      if (!needsSavedRefetch(source, resultMonth, month)) {
+        return;
+      }
+      fetch("/shift/saved?month=" + encodeURIComponent(month))
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error("saved " + response.status);
+          }
+          return response.text();
+        })
+        .then(function (html) {
+          // 応答を待つ間に月や画面が変わったときは、古い応答で表示を上書きしない
+          if (monthInput.value !== month || currentStep !== 3) {
+            return;
+          }
+          const template = document.createElement("template");
+          template.innerHTML = html;
+          replaceResult(template.content);
+        })
+        .catch(function () {
+          if (monthInput.value === month && currentStep === 3) {
+            showSavedFetchError();
+          }
+        });
     }
 
     prevButton.addEventListener("click", function () {
