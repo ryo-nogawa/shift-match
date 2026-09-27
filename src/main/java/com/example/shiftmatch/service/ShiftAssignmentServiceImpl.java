@@ -134,6 +134,8 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   /**
    * 組み合わせを再帰的に生成します。
+   *
+   * <p>{@link Employee#canAssign(ShiftSlot)} で H-3・H-4 の両方を満たす候補だけに絞ります（5.4 節 1）。
    */
   private void combinationHelper(
       List<Employee> candidates,
@@ -150,7 +152,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     }
 
     for (int i = currentIndex; i < candidates.size(); i++) {
-      if ((usedMask & (1 << i)) == 0 && candidates.get(i).canWork(slot)) {
+      if ((usedMask & (1 << i)) == 0 && candidates.get(i).canAssign(slot)) {
         combinationHelper(
             candidates,
             slot,
