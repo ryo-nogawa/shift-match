@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
@@ -229,6 +230,104 @@ class MonthlyResultViewFactoryTest {
       assertTrue(view.days().isEmpty());
       assertTrue(view.employeeRows().get(0).cells().isEmpty());
       assertEquals(0, view.employeeRows().get(0).workDays());
+    }
+  }
+
+  @Nested
+  class 月間勤務時間 {
+
+    @Test
+    @DisplayName(
+        "[F-4][7.1節] Given: 枠 1 と枠 6 に入った従業員, When: 表示モデルを作ると,"
+            + " Then: 出勤日数 2・合計 885 分（375＋510）で、区分ラベルが入る")
+    void sumsWorkMinutesAndLabelsEmploymentType() {
+      Employee partTime =
+          new Employee(
+              "e1", EmploymentType.PART_TIME, false, LocalTime.of(7, 30), LocalTime.of(18, 30));
+      DailyShiftResult day1 = dayWith(DAY_1, partTime, ShiftSlot.SLOT_1);
+      DailyShiftResult day3 = dayWith(DAY_3, partTime, ShiftSlot.SLOT_6);
+
+      MonthlyResultView view = createView(List.of(day1, day3), names("e1"), Map.of());
+
+      MonthlyResultView.MonthlyHours row = view.monthlyHoursRows().get(0);
+      assertEquals("e1", row.name());
+      assertEquals("パート", row.employmentTypeLabel());
+      assertEquals(2, row.workDays());
+      assertEquals(885, row.totalMinutes());
+    }
+
+    @Test
+    @DisplayName("[F-4][7.1節] Given: 不成立の日がある, When: 表示モデルを作ると, Then: 不成立の日は 0 分で数える")
+    void countsFailedDayAsZero() {
+      MonthlyResultView view =
+          createView(
+              List.of(feasibleDay(DAY_1, List.of()), failedDay(DAY_2, 5)), names("e1"), Map.of());
+
+      MonthlyResultView.MonthlyHours row = view.monthlyHoursRows().get(0);
+      assertEquals(1, row.workDays());
+      assertEquals(375, row.totalMinutes());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][7.1節] Given: 全日休みの従業員, When: 表示モデルを作ると," + " Then: 行が出て 0 分・出勤日数 0 で、区分は休みさんの区分になる")
+    void keepsRowForEmployeeOnLeaveAllDays() {
+      Employee onLeave = Employee.onLeave("休みさん");
+      MonthlyResultView view =
+          createView(
+              List.of(feasibleDay(DAY_1, List.of(onLeave)), feasibleDay(DAY_3, List.of(onLeave))),
+              names("休みさん"),
+              Map.of());
+
+      MonthlyResultView.MonthlyHours row = view.monthlyHoursRows().get(0);
+      assertEquals("休みさん", row.name());
+      assertEquals("常勤", row.employmentTypeLabel());
+      assertEquals(0, row.workDays());
+      assertEquals(0, row.totalMinutes());
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][7.1節] Given: 全日不成立で従業員がどの日にも現れない, When: 表示モデルを作ると," + " Then: 行は出て区分は空文字・0 分になる")
+    void leavesEmploymentTypeEmptyWhenNeverAppears() {
+      MonthlyResultView view = createView(List.of(failedDay(DAY_1, 3)), names("e1"), Map.of());
+
+      MonthlyResultView.MonthlyHours row = view.monthlyHoursRows().get(0);
+      assertEquals("", row.employmentTypeLabel());
+      assertEquals(0, row.workDays());
+      assertEquals(0, row.totalMinutes());
+    }
+
+    @Test
+    @DisplayName("[F-4][7.1節] Given: 従業員名が複数, When: 表示モデルを作ると, Then: 入力順に並ぶ")
+    void keepsInputOrder() {
+      MonthlyResultView view =
+          createView(List.of(feasibleDay(DAY_1, List.of())), names("e8", "e1", "e3"), Map.of());
+
+      assertEquals(
+          List.of("e8", "e1", "e3"), view.monthlyHoursRows().stream().map(r -> r.name()).toList());
+      assertEquals(510, view.monthlyHoursRows().get(0).totalMinutes());
+      assertEquals(405, view.monthlyHoursRows().get(2).totalMinutes());
+    }
+
+    /** person を slot の最初の枠に入れ、元の同名の人は別名 other に置き換えた成立の日を作る。 */
+    private static DailyShiftResult dayWith(LocalDate date, Employee person, ShiftSlot slot) {
+      List<ShiftAssignment> assignments = new ArrayList<>();
+      boolean placed = false;
+      for (int i = 0; i < SLOTS_IN_ORDER.size(); i++) {
+        ShiftSlot current = SLOTS_IN_ORDER.get(i);
+        Employee who = employee("e" + (i + 1));
+        if (!placed && current == slot) {
+          who = person;
+          placed = true;
+        } else if (who.name().equals(person.name())) {
+          who = employee("other");
+        }
+        assignments.add(
+            new ShiftAssignment(who, current, LocalTime.of(12, 0), LocalTime.of(12, 45)));
+      }
+      return new DailyShiftResult(
+          date, 8, Optional.of(new AssignmentResult(assignments, 0, List.of())));
     }
   }
 }

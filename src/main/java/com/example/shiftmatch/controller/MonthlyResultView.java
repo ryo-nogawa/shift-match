@@ -14,6 +14,7 @@ import java.util.List;
  * @param days 営業日ごとのカレンダー用の表示（営業日順）
  * @param holidayCells カレンダーに表示する祝日（月〜金のものだけ）
  * @param employeeRows 従業員別表示の行（入力順）
+ * @param monthlyHoursRows 月間勤務時間の行（入力順）
  */
 public record MonthlyResultView(
     int businessDayCount,
@@ -21,7 +22,8 @@ public record MonthlyResultView(
     int failureCount,
     List<CalendarDay> days,
     List<HolidayCell> holidayCells,
-    List<EmployeeRow> employeeRows) {
+    List<EmployeeRow> employeeRows,
+    List<MonthlyHours> monthlyHoursRows) {
 
   /**
    * カレンダー表示の営業日 1 日分です。
@@ -63,6 +65,17 @@ public record MonthlyResultView(
    * @param workDays 出勤日数
    */
   public record EmployeeRow(String name, List<String> cells, int workDays) {}
+
+  /**
+   * 月間勤務時間の 1 行です。
+   *
+   * @param name 従業員名
+   * @param employmentTypeLabel 区分の表示名（どの日にも現れない場合は空文字）
+   * @param workDays 出勤日数
+   * @param totalMinutes 合計の実労働時間（分）
+   */
+  public record MonthlyHours(
+      String name, String employmentTypeLabel, int workDays, int totalMinutes) {}
 
   /**
    * カレンダーの 1 マスです。営業日・祝日・空きのいずれか 1 つだけが設定されます。

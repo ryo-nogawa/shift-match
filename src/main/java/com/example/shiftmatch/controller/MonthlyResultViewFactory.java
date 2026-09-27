@@ -3,6 +3,7 @@ package com.example.shiftmatch.controller;
 import com.example.shiftmatch.controller.MonthlyResultView.CalendarDay;
 import com.example.shiftmatch.controller.MonthlyResultView.EmployeeRow;
 import com.example.shiftmatch.controller.MonthlyResultView.HolidayCell;
+import com.example.shiftmatch.controller.MonthlyResultView.MonthlyHours;
 import com.example.shiftmatch.controller.MonthlyResultView.WorkGroup;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
@@ -56,13 +57,52 @@ public class MonthlyResultViewFactory {
     for (String name : employeeNames) {
       rows.add(toEmployeeRow(name, dailyResults));
     }
+    List<MonthlyHours> monthlyHoursRows = new ArrayList<>();
+    for (String name : employeeNames) {
+      monthlyHoursRows.add(toMonthlyHours(name, dailyResults));
+    }
     return new MonthlyResultView(
         dailyResults.size(),
         dailyResults.size() - failureCount,
         failureCount,
         days,
         weekdayHolidayCells(holidays),
-        rows);
+        rows,
+        monthlyHoursRows);
+  }
+
+  private static MonthlyHours toMonthlyHours(String name, List<DailyShiftResult> dailyResults) {
+    String label = "";
+    boolean labelFound = false;
+    int workDays = 0;
+    int totalMinutes = 0;
+    for (DailyShiftResult daily : dailyResults) {
+      if (daily.assignment().isEmpty()) {
+        continue;
+      }
+      AssignmentResult assignment = daily.assignment().get();
+      for (ShiftAssignment shiftAssignment : assignment.assignments()) {
+        if (shiftAssignment.employee().name().equals(name)) {
+          ShiftSlot slot = shiftAssignment.slot();
+          workDays++;
+          totalMinutes += slot.workMinutes() - slot.breakDurationMinutes();
+          if (!labelFound) {
+            label = shiftAssignment.employee().employmentType().label();
+            labelFound = true;
+          }
+        }
+      }
+      if (!labelFound) {
+        for (Employee unassigned : assignment.unassignedEmployees()) {
+          if (unassigned.name().equals(name)) {
+            label = unassigned.employmentType().label();
+            labelFound = true;
+            break;
+          }
+        }
+      }
+    }
+    return new MonthlyHours(name, label, workDays, totalMinutes);
   }
 
   private static CalendarDay toCalendarDay(DailyShiftResult daily, String holidayName) {
