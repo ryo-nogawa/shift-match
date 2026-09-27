@@ -48,28 +48,40 @@ public class SelectionRationaleLogger {
     for (ShiftAssignment assignment : result.assignments()) {
       Employee employee = assignment.employee();
       LOGGER.info(
-          "日付={} 割当 {} 希望={}〜{} 割当={} 差={}分 入れる枠={}",
+          "日付={} 割当 {} 希望={}〜{} 割当={} 差={}分 入れる枠={} 出勤日数={}",
           dateStr,
           escapeControlCharacters(employee.name()),
           employee.start().format(TIME_FORMATTER),
           employee.end().format(TIME_FORMATTER),
           formatSlot(assignment.slot()),
           assignment.gapMinutes(),
-          formatSlots(employee.workableSlots()));
+          formatSlots(employee.workableSlots()),
+          formatPriorWorkDays(employee.priorWorkDays()));
     }
 
     // 未出勤の従業員のログ
     for (Employee employee : result.unassignedEmployees()) {
       LOGGER.info(
-          "日付={} 未出勤 {} 理由={} 入れる枠={}",
+          "日付={} 未出勤 {} 理由={} 入れる枠={} 出勤日数={}",
           dateStr,
           escapeControlCharacters(employee.name()),
           escapeControlCharacters(result.unassignedReasonLabel(employee)),
-          formatSlots(employee.workableSlots()));
+          formatSlots(employee.workableSlots()),
+          formatPriorWorkDays(employee.priorWorkDays()));
     }
 
     // スコア合計
     LOGGER.info("日付={} 合計 = {} = {} 分", dateStr, join(result.gapMinutesList()), result.score());
+  }
+
+  /**
+   * これまでの出勤日数（5.6 節）をログ出力用の文字列に変換します。
+   *
+   * @param priorWorkDays これまでの出勤日数（不明なら {@code null}）
+   * @return 出勤日数の文字列表現。{@code null} なら {@code "-"}
+   */
+  private String formatPriorWorkDays(Integer priorWorkDays) {
+    return priorWorkDays == null ? "-" : String.valueOf(priorWorkDays);
   }
 
   /**
