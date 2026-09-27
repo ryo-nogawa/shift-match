@@ -117,4 +117,15 @@ public enum ShiftSlot {
   public int workMinutes() {
     return (int) ChronoUnit.MINUTES.between(startTime, endTime);
   }
+
+  /**
+   * 実労働時間（分）を返します。
+   *
+   * <p>勤務時間から休憩の長さを引いた分数です（2 章）。
+   *
+   * @return 実労働時間（分）
+   */
+  public int actualWorkMinutes() {
+    return workMinutes() - breakDurationMinutes;
+  }
 }

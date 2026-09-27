@@ -16,6 +16,9 @@ public enum EmploymentType {
   /** 管理職。 */
   MANAGER("管理職");
 
+  /** パートの週の実労働時間の上限（分）。20 時間（H-4）。 */
+  public static final int PART_TIME_WEEKLY_LIMIT_MINUTES = 1200;
+
   private final String label;
 
   EmploymentType(String label) {

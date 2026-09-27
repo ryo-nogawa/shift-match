@@ -43,8 +43,15 @@ public record AssignmentResult(
   /**
    * 未出勤者の理由の表示文言を返します。
    *
-   * <p>入れる枠があるのに割り当てられなかった人のうち、同じ枠に割り当て済みの人と入れ替えてもずれの合計が変わらない場合は、
-   * 5.3 節の同点規則で優先された人の氏名を示します。入れ替えでは同点にならない場合は、より小さいずれの案が選ばれたと示します。
+   * <p>入れる枠があるのに割り当てられなかった人のうち、同じ枠に割り当て済みの人と入れ替えても H-3・H-4
+   * を満たしたままずれの合計が変わらない場合は、5.3 節の同点規則で優先された案を示します（7.2 節）：
+   *
+   * <ul>
+   *   <li>未出勤者がパートで、割り当て済みの人がパートでない場合：パートの実労働時間が少ない案が選ばれたと示します
+   *   <li>それ以外：入力順で優先度が高い割り当て済みの人の氏名を示します
+   * </ul>
+   *
+   * <p>入れ替えでは同点にならない場合は、理由の表示文言（{@link UnassignedReason#label()}）をそのまま返します。
    *
    * @param employee 未出勤者
    * @return 理由の表示文言
@@ -56,8 +63,13 @@ public record AssignmentResult(
     }
     for (ShiftAssignment assignment : assignments) {
       ShiftSlot slot = assignment.slot();
-      if (employee.canWork(slot) && employee.gapMinutes(slot) == assignment.gapMinutes()) {
-        return "入れる枠はあったが、同じずれの案があり、入力順で優先度が高い " + assignment.employee().name() + " が選ばれた";
+      if (employee.canAssign(slot) && employee.gapMinutes(slot) == assignment.gapMinutes()) {
+        Employee assignedEmployee = assignment.employee();
+        if (employee.employmentType() == EmploymentType.PART_TIME
+            && assignedEmployee.employmentType() != EmploymentType.PART_TIME) {
+          return "入れる枠はあったが、同じずれの案があり、パートの実労働時間が少ない案が選ばれた";
+        }
+        return "入れる枠はあったが、同じずれの案があり、入力順で優先度が高い " + assignedEmployee.name() + " が選ばれた";
       }
     }
     return reason.label();

@@ -68,7 +68,13 @@ public class MonthlyResultViewFactory {
 
   private static CalendarDay toCalendarDay(DailyShiftResult daily, String holidayName) {
     if (daily.assignment().isEmpty()) {
-      return new CalendarDay(daily.date(), holidayName, true, daily.availableCount(), List.of());
+      return new CalendarDay(
+          daily.date(),
+          holidayName,
+          true,
+          daily.availableCount(),
+          List.of(),
+          daily.failureReason());
     }
     Map<String, List<String>> namesByTime = new LinkedHashMap<>();
     for (ShiftAssignment assignment : daily.assignment().get().assignments()) {
@@ -80,7 +86,7 @@ public class MonthlyResultViewFactory {
     for (Map.Entry<String, List<String>> entry : namesByTime.entrySet()) {
       groups.add(new WorkGroup(entry.getKey(), String.join("・", entry.getValue())));
     }
-    return new CalendarDay(daily.date(), holidayName, false, daily.availableCount(), groups);
+    return new CalendarDay(daily.date(), holidayName, false, daily.availableCount(), groups, null);
   }
 
   private static EmployeeRow toEmployeeRow(String name, List<DailyShiftResult> dailyResults) {
@@ -103,8 +109,7 @@ public class MonthlyResultViewFactory {
   private static int actualWorkMinutesOf(String name, DailyShiftResult daily) {
     for (ShiftAssignment shiftAssignment : daily.assignment().get().assignments()) {
       if (shiftAssignment.employee().name().equals(name)) {
-        ShiftSlot slot = shiftAssignment.slot();
-        return slot.workMinutes() - slot.breakDurationMinutes();
+        return shiftAssignment.slot().actualWorkMinutes();
       }
     }
     return 0;

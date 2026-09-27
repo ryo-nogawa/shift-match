@@ -10,10 +10,12 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.FailureReason;
 import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAdjustment;
+import com.example.shiftmatch.domain.UnassignedReason;
 import com.example.shiftmatch.service.ShiftAssignmentService;
 import com.example.shiftmatch.service.ShiftAssignmentServiceImpl;
 import java.time.DayOfWeek;
@@ -538,6 +540,114 @@ class MonthlyShiftRepositoryTest {
         assertEquals(result, saved.result());
         assertEquals(5, saved.result().days().get(1).availableCount());
         assertTrue(saved.result().days().get(1).assignment().isEmpty());
+      }
+
+      @Test
+      @DisplayName(
+          "[8.4節] Given: WEEKLY_LIMITの不成立の日を保存したとき, When: 復元すると, Then: 理由がWEEKLY_LIMITのまま保たれる")
+      void restoresWeeklyLimitFailureReason() {
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                new DailyShiftResult(
+                    LocalDate.of(2026, 10, 1), 9, Optional.empty(), FailureReason.WEEKLY_LIMIT));
+
+        repository.saveShift(result, List.of(fullTime("A")));
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals(FailureReason.WEEKLY_LIMIT, saved.result().days().get(0).failureReason());
+      }
+
+      @Test
+      @DisplayName(
+          "[8.4節] Given: failure_reasonがNULLの不成立の行（旧データ相当）, When: 復元すると, Then:"
+              + " STAFF_SHORTAGEとして復元される")
+      void treatsNullFailureReasonAsStaffShortage() {
+        jdbcClient
+            .sql(
+                "INSERT INTO saved_day (day_date, target_month, available_count, score,"
+                    + " failure_reason) VALUES ('2026-10-01', '2026-10', 5, NULL, NULL)")
+            .update();
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        assertEquals(FailureReason.STAFF_SHORTAGE, saved.result().days().get(0).failureReason());
+      }
+
+      @Test
+      @DisplayName(
+          "[8.4節] Given: 残り時間付きのパートの未出勤者を保存したとき, When: 復元すると, Then:"
+              + " weeklyRemainingMinutesとunassignedReason（WEEKLY_LIMIT_EXCEEDED）が保たれる")
+      void restoresPartTimeUnassignedWeeklyRemainingMinutes() {
+        List<Employee> dayEmployees = employees();
+        // B（パート、7:30〜15:00）の週の残り時間を300分にし、H-4により枠に入れない状態にする
+        List<Employee> withLimitedPart = new ArrayList<>();
+        for (Employee employee : dayEmployees) {
+          if (employee.name().equals("B")) {
+            withLimitedPart.add(employee.withWeeklyRemainingMinutes(300));
+          } else {
+            withLimitedPart.add(employee);
+          }
+        }
+        AssignmentResult original = assign(withLimitedPart);
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                new DailyShiftResult(LocalDate.of(2026, 10, 1), 9, Optional.of(original)));
+        List<MonthEmployee> names =
+            List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K").stream()
+                .map(name -> new MonthEmployee(name, EmploymentType.FULL_TIME))
+                .toList();
+
+        repository.saveShift(result, names);
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        AssignmentResult restored = saved.result().days().get(0).assignment().orElseThrow();
+        Employee restoredB =
+            restored.unassignedEmployees().stream()
+                .filter(e -> e.name().equals("B"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(300, restoredB.weeklyRemainingMinutes());
+        assertEquals(UnassignedReason.WEEKLY_LIMIT_EXCEEDED, restoredB.unassignedReason());
+      }
+
+      @Test
+      @DisplayName(
+          "[8.4] Given: 休み（off=true）で残り時間450のパートの未出勤者を保存したとき, When: 復元すると, Then:"
+              + " weeklyRemainingMinutesが450のまま復元される")
+      void restoresOffPartTimeUnassignedWeeklyRemainingMinutes() {
+        List<Employee> dayEmployees = employees();
+        // B（パート）を休みにし、週の残り時間450分を持たせた状態にする（8.4節）
+        List<Employee> withOffPart = new ArrayList<>();
+        for (Employee employee : dayEmployees) {
+          if (employee.name().equals("B")) {
+            withOffPart.add(
+                Employee.onLeave("B", EmploymentType.PART_TIME).withWeeklyRemainingMinutes(450));
+          } else {
+            withOffPart.add(employee);
+          }
+        }
+        AssignmentResult original = assign(withOffPart);
+        MonthlyShiftResult result =
+            monthOf(
+                YearMonth.of(2026, 10),
+                new DailyShiftResult(LocalDate.of(2026, 10, 1), 9, Optional.of(original)));
+        List<MonthEmployee> names =
+            List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K").stream()
+                .map(name -> new MonthEmployee(name, EmploymentType.FULL_TIME))
+                .toList();
+
+        repository.saveShift(result, names);
+
+        SavedMonthlyShift saved = repository.findShift(YearMonth.of(2026, 10)).orElseThrow();
+        AssignmentResult restored = saved.result().days().get(0).assignment().orElseThrow();
+        Employee restoredB =
+            restored.unassignedEmployees().stream()
+                .filter(e -> e.name().equals("B"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(450, restoredB.weeklyRemainingMinutes());
+        assertEquals(UnassignedReason.ON_LEAVE, restoredB.unassignedReason());
       }
     }
 

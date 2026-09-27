@@ -1,6 +1,8 @@
 package com.example.shiftmatch.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
@@ -84,5 +86,120 @@ class DailyShiftResultTest {
       assertEquals(7, result.availableCount());
       assertTrue(result.assignment().isEmpty());
     }
+
+    @Test
+    @DisplayName(
+        "[6章] Given: 3引数コンストラクタで割り当て結果がないとき, When: DailyShiftResult を作成すると, Then:"
+            + " failureReasonがSTAFF_SHORTAGEになる")
+    void threeArgConstructorDefaultsToStaffShortageWhenEmpty() {
+      LocalDate date = LocalDate.of(2024, 9, 2);
+
+      DailyShiftResult result = new DailyShiftResult(date, 7, Optional.empty());
+
+      assertEquals(FailureReason.STAFF_SHORTAGE, result.failureReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[6章] Given: 3引数コンストラクタで割り当て結果があるとき, When: DailyShiftResult を作成すると, Then:"
+            + " failureReasonがnullになる")
+    void threeArgConstructorDefaultsToNullWhenPresent() {
+      LocalDate date = LocalDate.of(2024, 9, 2);
+
+      DailyShiftResult result = new DailyShiftResult(date, 8, Optional.of(standardAssignment()));
+
+      assertNull(result.failureReason());
+    }
+
+    @Test
+    @DisplayName(
+        "[6章] Given: 4引数コンストラクタでWEEKLY_LIMITを指定するとき, When: DailyShiftResult を作成すると, Then:"
+            + " failureReasonがWEEKLY_LIMITとして保持される")
+    void fourArgConstructorRetainsFailureReason() {
+      LocalDate date = LocalDate.of(2024, 9, 2);
+
+      DailyShiftResult result =
+          new DailyShiftResult(date, 9, Optional.empty(), FailureReason.WEEKLY_LIMIT);
+
+      assertEquals(FailureReason.WEEKLY_LIMIT, result.failureReason());
+    }
+  }
+
+  @Nested
+  @DisplayName("[6章] 不変条件の検証")
+  class InvalidCombination {
+
+    @Test
+    @DisplayName(
+        "[6章] Given: 割り当て結果があるのにfailureReasonがnullでないとき, When: DailyShiftResult を作成すると, Then:"
+            + " IllegalArgumentExceptionがスローされる")
+    void throwsExceptionWhenAssignmentPresentAndFailureReasonNotNull() {
+      LocalDate date = LocalDate.of(2024, 9, 2);
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              new DailyShiftResult(
+                  date, 8, Optional.of(standardAssignment()), FailureReason.STAFF_SHORTAGE));
+    }
+
+    @Test
+    @DisplayName(
+        "[6章] Given: 割り当て結果がないのにfailureReasonがnullのとき, When: DailyShiftResult を作成すると, Then:"
+            + " IllegalArgumentExceptionがスローされる")
+    void throwsExceptionWhenAssignmentEmptyAndFailureReasonNull() {
+      LocalDate date = LocalDate.of(2024, 9, 2);
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> new DailyShiftResult(date, 7, Optional.empty(), null));
+    }
+  }
+
+  private static AssignmentResult standardAssignment() {
+    return new AssignmentResult(
+        java.util.List.of(
+            new ShiftAssignment(
+                new Employee("Taro", EmploymentType.FULL_TIME, false, null, null),
+                ShiftSlot.SLOT_1,
+                java.time.LocalTime.of(12, 0),
+                java.time.LocalTime.of(12, 45)),
+            new ShiftAssignment(
+                new Employee("Hanako", EmploymentType.FULL_TIME, false, null, null),
+                ShiftSlot.SLOT_1,
+                java.time.LocalTime.of(12, 0),
+                java.time.LocalTime.of(12, 45)),
+            new ShiftAssignment(
+                new Employee("Jiro", EmploymentType.FULL_TIME, false, null, null),
+                ShiftSlot.SLOT_2,
+                java.time.LocalTime.of(12, 45),
+                java.time.LocalTime.of(13, 30)),
+            new ShiftAssignment(
+                new Employee("Sakura", EmploymentType.FULL_TIME, false, null, null),
+                ShiftSlot.SLOT_3,
+                java.time.LocalTime.of(12, 45),
+                java.time.LocalTime.of(13, 30)),
+            new ShiftAssignment(
+                new Employee("Takeshi", EmploymentType.FULL_TIME, false, null, null),
+                ShiftSlot.SLOT_4,
+                java.time.LocalTime.of(13, 30),
+                java.time.LocalTime.of(14, 15)),
+            new ShiftAssignment(
+                new Employee("Yuki", EmploymentType.FULL_TIME, false, null, null),
+                ShiftSlot.SLOT_5,
+                java.time.LocalTime.of(13, 30),
+                java.time.LocalTime.of(14, 30)),
+            new ShiftAssignment(
+                new Employee("Keiko", EmploymentType.FULL_TIME, false, null, null),
+                ShiftSlot.SLOT_6,
+                java.time.LocalTime.of(14, 15),
+                java.time.LocalTime.of(15, 15)),
+            new ShiftAssignment(
+                new Employee("Masao", EmploymentType.FULL_TIME, false, null, null),
+                ShiftSlot.SLOT_6,
+                java.time.LocalTime.of(14, 30),
+                java.time.LocalTime.of(15, 30))),
+        0,
+        java.util.List.of());
   }
 }

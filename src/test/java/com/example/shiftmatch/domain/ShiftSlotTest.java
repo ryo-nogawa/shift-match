@@ -6,6 +6,8 @@ import java.time.LocalTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @DisplayName("ShiftSlot")
 class ShiftSlotTest {
@@ -236,6 +238,25 @@ class ShiftSlotTest {
     @DisplayName("[F-3] Given: ShiftSlot.SLOT_6を参照するとき, When: workMinutesメソッドを呼ぶと, Then: 570が返る")
     void slot6WorkMinutes() {
       assertEquals(570, ShiftSlot.SLOT_6.workMinutes());
+    }
+  }
+
+  @Nested
+  @DisplayName("[H-4] 実労働時間の分数")
+  class ActualWorkDuration {
+
+    @ParameterizedTest
+    @DisplayName("[H-4] Given: 各枠を参照するとき, When: actualWorkMinutesメソッドを呼ぶと, Then: 勤務時間から休憩を引いた分数が返る")
+    @CsvSource({
+      "SLOT_1, 375",
+      "SLOT_2, 405",
+      "SLOT_3, 435",
+      "SLOT_4, 405",
+      "SLOT_5, 480",
+      "SLOT_6, 510"
+    })
+    void actualWorkMinutesReturnsWorkMinutesMinusBreak(ShiftSlot slot, int expected) {
+      assertEquals(expected, slot.actualWorkMinutes());
     }
   }
 }

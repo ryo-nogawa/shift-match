@@ -5,6 +5,7 @@ import com.example.shiftmatch.domain.BreakInterval;
 import com.example.shiftmatch.domain.BreakScheduler;
 import com.example.shiftmatch.domain.DuplicateNameError;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.ShiftAssignment;
 import com.example.shiftmatch.domain.ShiftSlot;
 import java.util.ArrayList;
@@ -23,6 +24,12 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   private static final int UNCOMPUTED = -2;
   private static final int IMPOSSIBLE = -1;
+
+  // 5.4 節の評価値は「ずれ → パートの実労働時間の合計」の順で比較する。1 人あたりの評価値を
+  // 「ずれ（分） × 評価値の重み + パートなら実労働時間（分）」とすれば、1 日のパートの実労働時間の合計は
+  // 最大 8 × 510 = 4080 分（重みより小さい）なので、評価値の合計を単純な整数比較（< ）で扱っても
+  // 5.3 節の優先順位（ずれの合計が同じならパートの実労働時間の合計が小さい方）が保たれる
+  private static final int EVALUATION_VALUE_WEIGHT = 10_000;
 
   @Override
   public Optional<AssignmentResult> assign(List<Employee> employees) {
@@ -48,30 +55,30 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
       }
     }
 
-    int minScore = computeMinScore(candidates, 0, 0, memo);
+    int minEvaluationValue = computeMinEvaluationValue(candidates, 0, 0, memo);
 
-    if (minScore == IMPOSSIBLE) {
+    if (minEvaluationValue == IMPOSSIBLE) {
       return Optional.empty();
     }
 
-    // F-3（5.3 節）の同点規則に従い、列挙順で最初に最小スコアへ到達する案を返すため、
-    // 最小スコアを求めた後に辞書順で案を復元する
+    // F-3（5.3 節）の同点規則に従い、列挙順で最初に最小の評価値へ到達する案を返すため、
+    // 最小の評価値を求めた後に辞書順で案を復元する
     int[] assignment = new int[ShiftSlot.totalEmployees()];
-    reconstructAssignment(candidates, 0, 0, minScore, assignment, 0, memo);
+    reconstructAssignment(candidates, 0, 0, minEvaluationValue, assignment, 0, memo);
 
     return Optional.of(buildResult(validEmployees, candidates, assignment));
   }
 
   /**
-   * 動的計画法で最小スコアを計算します。
+   * 動的計画法で最小の評価値を計算します。
    *
    * @param candidates 候補となる従業員リスト
    * @param slotIndex 現在の枠インデックス
    * @param usedMask 使用済み従業員のビットマスク
    * @param memo メモ化テーブル
-   * @return 枠 slotIndex 以降で得られる最小の追加スコア（割り当て不可なら {@code IMPOSSIBLE}）
+   * @return 枠 slotIndex 以降で得られる最小の追加評価値（割り当て不可なら {@code IMPOSSIBLE}）
    */
-  private int computeMinScore(
+  private int computeMinEvaluationValue(
       List<Employee> candidates, int slotIndex, int usedMask, int[][] memo) {
     if (slotIndex >= ShiftSlot.values().length) {
       return 0;
@@ -83,16 +90,16 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
     ShiftSlot slot = ShiftSlot.values()[slotIndex];
     int requiredCount = slot.numberOfEmployees();
-    int minScore = IMPOSSIBLE;
+    int minEvaluationValue = IMPOSSIBLE;
 
     for (int combo : generateCombinations(candidates, slotIndex, usedMask, requiredCount)) {
       int nextMask = usedMask;
-      int comboScore = 0;
+      int comboEvaluationValue = 0;
 
       for (int i = 0, bit = 0; i < candidates.size() && i < 32; i++) {
         if ((combo & (1 << i)) != 0) {
           Employee emp = candidates.get(i);
-          comboScore += emp.gapMinutes(slot);
+          comboEvaluationValue += evaluationValue(emp, slot);
           nextMask |= (1 << i);
           bit++;
           if (bit >= requiredCount) {
@@ -101,18 +108,35 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
         }
       }
 
-      int futureScore = computeMinScore(candidates, slotIndex + 1, nextMask, memo);
-      if (futureScore != IMPOSSIBLE) {
-        int totalScore = comboScore + futureScore;
+      int futureEvaluationValue =
+          computeMinEvaluationValue(candidates, slotIndex + 1, nextMask, memo);
+      if (futureEvaluationValue != IMPOSSIBLE) {
+        int totalEvaluationValue = comboEvaluationValue + futureEvaluationValue;
         // 同点で更新すると F-3 の同点規則（列挙順で最初の案）に反するため、厳密に小さいときだけ更新する
-        if (minScore == IMPOSSIBLE || totalScore < minScore) {
-          minScore = totalScore;
+        if (minEvaluationValue == IMPOSSIBLE || totalEvaluationValue < minEvaluationValue) {
+          minEvaluationValue = totalEvaluationValue;
         }
       }
     }
 
-    memo[slotIndex][usedMask] = minScore;
-    return minScore;
+    memo[slotIndex][usedMask] = minEvaluationValue;
+    return minEvaluationValue;
+  }
+
+  /**
+   * 1 人分の評価値（5.3・5.4 節）を計算します。
+   *
+   * <p>評価値 = ずれ（分） × {@link #EVALUATION_VALUE_WEIGHT} ＋ パートならその枠の実労働時間（分）、常勤・管理職なら 0。
+   * ずれの合計が同じ案の中では、この値の合計が小さいほどパートの実労働時間の合計が小さい案として優先されます（5.3 節）。
+   *
+   * @param employee 対象の従業員
+   * @param slot 割り当て先の枠
+   * @return 評価値
+   */
+  private int evaluationValue(Employee employee, ShiftSlot slot) {
+    int partTimeActualWorkMinutes =
+        employee.employmentType() == EmploymentType.PART_TIME ? slot.actualWorkMinutes() : 0;
+    return employee.gapMinutes(slot) * EVALUATION_VALUE_WEIGHT + partTimeActualWorkMinutes;
   }
 
   /**
@@ -134,6 +158,8 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
   /**
    * 組み合わせを再帰的に生成します。
+   *
+   * <p>{@link Employee#canAssign(ShiftSlot)} で H-3・H-4 の両方を満たす候補だけに絞ります（5.4 節 1）。
    */
   private void combinationHelper(
       List<Employee> candidates,
@@ -150,7 +176,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
     }
 
     for (int i = currentIndex; i < candidates.size(); i++) {
-      if ((usedMask & (1 << i)) == 0 && candidates.get(i).canWork(slot)) {
+      if ((usedMask & (1 << i)) == 0 && candidates.get(i).canAssign(slot)) {
         combinationHelper(
             candidates,
             slot,
@@ -165,15 +191,15 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
   }
 
   /**
-   * 入力順の辞書順で最初の最小スコア案を復元します。
+   * 入力順の辞書順で最初の最小評価値案を復元します。
    *
-   * <p>F-3 の同点規則（5.3 節の「列挙順で最初に最小スコアへ到達する案」）と同じ案を得るため、入力順の辞書順で組を列挙し、スコア条件を満たす最初の組を選びます。
+   * <p>F-3 の同点規則（5.3 節の「列挙順で最初に最小の評価値へ到達する案」）と同じ案を得るため、入力順の辞書順で組を列挙し、評価値の条件を満たす最初の組を選びます。
    */
   private void reconstructAssignment(
       List<Employee> candidates,
       int slotIndex,
       int usedMask,
-      int targetScore,
+      int targetEvaluationValue,
       int[] assignment,
       int assignmentIndex,
       int[][] memo) {
@@ -186,7 +212,7 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
 
     for (int combo : generateCombinations(candidates, slotIndex, usedMask, requiredCount)) {
       int nextMask = usedMask;
-      int comboScore = 0;
+      int comboEvaluationValue = 0;
 
       int assignedCount = 0;
       for (int i = 0; i < candidates.size() && assignedCount < requiredCount; i++) {
@@ -194,19 +220,21 @@ public class ShiftAssignmentServiceImpl implements ShiftAssignmentService {
           Employee emp = candidates.get(i);
           assignment[assignmentIndex + assignedCount] = i;
           nextMask |= (1 << i);
-          comboScore += emp.gapMinutes(slot);
+          comboEvaluationValue += evaluationValue(emp, slot);
           assignedCount++;
         }
       }
 
-      int futureScore = computeMinScore(candidates, slotIndex + 1, nextMask, memo);
+      int futureEvaluationValue =
+          computeMinEvaluationValue(candidates, slotIndex + 1, nextMask, memo);
       // 条件を満たす最初の組で確定し、同点の後続の組には切り替えない（F-3）
-      if (futureScore != IMPOSSIBLE && comboScore + futureScore == targetScore) {
+      if (futureEvaluationValue != IMPOSSIBLE
+          && comboEvaluationValue + futureEvaluationValue == targetEvaluationValue) {
         reconstructAssignment(
             candidates,
             slotIndex + 1,
             nextMask,
-            futureScore,
+            futureEvaluationValue,
             assignment,
             assignmentIndex + requiredCount,
             memo);

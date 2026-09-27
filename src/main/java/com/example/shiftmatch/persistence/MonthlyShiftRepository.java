@@ -6,6 +6,7 @@ import com.example.shiftmatch.domain.DailyWish;
 import com.example.shiftmatch.domain.Employee;
 import com.example.shiftmatch.domain.EmployeeProfile;
 import com.example.shiftmatch.domain.EmploymentType;
+import com.example.shiftmatch.domain.FailureReason;
 import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftInput;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
@@ -253,15 +254,17 @@ public class MonthlyShiftRepository {
     }
     for (DailyShiftResult day : result.days()) {
       Optional<AssignmentResult> assignment = day.assignment();
+      String failureReason = day.failureReason() == null ? null : day.failureReason().name();
       jdbcClient
           .sql(
-              "INSERT INTO saved_day (day_date, target_month, available_count, score)"
-                  + " VALUES (?, ?, ?, ?)")
+              "INSERT INTO saved_day (day_date, target_month, available_count, score,"
+                  + " failure_reason) VALUES (?, ?, ?, ?, ?)")
           .params(
               day.date(),
               targetMonth,
               day.availableCount(),
-              assignment.map(value -> value.score()).orElse(null))
+              assignment.map(value -> value.score()).orElse(null),
+              failureReason)
           .update();
       assignment.ifPresent(
           value -> {
@@ -317,8 +320,8 @@ public class MonthlyShiftRepository {
       jdbcClient
           .sql(
               "INSERT INTO saved_day_unassigned (day_date, unassigned_index, employee_name,"
-                  + " employment_type, off, wish_start, wish_end, reason)"
-                  + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+                  + " employment_type, off, wish_start, wish_end, reason,"
+                  + " weekly_remaining_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
           .params(
               date,
               index,
@@ -327,7 +330,8 @@ public class MonthlyShiftRepository {
               employee.off(),
               employee.start(),
               employee.end(),
-              employee.unassignedReason().name())
+              employee.unassignedReason().name(),
+              employee.weeklyRemainingMinutes())
           .update();
     }
   }
@@ -355,16 +359,27 @@ public class MonthlyShiftRepository {
     List<DailyShiftResult> days =
         jdbcClient
             .sql(
-                "SELECT day_date, available_count, score FROM saved_day WHERE target_month = ?"
-                    + " ORDER BY day_date")
+                "SELECT day_date, available_count, score, failure_reason FROM saved_day"
+                    + " WHERE target_month = ? ORDER BY day_date")
             .param(targetMonth)
             .query(
                 (rs, rowNum) -> {
                   LocalDate date = rs.getObject("day_date", LocalDate.class);
                   Integer score = rs.getObject("score", Integer.class);
-                  Optional<AssignmentResult> assignment =
-                      score == null ? Optional.empty() : Optional.of(findAssignment(date, score));
-                  return new DailyShiftResult(date, rs.getInt("available_count"), assignment);
+                  if (score != null) {
+                    return new DailyShiftResult(
+                        date,
+                        rs.getInt("available_count"),
+                        Optional.of(findAssignment(date, score)));
+                  }
+                  // 8.4 節：failure_reason が NULL の不成立の日（この仕様変更より前のデータ）は人員不足として扱う
+                  String failureReasonName = rs.getString("failure_reason");
+                  FailureReason failureReason =
+                      failureReasonName == null
+                          ? FailureReason.STAFF_SHORTAGE
+                          : FailureReason.valueOf(failureReasonName);
+                  return new DailyShiftResult(
+                      date, rs.getInt("available_count"), Optional.empty(), failureReason);
                 })
             .list();
     if (days.isEmpty() && employees.isEmpty()) {
@@ -396,8 +411,9 @@ public class MonthlyShiftRepository {
     List<Employee> unassigned =
         jdbcClient
             .sql(
-                "SELECT employee_name, employment_type, off, wish_start, wish_end"
-                    + " FROM saved_day_unassigned WHERE day_date = ? ORDER BY unassigned_index")
+                "SELECT employee_name, employment_type, off, wish_start, wish_end,"
+                    + " weekly_remaining_minutes FROM saved_day_unassigned WHERE day_date = ?"
+                    + " ORDER BY unassigned_index")
             .param(date)
             .query(
                 (rs, rowNum) ->
@@ -406,7 +422,8 @@ public class MonthlyShiftRepository {
                         EmploymentType.valueOf(rs.getString("employment_type")),
                         rs.getBoolean("off"),
                         rs.getObject("wish_start", LocalTime.class),
-                        rs.getObject("wish_end", LocalTime.class)))
+                        rs.getObject("wish_end", LocalTime.class),
+                        rs.getObject("weekly_remaining_minutes", Integer.class)))
             .list();
     return new AssignmentResult(assignments, score, unassigned);
   }

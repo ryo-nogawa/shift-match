@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS saved_day (
   score INT NULL
 );
 
+ALTER TABLE saved_day ADD COLUMN IF NOT EXISTS failure_reason VARCHAR(32) NULL;
+
 CREATE TABLE IF NOT EXISTS saved_day_assignment (
   day_date DATE NOT NULL,
   assignment_index INT NOT NULL,
@@ -79,6 +81,8 @@ CREATE TABLE IF NOT EXISTS saved_day_unassigned (
   reason VARCHAR(32) NOT NULL,
   PRIMARY KEY (day_date, unassigned_index)
 );
+
+ALTER TABLE saved_day_unassigned ADD COLUMN IF NOT EXISTS weekly_remaining_minutes INT NULL;
 
 CREATE TABLE IF NOT EXISTS holiday (
   holiday_date DATE PRIMARY KEY,
