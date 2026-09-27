@@ -119,37 +119,48 @@ public class ShiftController {
   }
 
   /**
+   * バインドを許可する従業員の添字の上限（{@code employees[0]}〜{@code employees[MAX_BOUND_EMPLOYEES - 1]}）。
+   *
+   * <p>V-5（有効な従業員が 13 名以上のときエラー）の判定・表示ができるよう、上限の 12 名より 1 名多い
+   * 13 名分まで受け付けます。これを超える添字（例：{@code employees[255]}）はワイルドカードで許可すると、
+   * バインド前の自動拡張（既定の上限 256）により大量の {@link DayForm} と HTML が生成されるため、
+   * 個別に列挙して範囲を限定します。
+   */
+  private static final int MAX_BOUND_EMPLOYEES = 13;
+
+  /**
    * {@code shiftForm} へバインドできるフィールドを制限します。
    *
-   * <p>{@code employees[*].days} は月〜金の 5 件（{@code days[0]}〜{@code days[4]}）だけを許可します。
-   * 従業員の添字（{@code employees[n]}）は制限しません（13 名以上は V-5 のエラーメッセージで扱う仕様のため）。
-   * 許可しないパラメーターはバインド前に除外されるため、ネストしたリストの自動拡張（既定の上限 256）による
-   * 大量の {@link DayForm} 生成を防ぎます。
+   * <p>従業員の添字は {@code 0}〜{@link #MAX_BOUND_EMPLOYEES} 未満に限定して列挙します。範囲外の添字を含む
+   * パラメーターはバインド前に除外されるだけで、400 エラーにはしません（V-5 は従来どおり、13 名分が
+   * バインドされたうえで入力チェックにより判定します）。{@code employees[*].days} も月〜金の 5 件
+   * （{@code days[0]}〜{@code days[4]}）だけを許可します。
    *
    * @param binder 対象の {@link WebDataBinder}
    */
   @InitBinder("shiftForm")
   public void initShiftFormBinder(WebDataBinder binder) {
-    binder.setAllowedFields(
-        "targetMonth",
-        "employees[*].name",
-        "employees[*].employmentType",
-        "employees[*].offDays",
-        "employees[*].days[0].start",
-        "employees[*].days[0].end",
-        "employees[*].days[1].start",
-        "employees[*].days[1].end",
-        "employees[*].days[2].start",
-        "employees[*].days[2].end",
-        "employees[*].days[3].start",
-        "employees[*].days[3].end",
-        "employees[*].days[4].start",
-        "employees[*].days[4].end",
-        "adjustments[*].date",
-        "adjustments[*].employeeName",
-        "adjustments[*].off",
-        "adjustments[*].start",
-        "adjustments[*].end");
+    binder.setAllowedFields(allowedShiftFormFields());
+  }
+
+  private static String[] allowedShiftFormFields() {
+    List<String> fields = new ArrayList<>();
+    fields.add("targetMonth");
+    for (int i = 0; i < MAX_BOUND_EMPLOYEES; i++) {
+      fields.add("employees[" + i + "].name");
+      fields.add("employees[" + i + "].employmentType");
+      fields.add("employees[" + i + "].offDays");
+      for (int d = 0; d < WEEKDAY_COUNT; d++) {
+        fields.add("employees[" + i + "].days[" + d + "].start");
+        fields.add("employees[" + i + "].days[" + d + "].end");
+      }
+    }
+    fields.add("adjustments[*].date");
+    fields.add("adjustments[*].employeeName");
+    fields.add("adjustments[*].off");
+    fields.add("adjustments[*].start");
+    fields.add("adjustments[*].end");
+    return fields.toArray(new String[0]);
   }
 
   /**

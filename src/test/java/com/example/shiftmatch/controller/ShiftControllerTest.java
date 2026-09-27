@@ -1032,6 +1032,44 @@ class ShiftControllerTest {
       assertTrue(form.getEmployees().get(0).getDays().size() <= 5);
       assertFalse(bodyOf(result).contains("days[200]"));
     }
+
+    @Test
+    @DisplayName(
+        "[8.5節] Given: 従業員の添字が範囲外の値を含む POST, When: POST /shift を呼ぶと,"
+            + " Then: shiftForm の employees は 13 件以下で、レスポンスに employees[255] は含まれない")
+    void ignoresOutOfRangeEmployeeIndex() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of()));
+
+      MvcResult result = perform(validRequest().param("employees[255].days[4].start", "09:00"));
+
+      ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
+      assertTrue(form.getEmployees().size() <= 13);
+      assertFalse(bodyOf(result).contains("employees[255]"));
+    }
+
+    @Test
+    @DisplayName(
+        "[V-5] Given: 添字 0〜12 の 13 名分の有効な従業員を POST, When: POST /shift を呼ぶと,"
+            + " Then: 13 名分すべてがバインドされたうえで V-5 のエラーになる")
+    void bindsAllThirteenEmployeeIndicesAndSurfacesValidationErrorV5() throws Exception {
+      InputError v5 = new InputError("V-5", "従業員は12名までです");
+      throwInputErrors(v5);
+
+      MockHttpServletRequestBuilder request = post("/shift").param("targetMonth", "2026-10");
+      for (int i = 0; i < 13; i++) {
+        request =
+            request
+                .param("employees[" + i + "].name", "従業員" + i)
+                .param("employees[" + i + "].employmentType", "FULL_TIME");
+      }
+
+      MvcResult result = perform(request);
+
+      ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
+      assertEquals(13, form.getEmployees().size());
+      assertEquals(List.of(v5), modelOf(result).get("inputErrors"));
+    }
   }
 
   @Nested
