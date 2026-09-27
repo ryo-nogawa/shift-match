@@ -21,7 +21,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +48,7 @@ class MonthlyShiftRepositoryTest {
           "saved_month_employee",
           "saved_adjustment",
           "saved_input_meta",
+          "saved_input_weekday_shift",
           "saved_input_off_day",
           "saved_input_employee");
 
@@ -68,6 +71,19 @@ class MonthlyShiftRepositoryTest {
   private static EmployeeProfile partTimeProfile(
       String name, EmploymentType type, Set<DayOfWeek> offDays) {
     return new EmployeeProfile(name, type, offDays);
+  }
+
+  private static EmployeeProfile weekdayShiftProfile(
+      String name, EmploymentType type, Map<DayOfWeek, DailyWish> baseShifts) {
+    return new EmployeeProfile(name, type, baseShifts, Set.of());
+  }
+
+  private static EmployeeProfile weekdayShiftProfile(
+      String name,
+      EmploymentType type,
+      Map<DayOfWeek, DailyWish> baseShifts,
+      Set<DayOfWeek> offDays) {
+    return new EmployeeProfile(name, type, baseShifts, offDays);
   }
 
   @Nested
@@ -158,6 +174,86 @@ class MonthlyShiftRepositoryTest {
             .update();
 
         assertTrue(repository.findEmployees().get(0).offDays().isEmpty());
+      }
+
+      @Test
+      @DisplayName("[F-7] Given: 曜日ごとに異なる基本シフトを保存したとき, When: 復元すると, Then: 曜日ごとの基本シフトが一致する")
+      void restoresWeekdayShiftsPerDay() {
+        Map<DayOfWeek, DailyWish> baseShifts = new EnumMap<>(DayOfWeek.class);
+        baseShifts.put(
+            DayOfWeek.MONDAY, new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(17, 0)));
+        baseShifts.put(
+            DayOfWeek.TUESDAY, new DailyWish(false, LocalTime.of(8, 0), LocalTime.of(16, 0)));
+        baseShifts.put(
+            DayOfWeek.WEDNESDAY, new DailyWish(false, LocalTime.of(7, 30), LocalTime.of(18, 30)));
+        baseShifts.put(
+            DayOfWeek.THURSDAY, new DailyWish(false, LocalTime.of(9, 30), LocalTime.of(17, 30)));
+        baseShifts.put(
+            DayOfWeek.FRIDAY, new DailyWish(false, LocalTime.of(8, 30), LocalTime.of(16, 30)));
+        List<EmployeeProfile> employees =
+            List.of(weekdayShiftProfile("佐藤", EmploymentType.FULL_TIME, baseShifts));
+
+        repository.saveInput(employees, YearMonth.of(2026, 10));
+
+        assertEquals(employees, repository.findEmployees());
+      }
+
+      @Test
+      @DisplayName("[F-7] Given: パートの曜日休みの曜日に基本シフトがあるとき, When: 保存すると, Then: その曜日の行は保存されない")
+      void doesNotSaveBaseShiftForOffDay() {
+        Map<DayOfWeek, DailyWish> baseShifts = new EnumMap<>(DayOfWeek.class);
+        baseShifts.put(
+            DayOfWeek.MONDAY, new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(17, 0)));
+        List<EmployeeProfile> employees =
+            List.of(
+                weekdayShiftProfile(
+                    "佐藤", EmploymentType.PART_TIME, baseShifts, Set.of(DayOfWeek.MONDAY)));
+
+        repository.saveInput(employees, YearMonth.of(2026, 10));
+
+        Integer count =
+            jdbcClient
+                .sql(
+                    "SELECT COUNT(*) FROM saved_input_weekday_shift WHERE row_index = 0 AND"
+                        + " day_index = 0")
+                .query(Integer.class)
+                .single();
+        assertEquals(0, count);
+      }
+
+      @Test
+      @DisplayName("[F-7] Given: 基本シフトの行がない曜日（旧データ）, When: 復元すると, Then: 7:30〜18:30 で復元される")
+      void restoresDefaultShiftWhenNoRowForDay() {
+        jdbcClient
+            .sql(
+                "INSERT INTO saved_input_employee (row_index, name, employment_type)"
+                    + " VALUES (0, '佐藤', 'FULL_TIME')")
+            .update();
+
+        DailyWish monday = repository.findEmployees().get(0).baseShifts().get(DayOfWeek.MONDAY);
+
+        assertEquals(new DailyWish(false, LocalTime.of(7, 30), LocalTime.of(18, 30)), monday);
+      }
+
+      @Test
+      @DisplayName("[F-7] Given: 基本シフトを保存したあと別の基本シフトで保存し直したとき, When: 復元すると, Then: 以前の基本シフトは残らない")
+      void overwritesPreviousBaseShifts() {
+        Map<DayOfWeek, DailyWish> first = new EnumMap<>(DayOfWeek.class);
+        first.put(DayOfWeek.MONDAY, new DailyWish(false, LocalTime.of(9, 0), LocalTime.of(17, 0)));
+        repository.saveInput(
+            List.of(weekdayShiftProfile("佐藤", EmploymentType.FULL_TIME, first)),
+            YearMonth.of(2026, 10));
+
+        Map<DayOfWeek, DailyWish> second = new EnumMap<>(DayOfWeek.class);
+        second.put(
+            DayOfWeek.MONDAY, new DailyWish(false, LocalTime.of(10, 0), LocalTime.of(18, 0)));
+        repository.saveInput(
+            List.of(weekdayShiftProfile("佐藤", EmploymentType.FULL_TIME, second)),
+            YearMonth.of(2026, 10));
+
+        assertEquals(
+            new DailyWish(false, LocalTime.of(10, 0), LocalTime.of(18, 0)),
+            repository.findEmployees().get(0).baseShifts().get(DayOfWeek.MONDAY));
       }
     }
 

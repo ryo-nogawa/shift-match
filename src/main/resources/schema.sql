@@ -16,6 +16,14 @@ CREATE TABLE IF NOT EXISTS saved_input_off_day (
   PRIMARY KEY (row_index, day_index)
 );
 
+CREATE TABLE IF NOT EXISTS saved_input_weekday_shift (
+  row_index INT NOT NULL,
+  day_index INT NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  PRIMARY KEY (row_index, day_index)
+);
+
 CREATE TABLE IF NOT EXISTS saved_input_meta (
   id INT PRIMARY KEY CHECK (id = 1),
   last_target_month VARCHAR(7) NOT NULL
