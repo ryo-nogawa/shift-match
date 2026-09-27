@@ -11,9 +11,11 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
@@ -81,7 +83,30 @@ public class MonthlyFormConverter {
     Optional<EmploymentType> employmentType = EmploymentType.parse(form.getEmploymentType());
     Map<DayOfWeek, DailyWish> baseShifts = convertDays(form.getDays());
 
-    return new EmployeeProfile(name, employmentType.orElse(null), baseShifts);
+    Set<DayOfWeek> offDays = convertOffDays(form.getOffDays());
+
+    return new EmployeeProfile(name, employmentType.orElse(null), baseShifts, offDays);
+  }
+
+  /**
+   * 曜日休みの値（0＝月〜4＝金）を {@link DayOfWeek} の集合に変換します。
+   *
+   * <p>範囲外の値と {@code null} は無視します。
+   *
+   * @param values 曜日休みの値のリスト
+   * @return 曜日休みの集合
+   */
+  private Set<DayOfWeek> convertOffDays(List<Integer> values) {
+    Set<DayOfWeek> offDays = EnumSet.noneOf(DayOfWeek.class);
+    if (values == null) {
+      return offDays;
+    }
+    for (Integer value : values) {
+      if (value != null && value >= 0 && value <= 4) {
+        offDays.add(DayOfWeek.of(value + 1));
+      }
+    }
+    return offDays;
   }
 
   /**

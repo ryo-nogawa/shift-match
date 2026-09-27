@@ -13,7 +13,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -66,6 +68,46 @@ class MonthlyFormConverterTest {
     adjustment.setEmployeeName(employeeName);
     adjustment.setOff(off);
     return adjustment;
+  }
+
+  private static EmployeeForm employeeWithOffDays(String type, List<Integer> offDays) {
+    EmployeeForm employee = employee("山田太郎", type, fullWeek());
+    employee.setOffDays(offDays);
+    return employee;
+  }
+
+  private Set<DayOfWeek> convertedOffDays(String type, List<Integer> offDays) {
+    ShiftForm form =
+        form("2026-10", List.of(employeeWithOffDays(type, offDays)), new ArrayList<>());
+    return converter.toInput(form).employees().get(0).offDays();
+  }
+
+  @Nested
+  class 曜日休み {
+
+    @Test
+    @DisplayName("[F-1] Given: パートの offDays が 0 と 2 のとき, When: 変換すると, Then: 月曜と水曜が曜日休みになる")
+    void convertsPartTimeOffDays() {
+      Set<DayOfWeek> offDays = convertedOffDays("PART_TIME", List.of(0, 2));
+
+      assertEquals(Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY), offDays);
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: 常勤の offDays が 0 のとき, When: 変換すると, Then: 曜日休みは空になる")
+    void ignoresOffDaysForFullTime() {
+      assertTrue(convertedOffDays("FULL_TIME", List.of(0)).isEmpty());
+    }
+
+    @Test
+    @DisplayName("[F-1] Given: offDays に範囲外の値と null があるとき, When: 変換すると, Then: それらは無視される")
+    void ignoresOutOfRangeOffDays() {
+      List<Integer> offDays = new ArrayList<>(Arrays.asList(5, -1, null, 4));
+
+      Set<DayOfWeek> converted = convertedOffDays("PART_TIME", offDays);
+
+      assertEquals(Set.of(DayOfWeek.FRIDAY), converted);
+    }
   }
 
   @Nested
