@@ -26,7 +26,7 @@ class SchemaTest {
           "saved_month_employee",
           "saved_adjustment",
           "saved_input_meta",
-          "saved_input_base_shift",
+          "saved_input_off_day",
           "saved_input_employee");
 
   @Autowired private JdbcClient jdbcClient;
@@ -45,7 +45,7 @@ class SchemaTest {
     @ValueSource(
         strings = {
           "saved_input_employee",
-          "saved_input_base_shift",
+          "saved_input_off_day",
           "saved_input_meta",
           "saved_adjustment",
           "saved_month_employee",
