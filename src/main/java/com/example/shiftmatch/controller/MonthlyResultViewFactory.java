@@ -3,7 +3,6 @@ package com.example.shiftmatch.controller;
 import com.example.shiftmatch.controller.MonthlyResultView.CalendarDay;
 import com.example.shiftmatch.controller.MonthlyResultView.EmployeeRow;
 import com.example.shiftmatch.controller.MonthlyResultView.HolidayCell;
-import com.example.shiftmatch.controller.MonthlyResultView.MonthlyHours;
 import com.example.shiftmatch.controller.MonthlyResultView.WorkGroup;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
@@ -58,38 +57,13 @@ public class MonthlyResultViewFactory {
     for (MonthEmployee employee : employees) {
       rows.add(toEmployeeRow(employee.name(), dailyResults));
     }
-    List<MonthlyHours> monthlyHoursRows = new ArrayList<>();
-    for (MonthEmployee employee : employees) {
-      monthlyHoursRows.add(toMonthlyHours(employee, dailyResults));
-    }
     return new MonthlyResultView(
         dailyResults.size(),
         dailyResults.size() - failureCount,
         failureCount,
         days,
         weekdayHolidayCells(holidays),
-        rows,
-        monthlyHoursRows);
-  }
-
-  private static MonthlyHours toMonthlyHours(
-      MonthEmployee employee, List<DailyShiftResult> dailyResults) {
-    int workDays = 0;
-    int totalMinutes = 0;
-    for (DailyShiftResult daily : dailyResults) {
-      if (daily.assignment().isEmpty()) {
-        continue;
-      }
-      for (ShiftAssignment shiftAssignment : daily.assignment().get().assignments()) {
-        if (shiftAssignment.employee().name().equals(employee.name())) {
-          ShiftSlot slot = shiftAssignment.slot();
-          workDays++;
-          totalMinutes += slot.workMinutes() - slot.breakDurationMinutes();
-        }
-      }
-    }
-    return new MonthlyHours(
-        employee.name(), employee.employmentType().label(), workDays, totalMinutes);
+        rows);
   }
 
   private static CalendarDay toCalendarDay(DailyShiftResult daily, String holidayName) {
@@ -112,16 +86,28 @@ public class MonthlyResultViewFactory {
   private static EmployeeRow toEmployeeRow(String name, List<DailyShiftResult> dailyResults) {
     List<String> cells = new ArrayList<>();
     int workDays = 0;
+    int totalMinutes = 0;
     for (DailyShiftResult daily : dailyResults) {
       String cell = cellOf(name, daily);
       if (!cell.equals(ON_LEAVE_CELL)
           && !cell.equals(NOT_ASSIGNED_CELL)
           && !cell.equals(FAILED_CELL)) {
         workDays++;
+        totalMinutes += actualWorkMinutesOf(name, daily);
       }
       cells.add(cell);
     }
-    return new EmployeeRow(name, cells, workDays);
+    return new EmployeeRow(name, cells, workDays, totalMinutes);
+  }
+
+  private static int actualWorkMinutesOf(String name, DailyShiftResult daily) {
+    for (ShiftAssignment shiftAssignment : daily.assignment().get().assignments()) {
+      if (shiftAssignment.employee().name().equals(name)) {
+        ShiftSlot slot = shiftAssignment.slot();
+        return slot.workMinutes() - slot.breakDurationMinutes();
+      }
+    }
+    return 0;
   }
 
   private static String cellOf(String name, DailyShiftResult daily) {

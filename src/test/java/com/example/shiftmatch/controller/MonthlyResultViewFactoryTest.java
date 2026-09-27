@@ -242,8 +242,8 @@ class MonthlyResultViewFactoryTest {
     @Test
     @DisplayName(
         "[F-4][7.1節] Given: 枠 1 と枠 6 に入った従業員, When: 表示モデルを作ると,"
-            + " Then: 出勤日数 2・合計 885 分（375＋510）で、区分ラベルが入る")
-    void sumsWorkMinutesAndLabelsEmploymentType() {
+            + " Then: 出勤日数 2・合計 885 分（375＋510）で (14:45) になる")
+    void sumsWorkMinutes() {
       Employee partTime =
           new Employee(
               "e1", EmploymentType.PART_TIME, false, LocalTime.of(7, 30), LocalTime.of(18, 30));
@@ -256,11 +256,11 @@ class MonthlyResultViewFactoryTest {
               List.of(new MonthEmployee("e1", EmploymentType.PART_TIME)),
               Map.of());
 
-      MonthlyResultView.MonthlyHours row = view.monthlyHoursRows().get(0);
+      MonthlyResultView.EmployeeRow row = view.employeeRows().get(0);
       assertEquals("e1", row.name());
-      assertEquals("パート", row.employmentTypeLabel());
       assertEquals(2, row.workDays());
       assertEquals(885, row.totalMinutes());
+      assertEquals("(14:45)", row.durationLabel());
     }
 
     @Test
@@ -270,14 +270,14 @@ class MonthlyResultViewFactoryTest {
           createView(
               List.of(feasibleDay(DAY_1, List.of()), failedDay(DAY_2, 5)), names("e1"), Map.of());
 
-      MonthlyResultView.MonthlyHours row = view.monthlyHoursRows().get(0);
+      MonthlyResultView.EmployeeRow row = view.employeeRows().get(0);
       assertEquals(1, row.workDays());
       assertEquals(375, row.totalMinutes());
     }
 
     @Test
     @DisplayName(
-        "[F-4][7.1節] Given: 全日休みの従業員, When: 表示モデルを作ると," + " Then: 行が出て 0 分・出勤日数 0 で、区分は休みさんの区分になる")
+        "[F-4][7.1節] Given: 全日休みの従業員, When: 表示モデルを作ると," + " Then: 行が出て 0 分・出勤日数 0 で (00:00) になる")
     void keepsRowForEmployeeOnLeaveAllDays() {
       Employee onLeave = Employee.onLeave("休みさん");
       MonthlyResultView view =
@@ -286,32 +286,11 @@ class MonthlyResultViewFactoryTest {
               names("休みさん"),
               Map.of());
 
-      MonthlyResultView.MonthlyHours row = view.monthlyHoursRows().get(0);
+      MonthlyResultView.EmployeeRow row = view.employeeRows().get(0);
       assertEquals("休みさん", row.name());
-      assertEquals("常勤", row.employmentTypeLabel());
       assertEquals(0, row.workDays());
       assertEquals(0, row.totalMinutes());
-    }
-
-    @Test
-    @DisplayName(
-        "[F-4][7.1節] Given: 全営業日が不成立で区分の異なる従業員, When: 表示モデルを作ると,"
-            + " Then: 行は出て、区分は従業員の区分で 0 分・出勤日数 0 になる")
-    void showsEmploymentTypeWhenAllDaysFailed() {
-      MonthlyResultView view =
-          createView(
-              List.of(failedDay(DAY_1, 3)),
-              List.of(
-                  new MonthEmployee("e1", EmploymentType.MANAGER),
-                  new MonthEmployee("e2", EmploymentType.PART_TIME),
-                  new MonthEmployee("e3", EmploymentType.FULL_TIME)),
-              Map.of());
-
-      assertEquals(
-          List.of("管理職", "パート", "常勤"),
-          view.monthlyHoursRows().stream().map(r -> r.employmentTypeLabel()).toList());
-      assertEquals(0, view.monthlyHoursRows().get(0).workDays());
-      assertEquals(0, view.monthlyHoursRows().get(0).totalMinutes());
+      assertEquals("(00:00)", row.durationLabel());
     }
 
     @Test
@@ -321,9 +300,9 @@ class MonthlyResultViewFactoryTest {
           createView(List.of(feasibleDay(DAY_1, List.of())), names("e8", "e1", "e3"), Map.of());
 
       assertEquals(
-          List.of("e8", "e1", "e3"), view.monthlyHoursRows().stream().map(r -> r.name()).toList());
-      assertEquals(510, view.monthlyHoursRows().get(0).totalMinutes());
-      assertEquals(405, view.monthlyHoursRows().get(2).totalMinutes());
+          List.of("e8", "e1", "e3"), view.employeeRows().stream().map(r -> r.name()).toList());
+      assertEquals(510, view.employeeRows().get(0).totalMinutes());
+      assertEquals(405, view.employeeRows().get(2).totalMinutes());
     }
 
     /** person を slot の最初の枠に入れ、元の同名の人は別名 other に置き換えた成立の日を作る。 */

@@ -22,8 +22,7 @@ public record MonthlyResultView(
     int failureCount,
     List<CalendarDay> days,
     List<HolidayCell> holidayCells,
-    List<EmployeeRow> employeeRows,
-    List<MonthlyHours> monthlyHoursRows) {
+    List<EmployeeRow> employeeRows) {
 
   /**
    * カレンダー表示の営業日 1 日分です。
@@ -63,19 +62,9 @@ public record MonthlyResultView(
    * @param name 従業員名
    * @param cells 営業日ごとのセル（勤務時間・{@code 休}・{@code –}・{@code ×}）
    * @param workDays 出勤日数
+   * @param totalMinutes 月間の実労働時間の合計（分）
    */
-  public record EmployeeRow(String name, List<String> cells, int workDays) {}
-
-  /**
-   * 月間勤務時間の 1 行です。
-   *
-   * @param name 従業員名
-   * @param employmentTypeLabel 区分の表示名（どの日にも現れない場合は空文字）
-   * @param workDays 出勤日数
-   * @param totalMinutes 合計の実労働時間（分）
-   */
-  public record MonthlyHours(
-      String name, String employmentTypeLabel, int workDays, int totalMinutes) {
+  public record EmployeeRow(String name, List<String> cells, int workDays, int totalMinutes) {
 
     /**
      * 合計の実労働時間を {@code (hh:mm)} 形式で返します。
@@ -83,39 +72,8 @@ public record MonthlyResultView(
      * @return 例：{@code (14:45)}
      */
     public String durationLabel() {
-      return formatDuration(totalMinutes);
+      return String.format("(%02d:%02d)", totalMinutes / 60, totalMinutes % 60);
     }
-  }
-
-  /**
-   * 全員分の出勤日数の合計を返します。
-   *
-   * @return 出勤日数の合計
-   */
-  public int totalWorkDays() {
-    return monthlyHoursRows.stream().mapToInt(row -> row.workDays()).sum();
-  }
-
-  /**
-   * 全員分の合計実労働時間（分）を返します。
-   *
-   * @return 合計分
-   */
-  public int totalMinutes() {
-    return monthlyHoursRows.stream().mapToInt(row -> row.totalMinutes()).sum();
-  }
-
-  /**
-   * 全員分の合計実労働時間を {@code (hh:mm)} 形式で返します。
-   *
-   * @return 例：{@code (126:45)}
-   */
-  public String totalDurationLabel() {
-    return formatDuration(totalMinutes());
-  }
-
-  private static String formatDuration(int minutes) {
-    return String.format("(%02d:%02d)", minutes / 60, minutes % 60);
   }
 
   /**
