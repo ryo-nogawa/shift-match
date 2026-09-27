@@ -1016,6 +1016,25 @@ class ShiftControllerTest {
   }
 
   @Nested
+  class バインディング制限 {
+
+    @Test
+    @DisplayName(
+        "[8.5節] Given: 曜日の添字が範囲外の値を含む POST, When: POST /shift を呼ぶと,"
+            + " Then: shiftForm の employees[0].days は 5 件以下で、レスポンスに days[200] は含まれない")
+    void ignoresOutOfRangeDayIndex() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(new MonthlyShiftResult(YearMonth.of(2026, 10), List.of()));
+
+      MvcResult result = perform(validRequest().param("employees[0].days[200].start", "09:00"));
+
+      ShiftForm form = (ShiftForm) modelOf(result).get("shiftForm");
+      assertTrue(form.getEmployees().get(0).getDays().size() <= 5);
+      assertFalse(bodyOf(result).contains("days[200]"));
+    }
+  }
+
+  @Nested
   class 結果パネルの属性 {
 
     @Test

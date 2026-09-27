@@ -23,7 +23,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -114,6 +116,40 @@ public class ShiftController {
   @ModelAttribute("employmentTypes")
   public List<EmploymentType> employmentTypes() {
     return List.of(EmploymentType.FULL_TIME, EmploymentType.PART_TIME, EmploymentType.MANAGER);
+  }
+
+  /**
+   * {@code shiftForm} へバインドできるフィールドを制限します。
+   *
+   * <p>{@code employees[*].days} は月〜金の 5 件（{@code days[0]}〜{@code days[4]}）だけを許可します。
+   * 従業員の添字（{@code employees[n]}）は制限しません（13 名以上は V-5 のエラーメッセージで扱う仕様のため）。
+   * 許可しないパラメーターはバインド前に除外されるため、ネストしたリストの自動拡張（既定の上限 256）による
+   * 大量の {@link DayForm} 生成を防ぎます。
+   *
+   * @param binder 対象の {@link WebDataBinder}
+   */
+  @InitBinder("shiftForm")
+  public void initShiftFormBinder(WebDataBinder binder) {
+    binder.setAllowedFields(
+        "targetMonth",
+        "employees[*].name",
+        "employees[*].employmentType",
+        "employees[*].offDays",
+        "employees[*].days[0].start",
+        "employees[*].days[0].end",
+        "employees[*].days[1].start",
+        "employees[*].days[1].end",
+        "employees[*].days[2].start",
+        "employees[*].days[2].end",
+        "employees[*].days[3].start",
+        "employees[*].days[3].end",
+        "employees[*].days[4].start",
+        "employees[*].days[4].end",
+        "adjustments[*].date",
+        "adjustments[*].employeeName",
+        "adjustments[*].off",
+        "adjustments[*].start",
+        "adjustments[*].end");
   }
 
   /**
