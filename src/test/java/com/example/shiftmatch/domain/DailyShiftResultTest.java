@@ -1,9 +1,13 @@
 package com.example.shiftmatch.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -83,6 +87,75 @@ class DailyShiftResultTest {
       assertEquals(date, result.date());
       assertEquals(7, result.availableCount());
       assertTrue(result.assignment().isEmpty());
+    }
+  }
+
+  @Nested
+  class 不成立の理由 {
+
+    private final LocalDate date = LocalDate.of(2026, 10, 1);
+
+    private AssignmentResult anyAssignment() {
+      List<ShiftAssignment> list = new ArrayList<>();
+      for (ShiftSlot slot : ShiftSlot.values()) {
+        for (int i = 0; i < slot.numberOfEmployees(); i++) {
+          list.add(
+              new ShiftAssignment(
+                  Employee.working("e" + list.size(), slot.startTime(), slot.endTime()),
+                  slot,
+                  LocalTime.of(12, 0),
+                  LocalTime.of(12, 45)));
+        }
+      }
+      return new AssignmentResult(list, 0, List.of());
+    }
+
+    @Test
+    @DisplayName("[6章] Given: 成立なのに理由がある, When: 作成すると, Then: IllegalArgumentException")
+    void rejectsReasonWhenAssigned() {
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              new DailyShiftResult(
+                  date, 8, Optional.of(anyAssignment()), Optional.of(FailureReason.SHORTAGE)));
+    }
+
+    @Test
+    @DisplayName("[6章] Given: 不成立なのに理由がない, When: 作成すると, Then: IllegalArgumentException")
+    void rejectsMissingReasonWhenNotAssigned() {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> new DailyShiftResult(date, 3, Optional.empty(), Optional.empty()));
+    }
+
+    @Test
+    @DisplayName("[6章] Given: 成立で理由なし, When: 作成すると, Then: 作成できる")
+    void acceptsAssignedWithoutReason() {
+      DailyShiftResult result =
+          new DailyShiftResult(date, 8, Optional.of(anyAssignment()), Optional.empty());
+      assertTrue(result.failureReason().isEmpty());
+    }
+
+    @Test
+    @DisplayName("[6章] Given: 不成立で理由あり, When: 作成すると, Then: 理由を保持する")
+    void keepsReasonWhenNotAssigned() {
+      DailyShiftResult result =
+          new DailyShiftResult(date, 9, Optional.empty(), Optional.of(FailureReason.WEEKLY_LIMIT));
+      assertEquals(Optional.of(FailureReason.WEEKLY_LIMIT), result.failureReason());
+    }
+
+    @Test
+    @DisplayName("[6章] Given: 理由を省いた 3 引数の作成, When: 不成立で作成すると, Then: 人員不足になる")
+    void shortHandConstructorMeansShortage() {
+      DailyShiftResult result = new DailyShiftResult(date, 3, Optional.empty());
+      assertEquals(Optional.of(FailureReason.SHORTAGE), result.failureReason());
+    }
+
+    @Test
+    @DisplayName("[6章] Given: 各理由, When: label()を呼ぶと, Then: 人員不足・パートの週上限")
+    void labels() {
+      assertEquals("人員不足", FailureReason.SHORTAGE.label());
+      assertEquals("パートの週上限", FailureReason.WEEKLY_LIMIT.label());
     }
   }
 }
