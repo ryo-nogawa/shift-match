@@ -1,9 +1,9 @@
 package com.example.shiftmatch.controller;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -19,6 +19,7 @@ import com.example.shiftmatch.domain.ShiftSlot;
 import com.example.shiftmatch.persistence.SavedMonthlyShift;
 import com.example.shiftmatch.service.HolidayService;
 import com.example.shiftmatch.service.ShiftStorageService;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
@@ -35,6 +36,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
 
 @WebMvcTest(EmployeePageController.class)
 @Import(EmployeePageViewFactory.class)
@@ -100,17 +102,14 @@ class EmployeePageControllerTest {
           .perform(get("/employee").param("month", "2026-10").param("name", "山田"))
           .andExpect(status().isOk())
           .andExpect(view().name("employee"))
-          .andExpect(content().string(org.hamcrest.Matchers.containsString("山田")))
-          .andExpect(content().string(org.hamcrest.Matchers.containsString("パート")))
-          .andExpect(content().string(org.hamcrest.Matchers.containsString("2026年10月")))
-          .andExpect(content().string(org.hamcrest.Matchers.containsString("7:30–14:30")))
-          .andExpect(content().string(org.hamcrest.Matchers.containsString("(06:15)")))
-          .andExpect(content().string(org.hamcrest.Matchers.containsString("スポーツの日")))
-          .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/\"")))
-          .andExpect(
-              content()
-                  .string(
-                      org.hamcrest.Matchers.containsString("不成立の日が 1 日あります（この日は 0 時間として集計しています）")));
+          .andExpect(bodyContains("山田"))
+          .andExpect(bodyContains("パート"))
+          .andExpect(bodyContains("2026年10月"))
+          .andExpect(bodyContains("7:30–14:30"))
+          .andExpect(bodyContains("(06:15)"))
+          .andExpect(bodyContains("スポーツの日"))
+          .andExpect(bodyContains("href=\"/\""))
+          .andExpect(bodyContains("不成立の日が 1 日あります（この日は 0 時間として集計しています）"));
     }
 
     @Test
@@ -118,9 +117,7 @@ class EmployeePageControllerTest {
     void loadsEmployeePageStylesheet() throws Exception {
       mockMvc
           .perform(get("/employee").param("month", "2026-10").param("name", "山田"))
-          .andExpect(
-              content()
-                  .string(org.hamcrest.Matchers.containsString("href=\"/css/employee-page.css\"")));
+          .andExpect(bodyContains("href=\"/css/employee-page.css\""));
     }
 
     @Test
@@ -133,7 +130,7 @@ class EmployeePageControllerTest {
           .perform(get("/employee").param("month", "2026-10").param("name", "山田"))
           .andExpect(status().isOk())
           .andExpect(view().name("employee"))
-          .andExpect(content().string(org.hamcrest.Matchers.containsString("7:30–14:30")));
+          .andExpect(bodyContains("7:30–14:30"));
     }
   }
 
@@ -171,7 +168,7 @@ class EmployeePageControllerTest {
           .perform(get("/employee").param("month", "2026-11").param("name", "山田"))
           .andExpect(status().isOk())
           .andExpect(view().name("employee"))
-          .andExpect(content().string(org.hamcrest.Matchers.containsString("この月のシフトはまだ作成されていません")));
+          .andExpect(bodyContains("この月のシフトはまだ作成されていません"));
     }
 
     @Test
@@ -181,8 +178,7 @@ class EmployeePageControllerTest {
           .perform(get("/employee").param("month", "2026-10"))
           .andExpect(status().isNotFound())
           .andExpect(view().name("employee"))
-          .andExpect(
-              content().string(org.hamcrest.Matchers.containsString("この月のシフトに該当する従業員はいません")));
+          .andExpect(bodyContains("この月のシフトに該当する従業員はいません"));
     }
 
     @Test
@@ -191,8 +187,7 @@ class EmployeePageControllerTest {
       mockMvc
           .perform(get("/employee").param("month", "2026-10").param("name", ""))
           .andExpect(status().isNotFound())
-          .andExpect(
-              content().string(org.hamcrest.Matchers.containsString("この月のシフトに該当する従業員はいません")));
+          .andExpect(bodyContains("この月のシフトに該当する従業員はいません"));
     }
 
     @Test
@@ -202,8 +197,20 @@ class EmployeePageControllerTest {
           .perform(get("/employee").param("month", "2026-10").param("name", "存在しない人"))
           .andExpect(status().isNotFound())
           .andExpect(view().name("employee"))
-          .andExpect(
-              content().string(org.hamcrest.Matchers.containsString("この月のシフトに該当する従業員はいません")));
+          .andExpect(bodyContains("この月のシフトに該当する従業員はいません"));
     }
+  }
+
+  /**
+   * レスポンス本文（UTF-8）に指定した文字列が含まれることを検証する {@link ResultMatcher} を返します。
+   *
+   * @param expected 含まれるべき文字列
+   * @return 検証用の {@link ResultMatcher}
+   */
+  private static ResultMatcher bodyContains(String expected) {
+    return result -> {
+      String html = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+      assertTrue(html.contains(expected), () -> "本文に含まれない: " + expected);
+    };
   }
 }
