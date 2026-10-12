@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.example.shiftmatch.controller.MonthlyResultView.CalendarDay;
 import com.example.shiftmatch.controller.MonthlyResultView.EmployeeRow;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.FailureReason;
 import java.time.LocalDate;
 import java.util.List;
@@ -14,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class MonthlyResultViewTest {
 
   private static EmployeeRow row(int workDays, int totalMinutes) {
-    return new EmployeeRow("n", List.of(), workDays, totalMinutes);
+    return new EmployeeRow("n", EmploymentType.FULL_TIME, List.of(), workDays, totalMinutes);
   }
 
   @Nested

@@ -1,5 +1,6 @@
 package com.example.shiftmatch.controller;
 
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.FailureReason;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -78,11 +79,17 @@ public record MonthlyResultView(
    * 従業員別表示の 1 行です。
    *
    * @param name 従業員名
+   * @param employmentType 区分
    * @param cells 営業日ごとのセル（勤務時間・{@code 休}・{@code –}・{@code ×}）
    * @param workDays 出勤日数
    * @param totalMinutes 月間の実労働時間の合計（分）
    */
-  public record EmployeeRow(String name, List<String> cells, int workDays, int totalMinutes) {
+  public record EmployeeRow(
+      String name,
+      EmploymentType employmentType,
+      List<String> cells,
+      int workDays,
+      int totalMinutes) {
 
     /**
      * 合計の実労働時間を {@code (hh:mm)} 形式で返します。
