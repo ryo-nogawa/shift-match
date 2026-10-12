@@ -75,6 +75,7 @@ public class EmployeePageController {
         InputParsers.parseYearMonth(month)
             .filter(value -> CalendarController.isWithinHolidayDataRange(value))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST));
+    model.addAttribute("backMonth", yearMonth.toString());
     Optional<SavedMonthlyShift> saved = shiftStorageService.load(yearMonth);
     if (saved.isEmpty()) {
       model.addAttribute("notice", NOT_CREATED_MESSAGE);

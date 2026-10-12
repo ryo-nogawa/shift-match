@@ -956,6 +956,83 @@ class ShiftControllerTest {
   }
 
   @Nested
+  class 結果画面への復帰 {
+
+    private static final YearMonth SEPTEMBER = YearMonth.of(2026, 9);
+
+    private String defaultMonth() {
+      return YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+    }
+
+    private String targetMonthOf(MvcResult result) {
+      return ((ShiftForm) modelOf(result).get("shiftForm")).getTargetMonth();
+    }
+
+    @Test
+    @DisplayName(
+        "[8.1][8.3.1] Given: 2026-09 の保存済みシフトがある, When: GET /?month=2026-09&step=3 を呼ぶと,"
+            + " Then: initialStep=3・対象月 2026-09・保存済みの結果が入る")
+    void opensResultOfSpecifiedMonth() throws Exception {
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(SEPTEMBER, List.of(feasibleDay(LocalDate.of(2026, 9, 1), "A")));
+      when(shiftStorageService.load(SEPTEMBER))
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee("A", EmploymentType.FULL_TIME)))));
+
+      MvcResult result = perform(get("/").param("month", "2026-09").param("step", "3"));
+
+      assertEquals(3, modelOf(result).get("initialStep"));
+      assertEquals("2026-09", targetMonthOf(result));
+      assertEquals("saved", modelOf(result).get("resultSource"));
+      assertNotNull(modelOf(result).get("resultView"));
+    }
+
+    @Test
+    @DisplayName(
+        "[8.1][8.3.1] Given: month のみ指定, When: GET /?month=2026-09 を呼ぶと,"
+            + " Then: 対象月は 2026-09 で initialStep=1")
+    void keepsStepOneWithoutStepParameter() throws Exception {
+      MvcResult result = perform(get("/").param("month", "2026-09"));
+
+      assertEquals("2026-09", targetMonthOf(result));
+      assertEquals(1, modelOf(result).get("initialStep"));
+    }
+
+    @Test
+    @DisplayName(
+        "[8.1][8.3.1] Given: 形式不正の month, When: GET /?month=abc&step=3 を呼ぶと,"
+            + " Then: 200 で対象月は従来どおり、initialStep=1")
+    void ignoresMalformedMonth() throws Exception {
+      MvcResult result = perform(get("/").param("month", "abc").param("step", "3"));
+
+      assertEquals(defaultMonth(), targetMonthOf(result));
+      assertEquals(1, modelOf(result).get("initialStep"));
+    }
+
+    @Test
+    @DisplayName(
+        "[8.1][8.3.1] Given: 祝日データの範囲外の month, When: GET /?month=1900-01&step=3 を呼ぶと,"
+            + " Then: 200 で対象月は従来どおり、initialStep=1")
+    void ignoresOutOfRangeMonth() throws Exception {
+      MvcResult result = perform(get("/").param("month", "1900-01").param("step", "3"));
+
+      assertEquals(defaultMonth(), targetMonthOf(result));
+      assertEquals(1, modelOf(result).get("initialStep"));
+    }
+
+    @Test
+    @DisplayName("[8.1][8.3.1] Given: month なし, When: GET /?step=3 を呼ぶと, Then: initialStep=1")
+    void ignoresStepWithoutMonth() throws Exception {
+      MvcResult result = perform(get("/").param("step", "3"));
+
+      assertEquals(defaultMonth(), targetMonthOf(result));
+      assertEquals(1, modelOf(result).get("initialStep"));
+    }
+  }
+
+  @Nested
   class 保存済みシフトの取得 {
 
     private static final YearMonth MONTH = YearMonth.of(2026, 10);
