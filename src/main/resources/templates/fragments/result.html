@@ -50,7 +50,7 @@
               </thead>
               <tbody>
                 <tr th:each="row : ${resultView.employeeRows()}">
-                  <td class="sticky-col" th:text="${row.name()}"></td>
+                  <td class="sticky-col" th:text="${row.name()}" th:title="${row.name()}"></td>
                   <td class="sticky-col-type" th:text="${row.employmentType().label()}"></td>
                   <td th:each="cell : ${row.cells()}" th:text="${cell}"></td>
                   <td class="work-days" th:text="${row.workDays()}"></td>

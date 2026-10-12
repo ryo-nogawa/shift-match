@@ -1041,6 +1041,30 @@ class ShiftControllerTest {
 
     @Test
     @DisplayName(
+        "[F-4][7.1節] Given: 長い氏名の従業員の保存済みシフトがある, When: GET /shift/saved を呼ぶと,"
+            + " Then: 従業員別表示の氏名セルに氏名の全文が title 属性で含まれる")
+    void returnsFullNameAsTitleInEmployeesTabForSaved() throws Exception {
+      String longName = "山田太郎左衛門之助長兵衛";
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), longName)));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee(longName, EmploymentType.PART_TIME)))));
+
+      String html =
+          bodyOf(
+              mockMvc
+                  .perform(get("/shift/saved").param("month", "2026-10"))
+                  .andExpect(status().isOk())
+                  .andReturn());
+
+      assertTrue(employeesPanelOf(html).contains("title=\"" + longName + "\""));
+    }
+
+    @Test
+    @DisplayName(
         "[F-7][8.3節] Given: 指定した月の保存済みシフトがない, When: GET /shift/saved を呼ぶと,"
             + " Then: 「この月のシフトはまだ作成されていません」だけが返る")
     void returnsNotCreatedFragment() throws Exception {
