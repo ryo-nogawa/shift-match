@@ -100,6 +100,22 @@ class EmployeePageViewFactoryTest {
         LocalTime.of(12, 45));
   }
 
+  private static final Map<LocalDate, String> SAMPLE_HOLIDAYS =
+      Map.of(
+          LocalDate.of(2026, 10, 12), "スポーツの日",
+          LocalDate.of(2026, 10, 10), "土曜の祝日");
+
+  /** e1 が 10/1 と 10/30 に枠 1、10/2 に休み、10/5 に割り当てなし、10/6 に不成立の月。 */
+  private static List<DailyShiftResult> sampleDays() {
+    Employee target = Employee.working("e1", LocalTime.of(7, 30), LocalTime.of(18, 30));
+    return List.of(
+        dayWith(LocalDate.of(2026, 10, 1), "e1", List.of()),
+        dayWith(LocalDate.of(2026, 10, 2), "f0", List.of(Employee.onLeave("e1"))),
+        dayWith(LocalDate.of(2026, 10, 5), "f0", List.of(target)),
+        new DailyShiftResult(LocalDate.of(2026, 10, 6), 5, Optional.empty()),
+        dayWith(LocalDate.of(2026, 10, 30), "e1", List.of()));
+  }
+
   private static EmployeePageView.DayCell cellOn(EmployeePageView view, LocalDate date) {
     return view.weeks().stream()
         .flatMap(week -> week.days().stream())
@@ -115,19 +131,7 @@ class EmployeePageViewFactoryTest {
 
     @BeforeEach
     void setUpView() {
-      Employee target = Employee.working("e1", LocalTime.of(7, 30), LocalTime.of(18, 30));
-      List<DailyShiftResult> days =
-          List.of(
-              dayWith(LocalDate.of(2026, 10, 1), "e1", List.of()),
-              dayWith(LocalDate.of(2026, 10, 2), "f0", List.of(Employee.onLeave("e1"))),
-              dayWith(LocalDate.of(2026, 10, 5), "f0", List.of(target)),
-              new DailyShiftResult(LocalDate.of(2026, 10, 6), 5, Optional.empty()));
-      view =
-          createView(
-              days,
-              Map.of(
-                  LocalDate.of(2026, 10, 12), "スポーツの日",
-                  LocalDate.of(2026, 10, 10), "土曜の祝日"));
+      view = createView(sampleDays(), SAMPLE_HOLIDAYS);
     }
 
     @Test
@@ -202,6 +206,55 @@ class EmployeePageViewFactoryTest {
 
       assertEquals(EmployeePageView.CellType.BLANK, cell.type());
       assertEquals("", cell.text());
+    }
+  }
+
+  @Nested
+  class 集計 {
+
+    private EmployeePageView view;
+
+    @BeforeEach
+    void setUpView() {
+      view = createView(sampleDays(), SAMPLE_HOLIDAYS);
+    }
+
+    @Test
+    @DisplayName(
+        "[7.3] Given: 月をまたぐ第 1 週と第 5 週を含む月, When: 表示モデルを作ると," + " Then: 週の合計は対象月の営業日だけの実労働時間になる")
+    void totalsEachWeek() {
+      List<Integer> totals = view.weeks().stream().map(week -> week.totalMinutes()).toList();
+
+      assertEquals(List.of(375, 0, 0, 0, 375), totals);
+      assertEquals("(06:15)", view.weeks().get(0).durationLabel());
+      assertEquals("(00:00)", view.weeks().get(1).durationLabel());
+      assertEquals("(06:15)", view.weeks().get(4).durationLabel());
+    }
+
+    @Test
+    @DisplayName(
+        "[7.3] Given: 勤務 2 日・休み・割り当てなし・不成立の月, When: 表示モデルを作ると," + " Then: 出勤日数・月間の合計・不成立日数が数えられる")
+    void totalsMonth() {
+      assertEquals(2, view.workDays());
+      assertEquals(750, view.totalMinutes());
+      assertEquals("(12:30)", view.durationLabel());
+      assertEquals(1, view.failureCount());
+    }
+
+    @Test
+    @DisplayName("[7.1] Given: 同じ入力, When: 従業員別表示と個別ページを作ると," + " Then: 出勤日数と月間の合計が一致する")
+    void matchesEmployeeRow() {
+      MonthlyShiftResult result = new MonthlyShiftResult(MONTH, sampleDays());
+
+      MonthlyResultView.EmployeeRow row =
+          new MonthlyResultViewFactory()
+              .create(result, List.of(TARGET), SAMPLE_HOLIDAYS)
+              .employeeRows()
+              .get(0);
+
+      assertEquals(row.workDays(), view.workDays());
+      assertEquals(row.totalMinutes(), view.totalMinutes());
+      assertEquals(row.durationLabel(), view.durationLabel());
     }
   }
 }

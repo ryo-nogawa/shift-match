@@ -41,16 +41,37 @@ public class EmployeePageViewFactory {
     }
     LocalDate weekStart = month.atDay(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     List<Week> weeks = new ArrayList<>();
+    int workDays = 0;
+    int totalMinutes = 0;
+    int failureCount = 0;
     while (!weekStart.isAfter(month.atEndOfMonth())) {
       List<DayCell> cells = new ArrayList<>();
+      int weekMinutes = 0;
       for (int i = 0; i < DAYS_PER_WEEK; i++) {
         LocalDate date = weekStart.plusDays(i);
-        cells.add(cellOf(month, date, employee.name(), dailyByDate.get(date), holidays));
+        DayCell cell = cellOf(month, date, employee.name(), dailyByDate.get(date), holidays);
+        cells.add(cell);
+        if (cell.type() == CellType.WORK) {
+          int minutes =
+              MonthlyResultViewFactory.actualWorkMinutesOf(employee.name(), dailyByDate.get(date));
+          weekMinutes += minutes;
+          workDays++;
+          totalMinutes += minutes;
+        } else if (cell.type() == CellType.FAILED) {
+          failureCount++;
+        }
       }
-      weeks.add(new Week(cells));
+      weeks.add(new Week(cells, weekMinutes));
       weekStart = weekStart.plusWeeks(1);
     }
-    return new EmployeePageView(month, employee.name(), employee.employmentType(), weeks);
+    return new EmployeePageView(
+        month,
+        employee.name(),
+        employee.employmentType(),
+        weeks,
+        workDays,
+        totalMinutes,
+        failureCount);
   }
 
   private static DayCell cellOf(
