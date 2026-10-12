@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -1263,6 +1264,34 @@ class ShiftControllerTest {
       assertTrue(html.contains("id=\"result-panel\""));
       assertTrue(html.contains("data-result-source=\"none\""));
       assertFalse(html.contains("data-result-month"));
+    }
+  }
+
+  @Nested
+  class Favicon {
+
+    @Test
+    @DisplayName(
+        "Given: ファビコンを配信する, When: GET /favicon.svg を呼ぶと,"
+            + " Then: 200 で image/svg+xml の SVG 本文を返す")
+    void servesSvgFavicon() throws Exception {
+      MvcResult result =
+          mockMvc
+              .perform(get("/favicon.svg"))
+              .andExpect(status().isOk())
+              .andExpect(content().contentTypeCompatibleWith("image/svg+xml"))
+              .andReturn();
+
+      assertTrue(bodyOf(result).contains("<svg"));
+    }
+
+    @Test
+    @DisplayName(
+        "Given: 画面を表示する, When: GET / の HTML を見ると," + " Then: head に SVG のファビコンを参照する link 要素がある")
+    void indexReferencesFavicon() throws Exception {
+      String html = bodyOf(perform(get("/")));
+
+      assertTrue(html.contains("<link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\""));
     }
   }
 }
