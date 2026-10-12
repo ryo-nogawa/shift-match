@@ -345,4 +345,25 @@ class MonthlyResultViewFactoryTest {
           date, 8, Optional.of(new AssignmentResult(assignments, 0, List.of())));
     }
   }
+
+  @Nested
+  class 区分 {
+
+    @Test
+    @DisplayName(
+        "[F-4][7.1節] Given: 常勤とパートの従業員, When: 表示モデルを作ると," + " Then: 各行の employmentType が入力どおりになる")
+    void keepsInputEmploymentType() {
+      MonthlyResultView view =
+          createView(
+              List.of(feasibleDay(DAY_1, List.of())),
+              List.of(
+                  new MonthEmployee("e1", EmploymentType.FULL_TIME),
+                  new MonthEmployee("e2", EmploymentType.PART_TIME)),
+              Map.of());
+
+      List<MonthlyResultView.EmployeeRow> rows = view.employeeRows();
+      assertEquals(EmploymentType.FULL_TIME, rows.get(0).employmentType());
+      assertEquals(EmploymentType.PART_TIME, rows.get(1).employmentType());
+    }
+  }
 }

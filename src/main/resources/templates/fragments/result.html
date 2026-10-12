@@ -42,6 +42,7 @@
               <thead>
                 <tr>
                   <th class="sticky-col">従業員</th>
+                  <th class="sticky-col-type">区分</th>
                   <th th:each="day : ${resultView.days()}" th:text="${#temporals.format(day.date(), 'M/d(E)', T(java.util.Locale).JAPAN)}"></th>
                   <th>出勤日数</th>
                   <th>合計時間</th>
@@ -49,7 +50,8 @@
               </thead>
               <tbody>
                 <tr th:each="row : ${resultView.employeeRows()}">
-                  <td class="sticky-col" th:text="${row.name()}"></td>
+                  <td class="sticky-col" th:text="${row.name()}" th:title="${row.name()}"></td>
+                  <td class="sticky-col-type" th:text="${row.employmentType().label()}"></td>
                   <td th:each="cell : ${row.cells()}" th:text="${cell}"></td>
                   <td class="work-days" th:text="${row.workDays()}"></td>
                   <td class="total-time" th:text="${row.durationLabel()}"></td>

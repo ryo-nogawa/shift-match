@@ -534,6 +534,25 @@ class ShiftControllerTest {
       assertTrue(panel.contains("class=\"work-days\">1<"));
     }
 
+    @Test
+    @DisplayName(
+        "[F-4][7.1節] Given: 常勤とパートの従業員, When: POST /shift を呼ぶと,"
+            + " Then: 従業員別表示に「区分」列と各従業員の区分が固定列として含まれる")
+    void rendersEmploymentTypeColumnInEmployeesTab() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  YearMonth.of(2026, 10), List.of(feasibleDay(LocalDate.of(2026, 10, 1), "e1"))));
+
+      String html = bodyOf(perform(totalTimeRequest()));
+
+      String panel = employeesPanelOf(html);
+      assertTrue(panel.contains(">区分<"));
+      assertTrue(panel.contains(">常勤<"));
+      assertTrue(panel.contains(">パート<"));
+      assertTrue(panel.contains("class=\"sticky-col-type\""));
+    }
+
     private MockHttpServletRequestBuilder totalTimeRequest() {
       return post("/shift")
           .param("targetMonth", "2026-10")
@@ -568,7 +587,6 @@ class ShiftControllerTest {
       assertTrue(panel.contains(">(06:15)<"));
       assertTrue(panel.contains(">(00:00)<"));
       assertFalse(panel.contains(">合計<"));
-      assertFalse(panel.contains(">区分<"));
       assertTrue(panel.indexOf("</table>") < panel.indexOf("monthly-hours-note"));
       assertTrue(panel.contains("不成立の日が 1 日あります（この日は 0 時間として集計しています）"));
     }
@@ -994,6 +1012,55 @@ class ShiftControllerTest {
       assertTrue(panel.contains(">合計時間<"));
       assertTrue(panel.contains(">A<"));
       assertTrue(panel.contains(">(06:15)<"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][F-7][7.1節] Given: 指定した月の保存済みシフトがある, When: GET /shift/saved を呼ぶと,"
+            + " Then: 従業員別表示に「区分」列と保存済みの区分の表示名が含まれる")
+    void returnsEmploymentTypeColumnInEmployeesTabForSaved() throws Exception {
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "A")));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee("A", EmploymentType.PART_TIME)))));
+
+      String html =
+          bodyOf(
+              mockMvc
+                  .perform(get("/shift/saved").param("month", "2026-10"))
+                  .andExpect(status().isOk())
+                  .andReturn());
+
+      String panel = employeesPanelOf(html);
+      assertTrue(panel.contains(">区分<"));
+      assertTrue(panel.contains(">パート<"));
+    }
+
+    @Test
+    @DisplayName(
+        "[F-4][7.1節] Given: 長い氏名の従業員の保存済みシフトがある, When: GET /shift/saved を呼ぶと,"
+            + " Then: 従業員別表示の氏名セルに氏名の全文が title 属性で含まれる")
+    void returnsFullNameAsTitleInEmployeesTabForSaved() throws Exception {
+      String longName = "山田太郎左衛門之助長兵衛";
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), longName)));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee(longName, EmploymentType.PART_TIME)))));
+
+      String html =
+          bodyOf(
+              mockMvc
+                  .perform(get("/shift/saved").param("month", "2026-10"))
+                  .andExpect(status().isOk())
+                  .andReturn());
+
+      assertTrue(employeesPanelOf(html).contains("title=\"" + longName + "\""));
     }
 
     @Test

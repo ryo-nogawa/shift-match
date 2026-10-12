@@ -7,6 +7,7 @@ import com.example.shiftmatch.controller.MonthlyResultView.WorkGroup;
 import com.example.shiftmatch.domain.AssignmentResult;
 import com.example.shiftmatch.domain.DailyShiftResult;
 import com.example.shiftmatch.domain.Employee;
+import com.example.shiftmatch.domain.EmploymentType;
 import com.example.shiftmatch.domain.MonthEmployee;
 import com.example.shiftmatch.domain.MonthlyShiftResult;
 import com.example.shiftmatch.domain.ShiftAssignment;
@@ -55,7 +56,7 @@ public class MonthlyResultViewFactory {
     }
     List<EmployeeRow> rows = new ArrayList<>();
     for (MonthEmployee employee : employees) {
-      rows.add(toEmployeeRow(employee.name(), dailyResults));
+      rows.add(toEmployeeRow(employee.name(), employee.employmentType(), dailyResults));
     }
     return new MonthlyResultView(
         dailyResults.size(),
@@ -89,7 +90,8 @@ public class MonthlyResultViewFactory {
     return new CalendarDay(daily.date(), holidayName, false, daily.availableCount(), groups, null);
   }
 
-  private static EmployeeRow toEmployeeRow(String name, List<DailyShiftResult> dailyResults) {
+  private static EmployeeRow toEmployeeRow(
+      String name, EmploymentType employmentType, List<DailyShiftResult> dailyResults) {
     List<String> cells = new ArrayList<>();
     int workDays = 0;
     int totalMinutes = 0;
@@ -103,7 +105,7 @@ public class MonthlyResultViewFactory {
       }
       cells.add(cell);
     }
-    return new EmployeeRow(name, cells, workDays, totalMinutes);
+    return new EmployeeRow(name, employmentType, cells, workDays, totalMinutes);
   }
 
   private static int actualWorkMinutesOf(String name, DailyShiftResult daily) {

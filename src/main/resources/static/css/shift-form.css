@@ -152,7 +152,8 @@ input[type=text]:focus, select:focus { border-color: var(--accent) }
 
 /* 従業員別表示 */
 .employee-result-table th, .employee-result-table td { padding: 6px 10px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--line); font-size: 13px }
-.employee-result-table .sticky-col { position: sticky; left: 0; background: var(--card); text-align: left; z-index: 1 }
+.employee-result-table .sticky-col { position: sticky; left: 0; box-sizing: border-box; width: 10em; min-width: 10em; max-width: 10em; overflow: hidden; text-overflow: ellipsis; background: var(--card); text-align: left; z-index: 1 }
+.employee-result-table .sticky-col-type { position: sticky; left: 10em; background: var(--card); text-align: left; z-index: 1 }
 .employee-result-table .work-days, .employee-result-table .total-time { font-weight: 600 }
 
 .monthly-hours-note { margin: 8px 0 0; font-size: 13px }
