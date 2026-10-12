@@ -1284,5 +1284,14 @@ class ShiftControllerTest {
 
       assertTrue(bodyOf(result).contains("<svg"));
     }
+
+    @Test
+    @DisplayName(
+        "Given: 画面を表示する, When: GET / の HTML を見ると," + " Then: head に SVG のファビコンを参照する link 要素がある")
+    void indexReferencesFavicon() throws Exception {
+      String html = bodyOf(perform(get("/")));
+
+      assertTrue(html.contains("<link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\""));
+    }
   }
 }
