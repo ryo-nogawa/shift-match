@@ -126,4 +126,74 @@ class EmployeePageControllerTest {
           .andExpect(content().string(org.hamcrest.Matchers.containsString("7:30–14:30")));
     }
   }
+
+  @Nested
+  class 異常系 {
+
+    @Test
+    @DisplayName("[8.3.1] Given: month が YYYY-MM 形式でない, When: GET /employee, Then: 400")
+    void rejectsMalformedMonth() throws Exception {
+      mockMvc
+          .perform(get("/employee").param("month", "2026/10").param("name", "山田"))
+          .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("[8.3.1] Given: month がない, When: GET /employee, Then: 400")
+    void rejectsMissingMonth() throws Exception {
+      mockMvc.perform(get("/employee").param("name", "山田")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("[8.3.1] Given: 祝日データの収録範囲外の month, When: GET /employee, Then: 400")
+    void rejectsMonthOutOfHolidayDataRange() throws Exception {
+      mockMvc
+          .perform(get("/employee").param("month", "1900-01").param("name", "山田"))
+          .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("[8.3.1] Given: 保存済みシフトがない月, When: GET /employee, Then: 200 で未作成の文言を表示する")
+    void showsNotCreatedMessageWhenNoSavedShift() throws Exception {
+      when(shiftStorageService.load(YearMonth.of(2026, 11))).thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(get("/employee").param("month", "2026-11").param("name", "山田"))
+          .andExpect(status().isOk())
+          .andExpect(view().name("employee"))
+          .andExpect(content().string(org.hamcrest.Matchers.containsString("この月のシフトはまだ作成されていません")));
+    }
+
+    @Test
+    @DisplayName("[8.3.1] Given: name がない, When: GET /employee, Then: 404 で該当なしの文言を表示する")
+    void showsNotFoundWhenNameMissing() throws Exception {
+      mockMvc
+          .perform(get("/employee").param("month", "2026-10"))
+          .andExpect(status().isNotFound())
+          .andExpect(view().name("employee"))
+          .andExpect(
+              content().string(org.hamcrest.Matchers.containsString("この月のシフトに該当する従業員はいません")));
+    }
+
+    @Test
+    @DisplayName("[8.3.1] Given: name が空, When: GET /employee, Then: 404 で該当なしの文言を表示する")
+    void showsNotFoundWhenNameEmpty() throws Exception {
+      mockMvc
+          .perform(get("/employee").param("month", "2026-10").param("name", ""))
+          .andExpect(status().isNotFound())
+          .andExpect(
+              content().string(org.hamcrest.Matchers.containsString("この月のシフトに該当する従業員はいません")));
+    }
+
+    @Test
+    @DisplayName("[8.3.1] Given: 保存済みにいない name, When: GET /employee, Then: 404 で該当なしの文言を表示する")
+    void showsNotFoundWhenNameUnknown() throws Exception {
+      mockMvc
+          .perform(get("/employee").param("month", "2026-10").param("name", "存在しない人"))
+          .andExpect(status().isNotFound())
+          .andExpect(view().name("employee"))
+          .andExpect(
+              content().string(org.hamcrest.Matchers.containsString("この月のシフトに該当する従業員はいません")));
+    }
+  }
 }

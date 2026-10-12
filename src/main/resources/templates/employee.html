@@ -3,21 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title th:text="${employeePage.name()} + ' の個別ページ'">個別ページ</title>
+    <title th:text="${employeePage != null} ? ${employeePage.name()} + ' の個別ページ' : '従業員の個別ページ'">個別ページ</title>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}" />
     <link rel="stylesheet" th:href="@{/css/shift-form.css}" />
   </head>
   <body>
     <main class="employee-page">
       <p><a th:href="@{/}">シフト作成画面へ戻る</a></p>
-      <section class="employee-summary">
+      <p th:if="${notice}" class="employee-notice" th:text="${notice}"></p>
+      <section th:if="${employeePage}" class="employee-summary">
         <h1 th:text="${employeePage.name()}"></h1>
         <p th:text="${employeePage.month().getYear()} + '年' + ${employeePage.month().getMonthValue()} + '月'"></p>
         <p>区分：<span th:text="${employeePage.employmentType().label()}"></span></p>
         <p>出勤日数：<span th:text="${employeePage.workDays()}"></span></p>
         <p>合計時間：<span th:text="${employeePage.durationLabel()}"></span></p>
       </section>
-      <div class="employee-calendar-scroll">
+      <div th:if="${employeePage}" class="employee-calendar-scroll">
         <table class="employee-calendar">
           <thead>
             <tr>
@@ -42,7 +43,7 @@
           </tbody>
         </table>
       </div>
-      <p th:if="${employeePage.failureCount() > 0}" class="monthly-hours-note" th:text="'不成立の日が ' + ${employeePage.failureCount()} + ' 日あります（この日は 0 時間として集計しています）'"></p>
+      <p th:if="${employeePage != null and employeePage.failureCount() > 0}" class="monthly-hours-note" th:text="'不成立の日が ' + ${employeePage.failureCount()} + ' 日あります（この日は 0 時間として集計しています）'"></p>
     </main>
   </body>
 </html>
