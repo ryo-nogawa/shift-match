@@ -114,6 +114,16 @@ class EmployeePageControllerTest {
     }
 
     @Test
+    @DisplayName("[8.3.1] Given: 保存済みのシフト, When: GET /employee, Then: 個別ページ用の CSS を読み込む")
+    void loadsEmployeePageStylesheet() throws Exception {
+      mockMvc
+          .perform(get("/employee").param("month", "2026-10").param("name", "山田"))
+          .andExpect(
+              content()
+                  .string(org.hamcrest.Matchers.containsString("href=\"/css/employee-page.css\"")));
+    }
+
+    @Test
     @DisplayName("[7.3] Given: 祝日データが取得できない, When: GET /employee, Then: 200 で表示する")
     void showsPageWhenHolidayDataUnavailable() throws Exception {
       when(holidayService.holidaysOf(any(YearMonth.class)))
