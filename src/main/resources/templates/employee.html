@@ -9,7 +9,7 @@
   </head>
   <body>
     <main class="employee-page">
-      <p><a th:href="@{/}">シフト作成画面へ戻る</a></p>
+      <p><a th:href="@{/(month=${backMonth},step=3)}">結果画面へ戻る</a></p>
       <p th:if="${notice}" class="employee-notice" th:text="${notice}"></p>
       <section th:if="${employeePage}" class="employee-summary">
         <h1 th:text="${employeePage.name()}"></h1>

@@ -1,5 +1,6 @@
 package com.example.shiftmatch.controller;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -108,7 +109,9 @@ class EmployeePageControllerTest {
           .andExpect(bodyContains("7:30–14:30"))
           .andExpect(bodyContains("(06:15)"))
           .andExpect(bodyContains("スポーツの日"))
-          .andExpect(bodyContains("href=\"/\""))
+          .andExpect(bodyContains("結果画面へ戻る"))
+          .andExpect(bodyContains(BACK_HREF))
+          .andExpect(bodyNotContains("シフト作成画面へ戻る"))
           .andExpect(bodyContains("不成立の日が 1 日あります（この日は 0 時間として集計しています）"));
     }
 
@@ -168,7 +171,10 @@ class EmployeePageControllerTest {
           .perform(get("/employee").param("month", "2026-11").param("name", "山田"))
           .andExpect(status().isOk())
           .andExpect(view().name("employee"))
-          .andExpect(bodyContains("この月のシフトはまだ作成されていません"));
+          .andExpect(bodyContains("この月のシフトはまだ作成されていません"))
+          .andExpect(bodyContains("結果画面へ戻る"))
+          .andExpect(bodyContains("href=\"/?month=2026-11&amp;step=3\""))
+          .andExpect(bodyNotContains("シフト作成画面へ戻る"));
     }
 
     @Test
@@ -197,8 +203,20 @@ class EmployeePageControllerTest {
           .perform(get("/employee").param("month", "2026-10").param("name", "存在しない人"))
           .andExpect(status().isNotFound())
           .andExpect(view().name("employee"))
-          .andExpect(bodyContains("この月のシフトに該当する従業員はいません"));
+          .andExpect(bodyContains("この月のシフトに該当する従業員はいません"))
+          .andExpect(bodyContains("結果画面へ戻る"))
+          .andExpect(bodyContains(BACK_HREF))
+          .andExpect(bodyNotContains("シフト作成画面へ戻る"));
     }
+  }
+
+  private static final String BACK_HREF = "href=\"/?month=2026-10&amp;step=3\"";
+
+  private static ResultMatcher bodyNotContains(String unexpected) {
+    return result -> {
+      String html = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+      assertFalse(html.contains(unexpected), () -> "本文に含まれてはならない: " + unexpected);
+    };
   }
 
   /**
