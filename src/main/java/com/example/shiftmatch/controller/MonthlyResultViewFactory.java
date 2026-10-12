@@ -29,11 +29,11 @@ public class MonthlyResultViewFactory {
 
   private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("H:mm");
 
-  private static final String ON_LEAVE_CELL = "休";
+  static final String ON_LEAVE_CELL = "休";
 
-  private static final String NOT_ASSIGNED_CELL = "–";
+  static final String NOT_ASSIGNED_CELL = "–";
 
-  private static final String FAILED_CELL = "×";
+  static final String FAILED_CELL = "×";
 
   /**
    * 表示モデルを作ります。
@@ -108,7 +108,14 @@ public class MonthlyResultViewFactory {
     return new EmployeeRow(name, employmentType, cells, workDays, totalMinutes);
   }
 
-  private static int actualWorkMinutesOf(String name, DailyShiftResult daily) {
+  /**
+   * 従業員がその日に割り当てられた枠の実労働時間（分）を返します。
+   *
+   * @param name 従業員名
+   * @param daily 成立した日の結果
+   * @return 実労働時間（分）。割り当てがなければ 0
+   */
+  static int actualWorkMinutesOf(String name, DailyShiftResult daily) {
     for (ShiftAssignment shiftAssignment : daily.assignment().get().assignments()) {
       if (shiftAssignment.employee().name().equals(name)) {
         return shiftAssignment.slot().actualWorkMinutes();
@@ -117,7 +124,14 @@ public class MonthlyResultViewFactory {
     return 0;
   }
 
-  private static String cellOf(String name, DailyShiftResult daily) {
+  /**
+   * 従業員別表示のセルの文字列を返します。
+   *
+   * @param name 従業員名
+   * @param daily その日の結果
+   * @return 勤務時間、{@code 休}、{@code –}、{@code ×} のいずれか
+   */
+  static String cellOf(String name, DailyShiftResult daily) {
     if (daily.assignment().isEmpty()) {
       return FAILED_CELL;
     }
@@ -146,7 +160,13 @@ public class MonthlyResultViewFactory {
     return cells;
   }
 
-  private static String workTimeOf(ShiftSlot slot) {
+  /**
+   * 枠の勤務時間を {@code 7:30–14:30} 形式で返します。
+   *
+   * @param slot 枠
+   * @return 勤務時間の文字列
+   */
+  static String workTimeOf(ShiftSlot slot) {
     return slot.startTime().format(TIME_FORMATTER) + "–" + slot.endTime().format(TIME_FORMATTER);
   }
 }

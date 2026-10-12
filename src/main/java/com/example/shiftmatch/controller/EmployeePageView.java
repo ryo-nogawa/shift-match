@@ -27,6 +27,26 @@ public record EmployeePageView(
    * カレンダーの 1 マスです。
    *
    * @param date 日付（対象月以外の空きのマスは {@code null}）
+   * @param type マスの種類
+   * @param text 表示文字列
    */
-  public record DayCell(LocalDate date) {}
+  public record DayCell(LocalDate date, CellType type, String text) {}
+
+  /** マスの種類です。 */
+  public enum CellType {
+    /** 勤務あり。 */
+    WORK,
+    /** 休み。 */
+    OFF,
+    /** 割り当てなし。 */
+    NOT_ASSIGNED,
+    /** 不成立。 */
+    FAILED,
+    /** 祝日でない土日。 */
+    WEEKEND,
+    /** 祝日。 */
+    HOLIDAY,
+    /** 対象月以外の空き。 */
+    BLANK
+  }
 }
