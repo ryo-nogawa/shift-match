@@ -166,15 +166,24 @@ public class ShiftController {
   /**
    * 月間シフト作成フォームを初期表示します。
    *
+   * @param month 対象月（YYYY-MM 形式。有効なときだけ対象月を上書きする）
+   * @param step 最初に表示する画面（{@code 3} のときだけ、有効な {@code month} と組み合わせて画面 3 を開く）
    * @param model モデルオブジェクト
    * @return ビュー名
    */
   @GetMapping("/")
-  public String index(Model model) {
+  public String index(
+      @RequestParam(name = "month", required = false) String month,
+      @RequestParam(name = "step", required = false) String step,
+      Model model) {
     ShiftForm shiftForm =
         savedInputFormConverter.toForm(shiftStorageService.loadInput(), YearMonth.now());
+    Optional<YearMonth> specifiedMonth =
+        InputParsers.parseYearMonth(month)
+            .filter(value -> CalendarController.isWithinHolidayDataRange(value));
+    specifiedMonth.ifPresent(value -> shiftForm.setTargetMonth(value.toString()));
     model.addAttribute("shiftForm", shiftForm);
-    model.addAttribute("initialStep", 1);
+    model.addAttribute("initialStep", specifiedMonth.isPresent() && "3".equals(step) ? 3 : 1);
     addSavedResult(shiftForm, model);
 
     return "index";
