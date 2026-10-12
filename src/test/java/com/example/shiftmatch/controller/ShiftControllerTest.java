@@ -1294,4 +1294,70 @@ class ShiftControllerTest {
       assertTrue(html.contains("<link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\""));
     }
   }
+
+  @Nested
+  class 従業員別表示の氏名リンク {
+
+    private static final YearMonth MONTH = YearMonth.of(2026, 10);
+
+    private static final String ENCODED_LINK =
+        "href=\"/employee?month=2026-10&amp;name=%E5%B1%B1%E7%94%B0%20%E5%A4%AA%E9%83%8E\"";
+
+    private void stubSavedShift() {
+      when(shiftStorageService.loadInput())
+          .thenReturn(new SavedInput(List.of(), List.of(), Optional.of(MONTH)));
+      MonthlyShiftResult monthly =
+          new MonthlyShiftResult(MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "山田 太郎")));
+      when(shiftStorageService.load(MONTH))
+          .thenReturn(
+              Optional.of(
+                  new SavedMonthlyShift(
+                      monthly, List.of(new MonthEmployee("山田 太郎", EmploymentType.FULL_TIME)))));
+    }
+
+    private static void assertNewTabLink(String html) {
+      assertTrue(html.contains(ENCODED_LINK), "URL エンコードされた氏名のリンク");
+      assertTrue(html.contains("target=\"_blank\""));
+      assertTrue(html.contains("rel=\"noopener\""));
+      assertTrue(html.contains("title=\"山田 太郎\""));
+    }
+
+    @Test
+    @DisplayName("[7.1] Given: 保存済みシフト, When: GET / の HTML を見ると," + " Then: 氏名が個別ページへの新しいタブのリンクになる")
+    void linksNameOnSavedPage() throws Exception {
+      stubSavedShift();
+
+      assertNewTabLink(bodyOf(perform(get("/"))));
+    }
+
+    @Test
+    @DisplayName(
+        "[7.1] Given: 保存済みシフト, When: GET /shift/saved の HTML を見ると,"
+            + " Then: 氏名が個別ページへの新しいタブのリンクになる")
+    void linksNameOnSavedFragment() throws Exception {
+      stubSavedShift();
+
+      assertNewTabLink(bodyOf(perform(get("/shift/saved").param("month", "2026-10"))));
+    }
+
+    @Test
+    @DisplayName(
+        "[7.1] Given: 算出直後の結果, When: POST /shift の HTML を見ると," + " Then: 氏名が個別ページへの新しいタブのリンクになる")
+    void linksNameOnFreshResult() throws Exception {
+      when(monthlyShiftService.create(any()))
+          .thenReturn(
+              new MonthlyShiftResult(
+                  MONTH, List.of(feasibleDay(LocalDate.of(2026, 10, 1), "山田 太郎"))));
+
+      String html =
+          bodyOf(
+              perform(
+                  post("/shift")
+                      .param("targetMonth", "2026-10")
+                      .param("employees[0].name", "山田 太郎")
+                      .param("employees[0].employmentType", "FULL_TIME")));
+
+      assertNewTabLink(html);
+    }
+  }
 }

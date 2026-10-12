@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title th:text="${employeePage != null} ? ${employeePage.name()} + ' の個別ページ' : '従業員の個別ページ'">個別ページ</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}" />
+    <link rel="stylesheet" th:href="@{/css/employee-page.css}" />
+  </head>
+  <body>
+    <main class="employee-page">
+      <p><a th:href="@{/}">シフト作成画面へ戻る</a></p>
+      <p th:if="${notice}" class="employee-notice" th:text="${notice}"></p>
+      <section th:if="${employeePage}" class="employee-summary">
+        <h1 th:text="${employeePage.name()}"></h1>
+        <p th:text="${employeePage.month().getYear()} + '年' + ${employeePage.month().getMonthValue()} + '月'"></p>
+        <p>区分：<span th:text="${employeePage.employmentType().label()}"></span></p>
+        <p>出勤日数：<span th:text="${employeePage.workDays()}"></span></p>
+        <p>合計時間：<span th:text="${employeePage.durationLabel()}"></span></p>
+      </section>
+      <div th:if="${employeePage}" class="employee-calendar-scroll">
+        <table class="employee-calendar">
+          <thead>
+            <tr>
+              <th>月</th>
+              <th>火</th>
+              <th>水</th>
+              <th>木</th>
+              <th>金</th>
+              <th>土</th>
+              <th>日</th>
+              <th>週の合計</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="week : ${employeePage.weeks()}">
+              <td th:each="cell : ${week.days()}" th:class="'day-' + ${#strings.toLowerCase(cell.type().name())}">
+                <div th:if="${cell.date() != null}" class="day-number" th:text="${cell.date().dayOfMonth}"></div>
+                <div th:text="${cell.text()}"></div>
+              </td>
+              <td class="week-total" th:text="${week.durationLabel()}"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p th:if="${employeePage != null and employeePage.failureCount() > 0}" class="monthly-hours-note" th:text="'不成立の日が ' + ${employeePage.failureCount()} + ' 日あります（この日は 0 時間として集計しています）'"></p>
+    </main>
+  </body>
+</html>
